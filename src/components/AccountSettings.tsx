@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   X, Camera, ArrowLeft, User, AtSign, FileText, Shield,
   Eye, EyeOff, Phone, Users, MessageSquare, CheckCheck,
@@ -22,41 +22,83 @@ const privacyLabels: Record<PrivacyOption, string> = {
   nobody: "Nobody",
 };
 
+/** Resize image to max 256x256 and return a data URL (persistent, not blob). */
+function resizeImageToDataUrl(file: File, maxSize: number = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+
+        // Crop to square from center
+        const side = Math.min(w, h);
+        const sx = (w - side) / 2;
+        const sy = (h - side) / 2;
+
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("No canvas context")); return; }
+
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function AccountSettings({ open, profile, onClose, onUpdate }: AccountSettingsProps) {
   const [page, setPage] = useState<Page>("main");
-  const [draft, setDraft] = useState<UserProfile>(profile);
+  const [draft, setDraft] = useState<UserProfile>({ ...profile });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync draft when profile changes externally or dialog reopens
+  const syncFromProfile = useCallback(() => {
+    setDraft({ ...profile });
+    setAvatarPreview(profile.avatarUrl);
+  }, [profile]);
+
   if (!open) return null;
 
-  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
-    setDraft((d) => ({
-      ...d,
-      avatarUrl: url,
-      avatarInitials: d.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ME",
-    }));
     e.target.value = "";
+
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 256);
+      setAvatarPreview(dataUrl);
+      setDraft((d) => ({ ...d, avatarUrl: dataUrl }));
+    } catch {
+      // Fallback: use raw blob URL
+      const url = URL.createObjectURL(file);
+      setAvatarPreview(url);
+      setDraft((d) => ({ ...d, avatarUrl: url }));
+    }
   };
 
   const handleRemoveAvatar = () => {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     setAvatarPreview(null);
     setDraft((d) => ({ ...d, avatarUrl: null }));
   };
 
   const handleSaveProfile = () => {
-    const initials = draft.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ME";
-    onUpdate({ ...draft, avatarInitials: initials });
+    const initials = draft.name.trim().split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ME";
+    const updated = { ...draft, avatarUrl: avatarPreview, avatarInitials: initials };
+    onUpdate(updated);
     setPage("main");
   };
 
   const handleSavePrivacy = () => {
-    onUpdate(draft);
+    onUpdate({ ...draft, avatarUrl: avatarPreview });
     setPage("main");
   };
 
@@ -66,15 +108,13 @@ export function AccountSettings({ open, profile, onClose, onUpdate }: AccountSet
 
   const handleClose = () => {
     setPage("main");
-    setDraft(profile);
-    setAvatarPreview(profile.avatarUrl);
+    syncFromProfile();
     onClose();
   };
 
   const goBack = () => {
     if (page !== "main") {
-      setDraft(profile);
-      setAvatarPreview(profile.avatarUrl);
+      syncFromProfile();
       setPage("main");
     } else {
       handleClose();
@@ -208,7 +248,7 @@ function EditProfilePage({
         </div>
         <div className="flex gap-2">
           <button onClick={onAvatarClick} className="text-xs font-medium text-primary hover:underline">
-            Change Photo
+            {avatarPreview ? "Change Photo" : "Add Photo"}
           </button>
           {avatarPreview && (
             <button onClick={onRemoveAvatar} className="text-xs font-medium text-destructive hover:underline">
@@ -266,60 +306,21 @@ function PrivacyPage({
       <p className="text-xs text-muted-foreground">Control who can see your information and contact you.</p>
 
       <div className="space-y-4">
-        <PrivacySelect
-          icon={<Eye className="h-4 w-4" />}
-          label="Last Seen"
-          value={draft.privacy.lastSeen}
-          onChange={(v) => updatePrivacy("lastSeen", v)}
-        />
-        <PrivacySelect
-          icon={<Camera className="h-4 w-4" />}
-          label="Profile Photo"
-          value={draft.privacy.profilePhoto}
-          onChange={(v) => updatePrivacy("profilePhoto", v)}
-        />
-        <PrivacySelect
-          icon={<MessageSquare className="h-4 w-4" />}
-          label="Forwarded Messages"
-          value={draft.privacy.forwarding}
-          onChange={(v) => updatePrivacy("forwarding", v)}
-        />
-        <PrivacySelect
-          icon={<Phone className="h-4 w-4" />}
-          label="Calls"
-          value={draft.privacy.calls}
-          onChange={(v) => updatePrivacy("calls", v)}
-        />
-        <PrivacySelect
-          icon={<Users className="h-4 w-4" />}
-          label="Groups & Channels"
-          value={draft.privacy.groups}
-          onChange={(v) => updatePrivacy("groups", v)}
-        />
+        <PrivacySelect icon={<Eye className="h-4 w-4" />} label="Last Seen" value={draft.privacy.lastSeen} onChange={(v) => updatePrivacy("lastSeen", v)} />
+        <PrivacySelect icon={<Camera className="h-4 w-4" />} label="Profile Photo" value={draft.privacy.profilePhoto} onChange={(v) => updatePrivacy("profilePhoto", v)} />
+        <PrivacySelect icon={<MessageSquare className="h-4 w-4" />} label="Forwarded Messages" value={draft.privacy.forwarding} onChange={(v) => updatePrivacy("forwarding", v)} />
+        <PrivacySelect icon={<Phone className="h-4 w-4" />} label="Calls" value={draft.privacy.calls} onChange={(v) => updatePrivacy("calls", v)} />
+        <PrivacySelect icon={<Users className="h-4 w-4" />} label="Groups & Channels" value={draft.privacy.groups} onChange={(v) => updatePrivacy("groups", v)} />
       </div>
 
       <div className="border-t border-border/40 pt-4 space-y-3">
-        <PrivacyToggle
-          icon={<CheckCheck className="h-4 w-4" />}
-          label="Read Receipts"
-          sub="Show when you've read messages"
-          checked={draft.privacy.readReceipts}
-          onChange={(v) => updatePrivacy("readReceipts", v)}
-        />
-        <PrivacyToggle
-          icon={<Wifi className="h-4 w-4" />}
-          label="Online Status"
-          sub="Show when you're online"
-          checked={draft.privacy.onlineStatus}
-          onChange={(v) => updatePrivacy("onlineStatus", v)}
-        />
+        <PrivacyToggle icon={<CheckCheck className="h-4 w-4" />} label="Read Receipts" sub="Show when you've read messages" checked={draft.privacy.readReceipts} onChange={(v) => updatePrivacy("readReceipts", v)} />
+        <PrivacyToggle icon={<Wifi className="h-4 w-4" />} label="Online Status" sub="Show when you're online" checked={draft.privacy.onlineStatus} onChange={(v) => updatePrivacy("onlineStatus", v)} />
       </div>
 
       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10">
         <Lock className="h-4 w-4 text-primary flex-shrink-0" />
-        <p className="text-[11px] text-muted-foreground">
-          All settings are stored locally and encrypted on your device
-        </p>
+        <p className="text-[11px] text-muted-foreground">All settings are stored locally and encrypted on your device</p>
       </div>
     </div>
   );
@@ -328,20 +329,11 @@ function PrivacyPage({
 /* ===== Reusable sub-components ===== */
 
 function MenuItem({ icon, label, sub, labelClass, onClick }: {
-  icon: React.ReactNode;
-  label: string;
-  sub?: string;
-  labelClass?: string;
-  onClick?: () => void;
+  icon: React.ReactNode; label: string; sub?: string; labelClass?: string; onClick?: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-surface-hover transition-all"
-    >
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/80 text-muted-foreground">
-        {icon}
-      </div>
+    <button onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-surface-hover transition-all">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/80 text-muted-foreground">{icon}</div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${labelClass || "text-foreground"}`}>{label}</p>
         {sub && <p className="text-[11px] text-muted-foreground truncate">{sub}</p>}
@@ -352,12 +344,7 @@ function MenuItem({ icon, label, sub, labelClass, onClick }: {
 }
 
 function FieldInput({ label, icon, value, onChange, placeholder, prefix }: {
-  label: string;
-  icon: React.ReactNode;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  prefix?: string;
+  label: string; icon: React.ReactNode; value: string; onChange: (v: string) => void; placeholder: string; prefix?: string;
 }) {
   return (
     <div>
@@ -365,23 +352,14 @@ function FieldInput({ label, icon, value, onChange, placeholder, prefix }: {
       <div className="flex items-center gap-3 rounded-2xl glass border border-border/50 px-4 py-3 focus-within:border-primary/50 focus-within:shadow-glow transition-all">
         {icon}
         {prefix && <span className="text-sm text-muted-foreground">{prefix}</span>}
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-        />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none" />
       </div>
     </div>
   );
 }
 
 function PrivacySelect({ icon, label, value, onChange }: {
-  icon: React.ReactNode;
-  label: string;
-  value: PrivacyOption;
-  onChange: (v: PrivacyOption) => void;
+  icon: React.ReactNode; label: string; value: PrivacyOption; onChange: (v: PrivacyOption) => void;
 }) {
   const options: PrivacyOption[] = ["everyone", "contacts", "nobody"];
   return (
@@ -392,15 +370,9 @@ function PrivacySelect({ icon, label, value, onChange }: {
       </div>
       <div className="flex gap-1.5 ml-7">
         {options.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={`flex-1 rounded-xl py-2 text-[11px] font-medium transition-all ${
-              value === opt
-                ? "gradient-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:bg-surface-hover border border-border/50"
-            }`}
-          >
+          <button key={opt} onClick={() => onChange(opt)} className={`flex-1 rounded-xl py-2 text-[11px] font-medium transition-all ${
+            value === opt ? "gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:bg-surface-hover border border-border/50"
+          }`}>
             {privacyLabels[opt]}
           </button>
         ))}
@@ -410,11 +382,7 @@ function PrivacySelect({ icon, label, value, onChange }: {
 }
 
 function PrivacyToggle({ icon, label, sub, checked, onChange }: {
-  icon: React.ReactNode;
-  label: string;
-  sub: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+  icon: React.ReactNode; label: string; sub: string; checked: boolean; onChange: (v: boolean) => void;
 }) {
   return (
     <button onClick={() => onChange(!checked)} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-surface-hover transition-all">
