@@ -39,6 +39,18 @@ const Index = () => {
 
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
+    // Clear unread count and mark messages as read
+    setChatList((prev) =>
+      prev.map((chat) =>
+        chat.id === id
+          ? {
+              ...chat,
+              unread: 0,
+              messages: chat.messages.map((m) => ({ ...m, read: true })),
+            }
+          : chat,
+      ),
+    );
     if (window.innerWidth < 768) setSidebarOpen(false);
   };
 
