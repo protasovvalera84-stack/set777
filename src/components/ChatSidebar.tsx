@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Plus, Hash, Users, Pin, Sparkles } from "lucide-react";
-import { Chat, Story, StoryItem } from "@/data/mockData";
+import { Chat, Story, StoryItem, UserProfile } from "@/data/mockData";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { StoriesBar, AddStoryDialog } from "@/components/StoriesBar";
@@ -8,10 +8,12 @@ import { StoriesBar, AddStoryDialog } from "@/components/StoriesBar";
 interface ChatSidebarProps {
   chats: Chat[];
   stories: Story[];
+  profile: UserProfile;
   selectedChatId: string | null;
   onSelectChat: (id: string) => void;
   onCreateChat: (chat: Chat) => void;
   onAddStory: (items: StoryItem[]) => void;
+  onOpenSettings: () => void;
 }
 
 const TypeIcon = ({ type }: { type: Chat["type"] }) => {
@@ -20,7 +22,7 @@ const TypeIcon = ({ type }: { type: Chat["type"] }) => {
   return null;
 };
 
-export function ChatSidebar({ chats, stories, selectedChatId, onSelectChat, onCreateChat, onAddStory }: ChatSidebarProps) {
+export function ChatSidebar({ chats, stories, profile, selectedChatId, onSelectChat, onCreateChat, onAddStory, onOpenSettings }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "dm" | "group" | "channel">("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -180,25 +182,34 @@ export function ChatSidebar({ chats, stories, selectedChatId, onSelectChat, onCr
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="relative border-t border-border/40 px-4 py-3 glass">
+        {/* Footer -- clickable to open settings */}
+        <button
+          onClick={onOpenSettings}
+          className="relative border-t border-border/40 px-4 py-3 glass w-full text-left hover:bg-surface-hover transition-all"
+        >
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl gradient-primary text-xs font-bold text-primary-foreground shadow-glow">
-                ME
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-online shadow-lg shadow-online/50" />
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className="h-10 w-10 rounded-2xl object-cover border border-primary/30 shadow-glow" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl gradient-primary text-xs font-bold text-primary-foreground shadow-glow">
+                  {profile.avatarInitials}
+                </div>
+              )}
+              {profile.privacy.onlineStatus && (
+                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-online shadow-lg shadow-online/50" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">Anonymous</p>
-              <p className="text-[10px] font-mono text-muted-foreground truncate">peer:7f3a...e9b1</p>
+              <p className="text-sm font-semibold text-foreground truncate">{profile.name}</p>
+              <p className="text-[10px] font-mono text-muted-foreground truncate">{profile.peerId}</p>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-mono text-online">● ONLINE</span>
               <span className="text-[9px] font-mono text-muted-foreground">3 relays</span>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       <CreateChatDialog

@@ -49,6 +49,42 @@ export interface Story {
   viewed: boolean;
 }
 
+export interface UserProfile {
+  name: string;
+  username: string;
+  bio: string;
+  avatarUrl: string | null;
+  avatarInitials: string;
+  peerId: string;
+  privacy: {
+    lastSeen: "everyone" | "contacts" | "nobody";
+    profilePhoto: "everyone" | "contacts" | "nobody";
+    forwarding: "everyone" | "contacts" | "nobody";
+    calls: "everyone" | "contacts" | "nobody";
+    groups: "everyone" | "contacts" | "nobody";
+    readReceipts: boolean;
+    onlineStatus: boolean;
+  };
+}
+
+export const defaultProfile: UserProfile = {
+  name: "Anonymous",
+  username: "anon_mesh",
+  bio: "Decentralized by default",
+  avatarUrl: null,
+  avatarInitials: "ME",
+  peerId: "peer:7f3a...e9b1",
+  privacy: {
+    lastSeen: "everyone",
+    profilePhoto: "everyone",
+    forwarding: "everyone",
+    calls: "everyone",
+    groups: "contacts",
+    readReceipts: true,
+    onlineStatus: true,
+  },
+};
+
 export interface Contact {
   id: string;
   name: string;

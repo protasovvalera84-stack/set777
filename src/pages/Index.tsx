@@ -3,7 +3,11 @@ import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
 import { InviteMembersDialog } from "@/components/InviteMembersDialog";
-import { chats as initialChats, contacts, Chat, Message, MediaAttachment, Story, StoryItem } from "@/data/mockData";
+import { AccountSettings } from "@/components/AccountSettings";
+import {
+  chats as initialChats, contacts, defaultProfile,
+  Chat, Message, MediaAttachment, Story, StoryItem, UserProfile,
+} from "@/data/mockData";
 
 const initialStories: Story[] = [
   {
@@ -31,23 +35,20 @@ const initialStories: Story[] = [
 const Index = () => {
   const [chatList, setChatList] = useState<Chat[]>(initialChats);
   const [stories, setStories] = useState<Story[]>(initialStories);
+  const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const selectedChat = chatList.find((c) => c.id === selectedChatId) ?? null;
 
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
-    // Clear unread count and mark messages as read
     setChatList((prev) =>
       prev.map((chat) =>
         chat.id === id
-          ? {
-              ...chat,
-              unread: 0,
-              messages: chat.messages.map((m) => ({ ...m, read: true })),
-            }
+          ? { ...chat, unread: 0, messages: chat.messages.map((m) => ({ ...m, read: true })) }
           : chat,
       ),
     );
@@ -89,7 +90,7 @@ const Index = () => {
       );
     } else {
       setStories((prev) => [
-        { id: `story-${Date.now()}`, userId: "me", userName: "Anonymous", avatar: "ME", items, viewed: true },
+        { id: `story-${Date.now()}`, userId: "me", userName: profile.name, avatar: profile.avatarInitials, items, viewed: true },
         ...prev,
       ]);
     }
@@ -97,13 +98,9 @@ const Index = () => {
 
   const handleInvite = (chatId: string, contactIds: string[]) => {
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const invited = contactIds
-      .map((id) => contacts.find((c) => c.id === id))
-      .filter(Boolean);
-
+    const invited = contactIds.map((id) => contacts.find((c) => c.id === id)).filter(Boolean);
     const names = invited.map((c) => c!.name).join(", ");
     const isChannel = chatList.find((c) => c.id === chatId)?.type === "channel";
-
     const systemMsg: Message = {
       id: `msg-${Date.now()}`,
       senderId: "system",
@@ -113,7 +110,6 @@ const Index = () => {
       timestamp: now,
       read: true,
     };
-
     setChatList((prev) =>
       prev.map((chat) =>
         chat.id === chatId
@@ -130,6 +126,10 @@ const Index = () => {
     );
   };
 
+  const handleUpdateProfile = (updated: UserProfile) => {
+    setProfile(updated);
+  };
+
   const handleBack = () => setSidebarOpen(true);
 
   return (
@@ -138,10 +138,12 @@ const Index = () => {
         <ChatSidebar
           chats={chatList}
           stories={stories}
+          profile={profile}
           selectedChatId={selectedChatId}
           onSelectChat={handleSelectChat}
           onCreateChat={handleCreateChat}
           onAddStory={handleAddStory}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       </div>
       <div className={`${!sidebarOpen ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
@@ -170,6 +172,13 @@ const Index = () => {
           onInvite={handleInvite}
         />
       )}
+
+      <AccountSettings
+        open={settingsOpen}
+        profile={profile}
+        onClose={() => setSettingsOpen(false)}
+        onUpdate={handleUpdateProfile}
+      />
     </div>
   );
 };
