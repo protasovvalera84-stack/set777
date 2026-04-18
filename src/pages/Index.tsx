@@ -36,9 +36,10 @@ const initialStories: Story[] = [
 interface IndexProps {
   initialProfile?: UserProfile;
   onProfileChange?: (p: UserProfile) => void;
+  onLogout?: () => void;
 }
 
-const Index = ({ initialProfile, onProfileChange }: IndexProps = {}) => {
+const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) => {
   const [chatList, setChatList] = useState<Chat[]>(initialChats);
   const [stories, setStories] = useState<Story[]>(initialStories);
   const [profile, setProfile] = useState<UserProfile>(initialProfile || defaultProfile);
@@ -193,6 +194,7 @@ const Index = ({ initialProfile, onProfileChange }: IndexProps = {}) => {
         profile={profile}
         onClose={() => setSettingsOpen(false)}
         onUpdate={handleUpdateProfile}
+        onLogout={() => { setSettingsOpen(false); onLogout?.(); }}
       />
 
       {selectedChat && (

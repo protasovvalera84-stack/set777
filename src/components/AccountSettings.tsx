@@ -11,6 +11,7 @@ interface AccountSettingsProps {
   profile: UserProfile;
   onClose: () => void;
   onUpdate: (profile: UserProfile) => void;
+  onLogout: () => void;
 }
 
 type Page = "main" | "editProfile" | "privacy";
@@ -54,7 +55,7 @@ function resizeImageToDataUrl(file: File, maxSize: number = 256): Promise<string
   });
 }
 
-export function AccountSettings({ open, profile, onClose, onUpdate }: AccountSettingsProps) {
+export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: AccountSettingsProps) {
   const [page, setPage] = useState<Page>("main");
   const [draft, setDraft] = useState<UserProfile>({ ...profile });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl);
@@ -153,7 +154,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate }: AccountSet
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onClose={handleClose} />}
+          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onLogout={onLogout} />}
           {page === "editProfile" && (
             <EditProfilePage
               draft={draft}
@@ -175,12 +176,12 @@ function MainPage({
   profile,
   avatarPreview,
   setPage,
-  onClose,
+  onLogout,
 }: {
   profile: UserProfile;
   avatarPreview: string | null;
   setPage: (p: Page) => void;
-  onClose: () => void;
+  onLogout: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -213,7 +214,7 @@ function MainPage({
 
       {/* Danger zone */}
       <div className="pt-3 border-t border-border/40 space-y-1">
-        <MenuItem icon={<LogOut className="h-4 w-4 text-destructive" />} label="Log Out" labelClass="text-destructive" onClick={onClose} />
+        <MenuItem icon={<LogOut className="h-4 w-4 text-destructive" />} label="Log Out" labelClass="text-destructive" onClick={onLogout} />
       </div>
     </div>
   );

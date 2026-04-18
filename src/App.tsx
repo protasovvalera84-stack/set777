@@ -39,6 +39,13 @@ const App = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem(REGISTERED_KEY);
+    localStorage.removeItem(PROFILE_KEY);
+    setRegistered(false);
+    setProfile(defaultProfile);
+  };
+
   // Persist profile changes from settings
   useEffect(() => {
     if (registered) {
@@ -55,7 +62,7 @@ const App = () => {
           {registered ? (
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index initialProfile={profile} onProfileChange={setProfile} />} />
+                <Route path="/" element={<Index initialProfile={profile} onProfileChange={setProfile} onLogout={handleLogout} />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
