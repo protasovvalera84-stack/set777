@@ -128,12 +128,13 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={handleClose}>
       <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
 
       <div
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md rounded-3xl glass-strong border border-border/60 shadow-elegant max-h-[90vh] flex flex-col overflow-hidden"
       >
+        {/* File input INSIDE the dialog so clicks don't leak to backdrop */}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40">
           <button onClick={goBack} className="rounded-lg p-1.5 hover:bg-surface-hover transition-colors">

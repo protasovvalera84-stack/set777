@@ -114,8 +114,8 @@ export interface PlatformInfo {
 }
 
 export const platforms: PlatformInfo[] = [
-  { id: "windows", name: "Windows", icon: "W", fileName: "Meshlink-Setup.exe", fileSize: "68 MB", description: "Windows 10/11 (64-bit)" },
-  { id: "linux", name: "Linux", icon: "L", fileName: "Meshlink.AppImage", fileSize: "72 MB", description: "Ubuntu, Debian, Fedora, Arch" },
-  { id: "android", name: "Android", icon: "A", fileName: "Meshlink.apk", fileSize: "45 MB", description: "Android 8.0+" },
-  { id: "ios", name: "iOS", icon: "i", fileName: "Meshlink.ipa", fileSize: "52 MB", description: "iOS 15.0+ / iPadOS" },
+  { id: "windows", name: "Windows", icon: "W", fileName: "Meshlink-Install.bat", fileSize: "2 KB", description: "Windows 10/11 — creates desktop shortcut" },
+  { id: "linux", name: "Linux", icon: "L", fileName: "meshlink-install.sh", fileSize: "2 KB", description: "Ubuntu, Debian, Fedora — creates .desktop entry" },
+  { id: "android", name: "Android", icon: "A", fileName: "Meshlink-Install.html", fileSize: "1 KB", description: "Android 8.0+ — opens PWA install in Chrome" },
+  { id: "ios", name: "iOS", icon: "i", fileName: "Meshlink-Install.html", fileSize: "1 KB", description: "iOS 15.0+ — opens PWA install in Safari" },
 ];
