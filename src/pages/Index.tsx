@@ -7,7 +7,7 @@ import { AccountSettings } from "@/components/AccountSettings";
 import { CallScreen, CallType } from "@/components/CallScreen";
 import {
   chats as initialChats, contacts, defaultProfile,
-  Chat, Message, MediaAttachment, Story, StoryItem, UserProfile,
+  Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic,
 } from "@/data/mockData";
 
 const initialStories: Story[] = [
@@ -145,6 +145,30 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     setCallOpen(true);
   };
 
+  const handleCreateTopic = (chatId: string, name: string, icon: string) => {
+    const newTopic: Topic = {
+      id: `topic-${Date.now()}`,
+      name,
+      icon,
+      messageCount: 0,
+      lastMessage: "Topic created",
+      lastMessageTime: "now",
+    };
+    setChatList((prev) =>
+      prev.map((c) =>
+        c.id === chatId ? { ...c, topics: [...(c.topics || []), newTopic] } : c,
+      ),
+    );
+  };
+
+  const handleDeleteTopic = (chatId: string, topicId: string) => {
+    setChatList((prev) =>
+      prev.map((c) =>
+        c.id === chatId ? { ...c, topics: (c.topics || []).filter((t) => t.id !== topicId) } : c,
+      ),
+    );
+  };
+
   const handleBack = () => setSidebarOpen(true);
 
   return (
@@ -173,6 +197,8 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
                 : undefined
             }
             onCall={selectedChat.type !== "channel" ? handleCall : undefined}
+            onCreateTopic={selectedChat.type === "group" ? handleCreateTopic : undefined}
+            onDeleteTopic={selectedChat.type === "group" ? handleDeleteTopic : undefined}
           />
         ) : (
           <EmptyChat />

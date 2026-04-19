@@ -16,10 +16,20 @@ export interface Message {
   media?: MediaAttachment[];
 }
 
+export interface Topic {
+  id: string;
+  name: string;
+  icon: string;
+  messageCount: number;
+  lastMessage: string;
+  lastMessageTime: string;
+}
+
 export interface Chat {
   id: string;
   name: string;
   avatar: string;
+  avatarUrl?: string | null;
   type: "dm" | "group" | "channel";
   online?: boolean;
   lastMessage: string;
@@ -29,6 +39,7 @@ export interface Chat {
   members?: number;
   memberIds?: string[];
   description?: string;
+  topics?: Topic[];
   messages: Message[];
 }
 
@@ -137,6 +148,11 @@ export const chats: Chat[] = [
     unread: 5,
     members: 8,
     memberIds: ["me", "bob", "carol", "alice", "dave"],
+    topics: [
+      { id: "general", name: "General", icon: "#", messageCount: 4, lastMessage: "Let's run the fault sim tests", lastMessageTime: "15m" },
+      { id: "backend", name: "Backend", icon: "🔧", messageCount: 0, lastMessage: "Topic created", lastMessageTime: "1d" },
+      { id: "ideas", name: "Ideas", icon: "💡", messageCount: 0, lastMessage: "Topic created", lastMessageTime: "2d" },
+    ],
     messages: [
       { id: "m1", senderId: "bob", text: "Pushed the libp2p QUIC upgrade to the relay crate", timestamp: "9:45 AM", read: true },
       { id: "m2", senderId: "carol", text: "Does it handle NAT traversal for symmetric NATs now?", timestamp: "9:48 AM", read: true },
@@ -198,6 +214,10 @@ export const chats: Chat[] = [
     unread: 0,
     members: 12,
     memberIds: ["me", "dave", "hiro"],
+    topics: [
+      { id: "general", name: "General", icon: "#", messageCount: 3, lastMessage: "Healed in under 2s", lastMessageTime: "1d" },
+      { id: "simulations", name: "Simulations", icon: "🚀", messageCount: 0, lastMessage: "Topic created", lastMessageTime: "3d" },
+    ],
     messages: [
       { id: "m1", senderId: "dave", text: "50-node simulation completed. Average convergence: 340ms", timestamp: "Yesterday", read: true },
       { id: "m2", senderId: ME, text: "That's within our SLA target. What about partition healing?", timestamp: "Yesterday", read: true },

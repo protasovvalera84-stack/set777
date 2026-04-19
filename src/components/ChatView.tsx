@@ -4,7 +4,8 @@ import {
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
   Image, Film, Music, X, Download, UserPlus,
 } from "lucide-react";
-import { Chat, Message, MediaAttachment } from "@/data/mockData";
+import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
+import { TopicsBar } from "@/components/TopicsBar";
 
 interface ChatViewProps {
   chat: Chat;
@@ -12,6 +13,8 @@ interface ChatViewProps {
   onBack: () => void;
   onInviteClick?: () => void;
   onCall?: (type: "audio" | "video") => void;
+  onCreateTopic?: (chatId: string, name: string, icon: string) => void;
+  onDeleteTopic?: (chatId: string, topicId: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -29,9 +32,10 @@ function downloadMedia(attachment: MediaAttachment) {
   document.body.removeChild(a);
 }
 
-export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall }: ChatViewProps) {
+export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall, onCreateTopic, onDeleteTopic }: ChatViewProps) {
   const [input, setInput] = useState("");
   const [pendingMedia, setPendingMedia] = useState<MediaAttachment[]>([]);
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,15 +107,19 @@ export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall }:
           <button onClick={onBack} className="md:hidden rounded-xl p-2 hover:bg-surface-hover transition-all">
             <ArrowLeft className="h-5 w-5 text-foreground" />
           </button>
-          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-bold ${
-            chat.type === "channel"
-              ? "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
-              : chat.type === "group"
-              ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
-              : "bg-gradient-to-br from-secondary to-muted text-foreground border border-border"
-          }`}>
-            {chat.avatar}
-          </div>
+          {chat.avatarUrl ? (
+            <img src={chat.avatarUrl} alt="" className="h-10 w-10 rounded-2xl object-cover border border-border/40" />
+          ) : (
+            <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-bold ${
+              chat.type === "channel"
+                ? "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
+                : chat.type === "group"
+                ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
+                : "bg-gradient-to-br from-secondary to-muted text-foreground border border-border"
+            }`}>
+              {chat.avatar}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-1.5">
               {chat.type === "channel" && <Hash className="h-3.5 w-3.5 text-accent" />}
@@ -177,6 +185,17 @@ export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall }:
         </span>
         <Sparkles className="h-3 w-3 text-accent" />
       </div>
+
+      {/* Topics bar for groups */}
+      {chat.type === "group" && chat.topics && chat.topics.length > 0 && (
+        <TopicsBar
+          topics={chat.topics}
+          activeTopic={activeTopic}
+          onSelectTopic={setActiveTopic}
+          onCreateTopic={(name, icon) => onCreateTopic?.(chat.id, name, icon)}
+          onDeleteTopic={(topicId) => onDeleteTopic?.(chat.id, topicId)}
+        />
+      )}
 
       {/* Messages */}
       <div className="relative z-10 flex-1 overflow-y-auto px-4 md:px-6 py-6 scrollbar-thin">

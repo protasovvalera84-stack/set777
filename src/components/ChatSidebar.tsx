@@ -244,15 +244,19 @@ function ChatItem({ chat, selected, onSelect, index }: { chat: Chat; selected: b
       )}
 
       <div className="relative flex-shrink-0">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-bold transition-transform group-hover:scale-105 ${
-          chat.type === "channel"
-            ? "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
-            : chat.type === "group"
-            ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
-            : "bg-gradient-to-br from-secondary to-muted text-foreground border border-border"
-        }`}>
-          {chat.avatar}
-        </div>
+        {chat.avatarUrl ? (
+          <img src={chat.avatarUrl} alt="" className="h-11 w-11 rounded-2xl object-cover border border-border/40 transition-transform group-hover:scale-105" />
+        ) : (
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-bold transition-transform group-hover:scale-105 ${
+            chat.type === "channel"
+              ? "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
+              : chat.type === "group"
+              ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
+              : "bg-gradient-to-br from-secondary to-muted text-foreground border border-border"
+          }`}>
+            {chat.avatar}
+          </div>
+        )}
         {chat.online && (
           <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-online shadow-lg shadow-online/40" />
         )}
