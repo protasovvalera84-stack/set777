@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
-  Image, Film, Music, X, Download, UserPlus,
+  Image, Film, Music, X, Download,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -11,10 +11,10 @@ interface ChatViewProps {
   chat: Chat;
   onSendMessage: (chatId: string, text: string, media?: MediaAttachment[], topicId?: string | null) => void;
   onBack: () => void;
-  onInviteClick?: () => void;
   onCall?: (type: "audio" | "video") => void;
   onCreateTopic?: (chatId: string, name: string, icon: string) => void;
   onDeleteTopic?: (chatId: string, topicId: string) => void;
+  onSettingsClick?: () => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -32,7 +32,7 @@ function downloadMedia(attachment: MediaAttachment) {
   document.body.removeChild(a);
 }
 
-export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall, onCreateTopic, onDeleteTopic }: ChatViewProps) {
+export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, onDeleteTopic, onSettingsClick }: ChatViewProps) {
   const [input, setInput] = useState("");
   const [pendingMedia, setPendingMedia] = useState<MediaAttachment[]>([]);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
@@ -162,18 +162,20 @@ export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall, o
               </button>
             </>
           )}
-          {(chat.type === "group" || chat.type === "channel") && onInviteClick && (
+          {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
             <button
-              onClick={onInviteClick}
-              className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-              title={chat.type === "channel" ? "Invite subscribers" : "Add members"}
+              onClick={onSettingsClick}
+              className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+              title="Settings"
             >
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
           )}
-          <button className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105">
-            <MoreVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
+          {chat.type === "dm" && (
+            <button className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105">
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
         </div>
       </div>
 

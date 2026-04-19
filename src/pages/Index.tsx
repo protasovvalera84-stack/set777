@@ -2,9 +2,9 @@ import { useState } from "react";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
-import { InviteMembersDialog } from "@/components/InviteMembersDialog";
 import { AccountSettings } from "@/components/AccountSettings";
 import { CallScreen, CallType } from "@/components/CallScreen";
+import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import {
   chats as initialChats, contacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic,
@@ -45,10 +45,10 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const [profile, setProfile] = useState<UserProfile>(initialProfile || defaultProfile);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callType, setCallType] = useState<CallType>("audio");
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
 
   const selectedChat = chatList.find((c) => c.id === selectedChatId) ?? null;
 
@@ -119,36 +119,6 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     }
   };
 
-  const handleInvite = (chatId: string, contactIds: string[]) => {
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const invited = contactIds.map((id) => contacts.find((c) => c.id === id)).filter(Boolean);
-    const names = invited.map((c) => c!.name).join(", ");
-    const isChannel = chatList.find((c) => c.id === chatId)?.type === "channel";
-    const systemMsg: Message = {
-      id: `msg-${Date.now()}`,
-      senderId: "system",
-      text: isChannel
-        ? `${names} ${invited.length === 1 ? "was" : "were"} invited to subscribe`
-        : `${names} ${invited.length === 1 ? "was" : "were"} added to the group`,
-      timestamp: now,
-      read: true,
-    };
-    setChatList((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId
-          ? {
-              ...chat,
-              memberIds: [...(chat.memberIds || []), ...contactIds],
-              members: (chat.members || 0) + contactIds.length,
-              messages: [...chat.messages, systemMsg],
-              lastMessage: systemMsg.text,
-              lastMessageTime: "now",
-            }
-          : chat,
-      ),
-    );
-  };
-
   const handleUpdateProfile = (updated: UserProfile) => {
     setProfile(updated);
     onProfileChange?.(updated);
@@ -183,6 +153,15 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     );
   };
 
+  const handleUpdateChat = (updated: Chat) => {
+    setChatList((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    setChatList((prev) => prev.filter((c) => c.id !== chatId));
+    if (selectedChatId === chatId) setSelectedChatId(null);
+  };
+
   const handleBack = () => setSidebarOpen(true);
 
   return (
@@ -205,14 +184,14 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
             chat={selectedChat}
             onSendMessage={handleSendMessage}
             onBack={handleBack}
-            onInviteClick={
-              selectedChat.type === "group" || selectedChat.type === "channel"
-                ? () => setInviteOpen(true)
-                : undefined
-            }
             onCall={selectedChat.type !== "channel" ? handleCall : undefined}
             onCreateTopic={selectedChat.type === "group" ? handleCreateTopic : undefined}
             onDeleteTopic={selectedChat.type === "group" ? handleDeleteTopic : undefined}
+            onSettingsClick={
+              selectedChat.type === "group" || selectedChat.type === "channel"
+                ? () => setGroupSettingsOpen(true)
+                : undefined
+            }
           />
         ) : (
           <EmptyChat />
@@ -220,12 +199,13 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       </div>
 
       {selectedChat && (selectedChat.type === "group" || selectedChat.type === "channel") && (
-        <InviteMembersDialog
-          open={inviteOpen}
+        <GroupSettingsDialog
+          open={groupSettingsOpen}
           chat={selectedChat}
           contacts={contacts}
-          onClose={() => setInviteOpen(false)}
-          onInvite={handleInvite}
+          onClose={() => setGroupSettingsOpen(false)}
+          onUpdateChat={handleUpdateChat}
+          onDeleteChat={handleDeleteChat}
         />
       )}
 
