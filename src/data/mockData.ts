@@ -14,6 +14,7 @@ export interface Message {
   timestamp: string;
   read: boolean;
   media?: MediaAttachment[];
+  topicId?: string | null;
 }
 
 export interface Topic {
@@ -154,10 +155,10 @@ export const chats: Chat[] = [
       { id: "ideas", name: "Ideas", icon: "💡", messageCount: 0, lastMessage: "Topic created", lastMessageTime: "2d" },
     ],
     messages: [
-      { id: "m1", senderId: "bob", text: "Pushed the libp2p QUIC upgrade to the relay crate", timestamp: "9:45 AM", read: true },
-      { id: "m2", senderId: "carol", text: "Does it handle NAT traversal for symmetric NATs now?", timestamp: "9:48 AM", read: true },
-      { id: "m3", senderId: "bob", text: "Yes, added hole-punching via the DCUtR protocol", timestamp: "9:50 AM", read: true },
-      { id: "m4", senderId: ME, text: "Great work. Let's run the fault sim tests before merging.", timestamp: "9:55 AM", read: true },
+      { id: "m1", senderId: "bob", text: "Pushed the libp2p QUIC upgrade to the relay crate", timestamp: "9:45 AM", read: true, topicId: "general" },
+      { id: "m2", senderId: "carol", text: "Does it handle NAT traversal for symmetric NATs now?", timestamp: "9:48 AM", read: true, topicId: "general" },
+      { id: "m3", senderId: "bob", text: "Yes, added hole-punching via the DCUtR protocol", timestamp: "9:50 AM", read: true, topicId: "general" },
+      { id: "m4", senderId: ME, text: "Great work. Let's run the fault sim tests before merging.", timestamp: "9:55 AM", read: true, topicId: "general" },
     ],
   },
   {
@@ -219,9 +220,9 @@ export const chats: Chat[] = [
       { id: "simulations", name: "Simulations", icon: "🚀", messageCount: 0, lastMessage: "Topic created", lastMessageTime: "3d" },
     ],
     messages: [
-      { id: "m1", senderId: "dave", text: "50-node simulation completed. Average convergence: 340ms", timestamp: "Yesterday", read: true },
-      { id: "m2", senderId: ME, text: "That's within our SLA target. What about partition healing?", timestamp: "Yesterday", read: true },
-      { id: "m3", senderId: "dave", text: "Healed in under 2s for all tested topologies", timestamp: "Yesterday", read: true },
+      { id: "m1", senderId: "dave", text: "50-node simulation completed. Average convergence: 340ms", timestamp: "Yesterday", read: true, topicId: "general" },
+      { id: "m2", senderId: ME, text: "That's within our SLA target. What about partition healing?", timestamp: "Yesterday", read: true, topicId: "general" },
+      { id: "m3", senderId: "dave", text: "Healed in under 2s for all tested topologies", timestamp: "Yesterday", read: true, topicId: "general" },
     ],
   },
 ];

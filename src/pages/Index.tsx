@@ -64,7 +64,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     if (window.innerWidth < 768) setSidebarOpen(false);
   };
 
-  const handleSendMessage = (chatId: string, text: string, media?: MediaAttachment[]) => {
+  const handleSendMessage = (chatId: string, text: string, media?: MediaAttachment[], topicId?: string | null) => {
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       senderId: "me",
@@ -72,16 +72,30 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       read: false,
       media,
+      topicId: topicId ?? undefined,
     };
     const lastMsg = media && media.length > 0 && !text
       ? `[${media[0].type === "image" ? "Photo" : media[0].type === "video" ? "Video" : "Audio"}]`
       : text;
     setChatList((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId
-          ? { ...chat, messages: [...chat.messages, newMessage], lastMessage: lastMsg, lastMessageTime: "now" }
-          : chat,
-      ),
+      prev.map((chat) => {
+        if (chat.id !== chatId) return chat;
+        // Update topic messageCount if applicable
+        const updatedTopics = topicId && chat.topics
+          ? chat.topics.map((t) =>
+              t.id === topicId
+                ? { ...t, messageCount: t.messageCount + 1, lastMessage: lastMsg, lastMessageTime: "now" }
+                : t,
+            )
+          : chat.topics;
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessage: lastMsg,
+          lastMessageTime: "now",
+          topics: updatedTopics,
+        };
+      }),
     );
   };
 

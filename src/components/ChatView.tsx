@@ -9,7 +9,7 @@ import { TopicsBar } from "@/components/TopicsBar";
 
 interface ChatViewProps {
   chat: Chat;
-  onSendMessage: (chatId: string, text: string, media?: MediaAttachment[]) => void;
+  onSendMessage: (chatId: string, text: string, media?: MediaAttachment[], topicId?: string | null) => void;
   onBack: () => void;
   onInviteClick?: () => void;
   onCall?: (type: "audio" | "video") => void;
@@ -45,7 +45,7 @@ export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall, o
 
   const handleSend = () => {
     if (!input.trim() && pendingMedia.length === 0) return;
-    onSendMessage(chat.id, input.trim(), pendingMedia.length > 0 ? pendingMedia : undefined);
+    onSendMessage(chat.id, input.trim(), pendingMedia.length > 0 ? pendingMedia : undefined, activeTopic);
     setInput("");
     setPendingMedia([]);
   };
@@ -200,9 +200,23 @@ export function ChatView({ chat, onSendMessage, onBack, onInviteClick, onCall, o
       {/* Messages */}
       <div className="relative z-10 flex-1 overflow-y-auto px-4 md:px-6 py-6 scrollbar-thin">
         <div className="mx-auto max-w-3xl space-y-4">
-          {chat.messages.map((msg, i) => (
-            <MessageBubble key={msg.id} message={msg} index={i} />
-          ))}
+          {(() => {
+            const hasTopics = chat.type === "group" && chat.topics && chat.topics.length > 0;
+            const filtered = hasTopics && activeTopic !== null
+              ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
+              : chat.messages;
+            return filtered.length > 0 ? (
+              filtered.map((msg, i) => (
+                <MessageBubble key={msg.id} message={msg} index={i} />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Hash className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground">No messages in this topic yet</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-1">Be the first to write something</p>
+              </div>
+            );
+          })()}
           <div ref={messagesEndRef} />
         </div>
       </div>
