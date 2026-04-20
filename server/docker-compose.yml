@@ -1,0 +1,110 @@
+# Meshlink Server Stack
+# Matrix Synapse + Element Web + PostgreSQL + Coturn + Nginx
+# Usage: docker compose up -d
+
+services:
+  # --- PostgreSQL database ---
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-synapse}
+      POSTGRES_USER: ${POSTGRES_USER:-synapse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-synapse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meshlink
+
+  # --- Synapse (Matrix homeserver) ---
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+    volumes:
+      - synapse_data:/data
+      - ./synapse/homeserver.yaml:/data/homeserver.yaml:ro
+      - ./synapse/log.config:/data/log.config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fSs", "http://localhost:8008/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meshlink
+
+  # --- Element Web (chat client) ---
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    volumes:
+      - ./element/config.json:/app/config.json:ro
+    networks:
+      - meshlink
+
+  # --- Coturn (TURN/STUN server for voice/video) ---
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    ports:
+      - "${TURN_PORT:-3478}:3478/tcp"
+      - "${TURN_PORT:-3478}:3478/udp"
+      - "${TURN_TLS_PORT:-5349}:5349/tcp"
+      - "${TURN_TLS_PORT:-5349}:5349/udp"
+      - "${TURN_RELAY_MIN:-49152}-${TURN_RELAY_MAX:-49172}:49152-49172/udp"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    networks:
+      - meshlink
+
+  # --- Nginx (reverse proxy) ---
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      synapse:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/www:/usr/share/nginx/www:ro
+    networks:
+      - meshlink
+
+  # --- Synapse Admin (web-based admin panel) ---
+  synapse-admin:
+    image: awesometechnologies/synapse-admin:latest
+    restart: unless-stopped
+    networks:
+      - meshlink
+
+  # --- Meshlink Admin API (server configuration panel) ---
+  admin-api:
+    build: ./admin-api
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      ADMIN_API_PORT: "9090"
+    networks:
+      - meshlink
+
+volumes:
+  postgres_data:
+  synapse_data:
+
+networks:
+  meshlink:
+    driver: bridge

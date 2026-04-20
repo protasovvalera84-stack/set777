@@ -1,0 +1,100 @@
+# Meshlink - Synapse Homeserver Configuration
+# This file is templated by setup.sh. Do not edit __PLACEHOLDERS__ manually.
+
+server_name: "__SERVER_NAME__"
+
+pid_file: /data/homeserver.pid
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ["0.0.0.0"]
+    resources:
+      - names: [client, federation]
+        compress: false
+
+# --- Database (PostgreSQL) ---
+database:
+  name: psycopg2
+  args:
+    user: "__POSTGRES_USER__"
+    password: "__POSTGRES_PASSWORD__"
+    database: "__POSTGRES_DB__"
+    host: postgres
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+# --- Logging ---
+log_config: /data/log.config
+
+# --- Media storage ---
+media_store_path: /data/media_store
+max_upload_size: 50M
+url_preview_enabled: true
+url_preview_ip_range_blacklist:
+  - "127.0.0.0/8"
+  - "10.0.0.0/8"
+  - "172.16.0.0/12"
+  - "192.168.0.0/16"
+  - "100.64.0.0/10"
+  - "192.0.0.0/24"
+  - "169.254.0.0/16"
+  - "::1/128"
+  - "fe80::/10"
+  - "fc00::/7"
+
+# --- Registration ---
+enable_registration: __ENABLE_REGISTRATION__
+enable_registration_without_verification: __ENABLE_REGISTRATION__
+registration_shared_secret: "__REGISTRATION_SHARED_SECRET__"
+
+# --- Security ---
+report_stats: false
+macaroon_secret_key: "__MACAROON_SECRET__"
+form_secret: "__FORM_SECRET__"
+signing_key_path: /data/signing.key
+
+# --- TURN server (for voice/video calls) ---
+turn_uris:
+  - "turn:__SERVER_HOST__:__TURN_PORT__?transport=udp"
+  - "turn:__SERVER_HOST__:__TURN_PORT__?transport=tcp"
+turn_shared_secret: "__TURN_SECRET__"
+turn_user_lifetime: 1h
+turn_allow_guests: true
+
+# --- Rate limiting (relaxed for small deployments) ---
+rc_message:
+  per_second: 5
+  burst_count: 20
+
+rc_login:
+  address:
+    per_second: 1
+    burst_count: 5
+  account:
+    per_second: 1
+    burst_count: 5
+
+# --- Presence ---
+presence:
+  enabled: true
+
+# --- Push notifications ---
+push:
+  include_content: true
+
+# --- Retention ---
+retention:
+  enabled: true
+  default_policy:
+    min_lifetime: 1d
+    max_lifetime: 365d
+
+# --- Trusted key servers ---
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+suppress_key_server_warning: true
