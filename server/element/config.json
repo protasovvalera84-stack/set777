@@ -1,0 +1,34 @@
+{
+    "default_server_config": {
+        "m.homeserver": {
+            "base_url": "http://__SERVER_HOST__",
+            "server_name": "__SERVER_NAME__"
+        }
+    },
+    "brand": "Meshlink",
+    "integrations_ui_url": "",
+    "integrations_rest_url": "",
+    "integrations_widgets_urls": [],
+    "disable_custom_urls": false,
+    "disable_guests": true,
+    "disable_login_language_selector": false,
+    "disable_3pid_login": true,
+    "default_country_code": "US",
+    "show_labs_settings": false,
+    "default_theme": "dark",
+    "room_directory": {
+        "servers": ["__SERVER_NAME__"]
+    },
+    "features": {
+        "feature_video_rooms": true,
+        "feature_group_calls": true
+    },
+    "setting_defaults": {
+        "breadcrumbs": true,
+        "MessageComposerInput.isRichTextEnabled": false
+    },
+    "jitsi": {
+        "preferred_domain": ""
+    },
+    "map_style_url": ""
+}

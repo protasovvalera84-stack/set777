@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Camera, ChevronRight, ChevronLeft, Globe, Monitor,
   Smartphone, Download, Check, Search, User, AtSign, Lock, Eye, EyeOff,
-  Loader2,
+  Loader2, AlertCircle,
 } from "lucide-react";
 import { languages, platforms, PlatformId } from "@/data/languages";
 import { UserProfile } from "@/data/mockData";
+import { matrixRegister, storeSession, checkHomeserver } from "@/lib/matrix";
 
 interface RegisterPageProps {
   onComplete: (profile: UserProfile, language: string, platform: PlatformId | null) => void;
@@ -83,27 +84,52 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
     } catch { /* ignore */ }
   };
 
-  const handleFinish = () => {
-    const initials = name.trim().split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ME";
-    const peerId = "peer:" + Math.random().toString(36).slice(2, 6) + "..." + Math.random().toString(36).slice(2, 6);
-    const profile: UserProfile = {
-      name: name.trim() || "Anonymous",
-      username: username.trim() || "user_" + Math.random().toString(36).slice(2, 8),
-      bio: "",
-      avatarUrl,
-      avatarInitials: initials,
-      peerId,
-      privacy: {
-        lastSeen: "everyone",
-        profilePhoto: "everyone",
-        forwarding: "everyone",
-        calls: "everyone",
-        groups: "contacts",
-        readReceipts: true,
-        onlineStatus: true,
-      },
-    };
-    onComplete(profile, lang, platform);
+  const [registering, setRegistering] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
+
+  // Check if Matrix homeserver is reachable on mount
+  useEffect(() => {
+    checkHomeserver().then(setServerOnline);
+  }, []);
+
+  const handleFinish = async () => {
+    const finalUsername = username.trim() || "user_" + Math.random().toString(36).slice(2, 8);
+    const finalName = name.trim() || "Anonymous";
+    const initials = finalName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ME";
+
+    setRegistering(true);
+    setRegError(null);
+
+    try {
+      // Register on the Matrix homeserver
+      const session = await matrixRegister(finalUsername, password, finalName);
+      storeSession(session);
+
+      const profile: UserProfile = {
+        name: finalName,
+        username: finalUsername,
+        bio: "",
+        avatarUrl,
+        avatarInitials: initials,
+        peerId: session.user_id,
+        privacy: {
+          lastSeen: "everyone",
+          profilePhoto: "everyone",
+          forwarding: "everyone",
+          calls: "everyone",
+          groups: "contacts",
+          readReceipts: true,
+          onlineStatus: true,
+        },
+      };
+      onComplete(profile, lang, platform);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Registration failed";
+      setRegError(message);
+    } finally {
+      setRegistering(false);
+    }
   };
 
   /** Force-download a file from server by fetching as blob */
@@ -419,17 +445,32 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
 
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10">
                 <Lock className="h-4 w-4 text-primary flex-shrink-0" />
-                <p className="text-[11px] text-muted-foreground">No phone or email needed. Your identity is cryptographic.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {serverOnline === false
+                    ? "Server offline — registration will use local mode."
+                    : "No phone or email needed. Your identity is cryptographic."}
+                </p>
               </div>
+
+              {regError && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/20">
+                  <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                  <p className="text-[11px] text-destructive">{regError}</p>
+                </div>
+              )}
 
               <button
                 onClick={() => setStep("done")}
-                disabled={!canProceedProfile}
-                className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition-all ${
-                  canProceedProfile ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"
+                disabled={!canProceedProfile || registering}
+                className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                  canProceedProfile && !registering ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                Create Account
+                {registering ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Creating Account...</>
+                ) : (
+                  "Create Account"
+                )}
               </button>
             </div>
           </div>
@@ -438,19 +479,50 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
         {/* ===== DONE ===== */}
         {step === "done" && (
           <div className="flex flex-col items-center gap-6 text-center animate-fade-in-up">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-online/30 animate-ping" style={{ animationDuration: "1.5s" }} />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-online/20 border-2 border-online shadow-lg">
-                <Check className="h-10 w-10 text-online" />
-              </div>
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Welcome, {name.trim() || "Anonymous"}!</h2>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">Your encrypted identity has been generated. You're ready to start messaging.</p>
-            </div>
-            <button onClick={handleFinish} className="w-full max-w-xs rounded-2xl py-3.5 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all">
-              Enter Meshlink
-            </button>
+            {registering ? (
+              <>
+                <div className="relative">
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 border-2 border-primary shadow-lg">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground mb-2">Creating account...</h2>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">Registering on the Meshlink server and generating encryption keys.</p>
+                </div>
+              </>
+            ) : regError ? (
+              <>
+                <div className="relative">
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20 border-2 border-destructive shadow-lg">
+                    <AlertCircle className="h-10 w-10 text-destructive" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground mb-2">Registration failed</h2>
+                  <p className="text-sm text-destructive max-w-xs mx-auto">{regError}</p>
+                </div>
+                <button onClick={() => setStep("profile")} className="w-full max-w-xs rounded-2xl py-3.5 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all">
+                  Go Back
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-online/30 animate-ping" style={{ animationDuration: "1.5s" }} />
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-online/20 border-2 border-online shadow-lg">
+                    <Check className="h-10 w-10 text-online" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground mb-2">Welcome, {name.trim() || "Anonymous"}!</h2>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">Your encrypted identity has been generated. You're ready to start messaging.</p>
+                </div>
+                <button onClick={handleFinish} disabled={registering} className="w-full max-w-xs rounded-2xl py-3.5 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all">
+                  Enter Meshlink
+                </button>
+              </>
+            )}
           </div>
         )}
 
