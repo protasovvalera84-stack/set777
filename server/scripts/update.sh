@@ -54,7 +54,7 @@ log "Restarting services with updated images..."
 docker compose up -d --remove-orphans
 
 # --- Step 5: Wait for health checks ---
-log "Waiting for Synapse to become healthy..."
+log "Waiting for server to become healthy..."
 RETRIES=30
 while [ $RETRIES -gt 0 ]; do
     if docker compose exec -T synapse wget -qO /dev/null http://localhost:8008/health 2>/dev/null; then
@@ -65,7 +65,7 @@ while [ $RETRIES -gt 0 ]; do
 done
 
 if [ $RETRIES -eq 0 ]; then
-    err "Synapse did not become healthy after update."
+    err "Server did not become healthy after update."
     warn "Rolling back: docker compose down && docker compose up -d"
     exit 1
 fi

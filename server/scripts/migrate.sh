@@ -50,7 +50,7 @@ do_backup() {
         -v "$BACKUP_DIR":/backup \
         alpine tar czf /backup/postgres_data.tar.gz -C /data .
 
-    log "Backing up Synapse data..."
+    log "Backing up server data..."
     docker run --rm \
         -v meshlink_synapse_data:/data \
         -v "$BACKUP_DIR":/backup \
@@ -141,7 +141,7 @@ do_restore() {
         -v "$RESTORE_DIR":/backup \
         alpine sh -c "cd /data && tar xzf /backup/postgres_data.tar.gz"
 
-    log "Restoring Synapse data..."
+    log "Restoring server data..."
     docker volume create meshlink_synapse_data 2>/dev/null || true
     docker run --rm \
         -v meshlink_synapse_data:/data \
@@ -175,7 +175,7 @@ do_restore() {
     docker compose up -d
 
     # Wait for health
-    log "Waiting for Synapse..."
+    log "Waiting for server..."
     RETRIES=30
     while [ $RETRIES -gt 0 ]; do
         if docker compose exec -T synapse wget -qO /dev/null http://localhost:8008/health 2>/dev/null; then

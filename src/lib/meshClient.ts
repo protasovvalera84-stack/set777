@@ -1,17 +1,17 @@
 /**
- * Meshlink Matrix Client
+ * Meshlink Client
  *
- * Wraps matrix-js-sdk to provide a simple interface for the Meshlink UI.
+ * Core networking layer for the Meshlink social platform.
  * Handles connection, authentication, rooms, messages, and presence.
  */
 
 import * as sdk from "matrix-js-sdk";
 
-// Re-export types the UI needs
-export type MatrixClient = sdk.MatrixClient;
-export type Room = sdk.Room;
-export type MatrixEvent = sdk.MatrixEvent;
-export type RoomMember = sdk.RoomMember;
+// Re-export internal types under Meshlink names
+export type MeshClient = sdk.MatrixClient;
+export type MeshRoom = sdk.Room;
+export type MeshEvent = sdk.MatrixEvent;
+export type MeshMember = sdk.RoomMember;
 
 export interface MeshlinkSession {
   userId: string;
@@ -22,8 +22,8 @@ export interface MeshlinkSession {
 
 const SESSION_KEY = "meshlink-session";
 
-/** Get the homeserver URL (same origin in production). */
-function getHomeserverUrl(): string {
+/** Get the server URL (same origin in production). */
+function getServerUrl(): string {
   return window.location.origin;
 }
 
@@ -48,8 +48,8 @@ export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
-/** Create a Matrix client from a stored session. */
-export function createClient(session: MeshlinkSession): MatrixClient {
+/** Create an authenticated client from a stored session. */
+export function createClient(session: MeshlinkSession): MeshClient {
   return sdk.createClient({
     baseUrl: session.homeserverUrl,
     accessToken: session.accessToken,
@@ -59,20 +59,19 @@ export function createClient(session: MeshlinkSession): MatrixClient {
 }
 
 /** Create an unauthenticated client (for registration/login). */
-export function createAnonClient(): MatrixClient {
-  return sdk.createClient({ baseUrl: getHomeserverUrl() });
+export function createAnonClient(): MeshClient {
+  return sdk.createClient({ baseUrl: getServerUrl() });
 }
 
-/** Register a new account. */
+/** Register a new Meshlink account. */
 export async function registerAccount(
   username: string,
   password: string,
   displayName: string,
 ): Promise<MeshlinkSession> {
-  const homeserverUrl = getHomeserverUrl();
+  const homeserverUrl = getServerUrl();
   const client = sdk.createClient({ baseUrl: homeserverUrl });
 
-  // Step 1: Initiate registration to get session
   let session: MeshlinkSession;
   try {
     const resp = await client.registerRequest({
@@ -81,7 +80,6 @@ export async function registerAccount(
       initial_device_display_name: "Meshlink",
       auth: undefined,
     });
-    // If registration succeeds without auth (unlikely but possible)
     session = {
       userId: resp.user_id,
       accessToken: resp.access_token!,
@@ -89,7 +87,6 @@ export async function registerAccount(
       homeserverUrl,
     };
   } catch (err: unknown) {
-    // Expected: 401 with session for interactive auth
     const error = err as { data?: { session?: string }; httpStatus?: number };
     if (error.httpStatus === 401 && error.data?.session) {
       const resp = await client.registerRequest({
@@ -113,7 +110,6 @@ export async function registerAccount(
     }
   }
 
-  // Set display name
   if (displayName) {
     const authedClient = createClient(session);
     try {
@@ -127,12 +123,12 @@ export async function registerAccount(
   return session;
 }
 
-/** Log in to an existing account. */
+/** Log in to an existing Meshlink account. */
 export async function loginAccount(
   username: string,
   password: string,
 ): Promise<MeshlinkSession> {
-  const homeserverUrl = getHomeserverUrl();
+  const homeserverUrl = getServerUrl();
   const client = sdk.createClient({ baseUrl: homeserverUrl });
 
   const resp = await client.login("m.login.password", {
@@ -153,10 +149,9 @@ export async function loginAccount(
 }
 
 /** Start the client (sync with server). */
-export async function startClient(client: MatrixClient): Promise<void> {
+export async function startClient(client: MeshClient): Promise<void> {
   await client.startClient({ initialSyncLimit: 20 });
 
-  // Wait for initial sync
   return new Promise((resolve) => {
     const onSync = (state: string) => {
       if (state === "PREPARED") {
@@ -169,12 +164,12 @@ export async function startClient(client: MatrixClient): Promise<void> {
 }
 
 /** Stop the client. */
-export function stopClient(client: MatrixClient): void {
+export function stopClient(client: MeshClient): void {
   client.stopClient();
 }
 
 /** Get display name for a user. */
-export function getUserDisplayName(client: MatrixClient, userId: string): string {
+export function getUserDisplayName(client: MeshClient, userId: string): string {
   const user = client.getUser(userId);
   return user?.displayName || userId.split(":")[0].replace("@", "");
 }
@@ -189,10 +184,10 @@ export function getInitials(name: string): string {
     .slice(0, 2) || "??";
 }
 
-/** Check if homeserver is reachable. */
+/** Check if Meshlink server is reachable. */
 export async function checkServer(): Promise<boolean> {
   try {
-    const resp = await fetch(`${getHomeserverUrl()}/_matrix/client/versions`, {
+    const resp = await fetch(`${getServerUrl()}/_matrix/client/versions`, {
       signal: AbortSignal.timeout(5000),
     });
     return resp.ok;

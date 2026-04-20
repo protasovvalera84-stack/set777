@@ -9,7 +9,7 @@ import {
   contacts as defaultContacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic,
 } from "@/data/mockData";
-import { useMatrix, type MeshRoom, type MeshMessage } from "@/lib/MatrixProvider";
+import { useMesh, type MeshRoom, type MeshMessage } from "@/lib/MeshProvider";
 
 interface IndexProps {
   initialProfile?: UserProfile;
@@ -17,7 +17,7 @@ interface IndexProps {
   onLogout?: () => void;
 }
 
-/** Convert Matrix rooms to the Chat[] format the existing UI expects. */
+/** Convert server rooms to the Chat[] format the existing UI expects. */
 function meshRoomToChat(room: MeshRoom, messages: MeshMessage[]): Chat {
   return {
     id: room.id,
@@ -42,7 +42,7 @@ function meshRoomToChat(room: MeshRoom, messages: MeshMessage[]): Chat {
 }
 
 const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) => {
-  const matrix = useMatrix();
+  const mesh = useMesh();
 
   const [stories] = useState<Story[]>([]);
   const [profile, setProfile] = useState<UserProfile>(initialProfile || defaultProfile);
@@ -53,9 +53,9 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const [callType, setCallType] = useState<CallType>("audio");
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
 
-  // Build chat list from Matrix rooms
-  const chatList: Chat[] = matrix.rooms.map((room) => {
-    const messages = matrix.getMessages(room.id);
+  // Build chat list from server rooms
+  const chatList: Chat[] = mesh.rooms.map((room) => {
+    const messages = mesh.getMessages(room.id);
     return meshRoomToChat(room, messages);
   });
 
@@ -68,35 +68,35 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
 
   const handleSendMessage = useCallback(async (chatId: string, text: string, _media?: MediaAttachment[], _topicId?: string | null) => {
     if (!text.trim()) return;
-    await matrix.sendMessage(chatId, text.trim());
-  }, [matrix]);
+    await mesh.sendMessage(chatId, text.trim());
+  }, [mesh]);
 
   const handleCreateChat = useCallback(async (chat: Chat) => {
-    // Create a new room on the Matrix server
+    // Create a new room on the server
     try {
       let roomId: string;
       if (chat.type === "dm") {
         // For DM, we need a user ID. The chat.name might be a username.
         // Try to search for the user first
-        const users = await matrix.searchUsers(chat.name);
+        const users = await mesh.searchUsers(chat.name);
         if (users.length > 0) {
-          roomId = await matrix.createDm(users[0].userId);
+          roomId = await mesh.createDm(users[0].userId);
         } else {
           // Try as a direct user ID
-          roomId = await matrix.createDm(chat.name);
+          roomId = await mesh.createDm(chat.name);
         }
       } else {
-        roomId = await matrix.createGroup(chat.name, []);
+        roomId = await mesh.createGroup(chat.name, []);
       }
       setSelectedChatId(roomId);
       if (window.innerWidth < 768) setSidebarOpen(false);
     } catch (err) {
       console.error("Failed to create chat:", err);
     }
-  }, [matrix]);
+  }, [mesh]);
 
   const handleAddStory = (_items: StoryItem[]) => {
-    // Stories not yet implemented with Matrix
+    // Stories not yet implemented
   };
 
   const handleUpdateProfile = (updated: UserProfile) => {
@@ -110,18 +110,18 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   };
 
   const handleUpdateChat = (_updated: Chat) => {
-    // Room updates handled by Matrix sync
+    // Room updates handled by server sync
   };
 
   const handleDeleteChat = useCallback(async (chatId: string) => {
-    await matrix.leaveRoom(chatId);
+    await mesh.leaveRoom(chatId);
     if (selectedChatId === chatId) setSelectedChatId(null);
-  }, [matrix, selectedChatId]);
+  }, [mesh, selectedChatId]);
 
   const handleBack = () => setSidebarOpen(true);
 
-  // Show loading while Matrix syncs
-  if (!matrix.ready) {
+  // Show loading while connecting
+  if (!mesh.ready) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

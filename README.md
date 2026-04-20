@@ -1,68 +1,50 @@
 # Meshlink
 
-Decentralized, self-hosted, end-to-end encrypted messenger.
+Decentralized, self-hosted, end-to-end encrypted social network.
 
-## Architecture
+## Features
 
-Meshlink is built on the [Matrix](https://matrix.org/) protocol, providing:
-
-- **End-to-end encryption** (Olm/Megolm, based on Signal Protocol)
+- **End-to-end encryption** -- all messages encrypted by default
 - **Voice and video calls** (WebRTC + TURN/STUN)
 - **Group chats and channels** with topics
 - **File sharing** with encrypted storage
-- **Federation** (optional, connect to other Matrix servers)
 - **Multi-platform** (Web, Windows, Linux, Android, iOS)
-
-### Components
-
-| Service | Description | Image |
-|---------|-------------|-------|
-| **Synapse** | Matrix homeserver | `matrixdotorg/synapse` |
-| **Element Web** | Web chat client | `vectorim/element-web` |
-| **PostgreSQL** | Database | `postgres:16-alpine` |
-| **Coturn** | TURN/STUN for calls | `coturn/coturn` |
-| **Nginx** | Reverse proxy | `nginx:alpine` |
-| **Synapse Admin** | User/room management | `awesometechnologies/synapse-admin` |
-| **Admin API** | Server config panel | Custom (Node.js) |
+- **Self-hosted** -- you own your data, runs on any server
 
 ## Quick Start
 
 ### Requirements
 
 - Ubuntu 20.04+ server with a public IP
-- 2 GB RAM minimum (1 GB for ~10 users)
+- 2 GB RAM minimum
 - 10 GB disk space
-- Ports: 80 (HTTP), 3478 (TURN), 5349 (TURN TLS), 49152-49172 (TURN relay)
+- Ports: 80, 3478, 5349, 49152-49172
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/micleberry556-eng/SET121.git
 cd SET121/server
-
-# Run the setup script (installs Docker, configures everything)
 chmod +x scripts/setup.sh
 sudo ./scripts/setup.sh
 ```
 
 The setup script will:
-1. Install Docker and Docker Compose (if not present)
+1. Install Docker (if not present)
 2. Ask for your server IP, admin credentials, and settings
-3. Generate secure secrets
+3. Build the Meshlink UI
 4. Start all services
 5. Create the first admin user
 
-After setup, you'll see:
-- **Web client**: `http://YOUR_IP` (Element Web)
-- **Admin panel**: `http://YOUR_IP/admin` (Synapse Admin)
-- **Config panel**: `http://YOUR_IP/config` (Server settings)
+After setup:
+- **Meshlink**: `http://YOUR_IP`
+- **Admin panel**: `http://YOUR_IP/admin`
+- **Config panel**: `http://YOUR_IP/config`
 
 ## Platform Installation
 
 ### Windows
-Download and run `Meshlink-Install.bat` from `http://YOUR_IP/installers/Meshlink-Install.bat`.
-Creates a desktop shortcut that opens Meshlink in your browser.
+Download and run `Meshlink-Install.bat` from `http://YOUR_IP/installers/Meshlink-Install.bat`
 
 ### Linux
 ```bash
@@ -72,104 +54,61 @@ chmod +x meshlink-install.sh
 ```
 
 ### Android
-Open `http://YOUR_IP` in Chrome, tap menu (three dots) > "Install app" or "Add to Home screen".
+Open `http://YOUR_IP` in Chrome > menu > "Install app"
 
 ### iOS
-Open `http://YOUR_IP` in Safari, tap Share > "Add to Home Screen".
+Open `http://YOUR_IP` in Safari > Share > "Add to Home Screen"
 
 ### Desktop (Electron)
 ```bash
 npm install
 npm run electron:build:all
 ```
-Builds native apps for Windows (.exe) and Linux (.AppImage, .deb).
 
 ## Server Management
 
-### Update all services
+### Update
 ```bash
 sudo ./server/scripts/update.sh
 ```
 
-### Backup for migration
+### Backup / Migrate
 ```bash
-# Create backup
 sudo ./server/scripts/migrate.sh backup
-
-# Restore on new server
-sudo ./server/scripts/migrate.sh restore meshlink-backup-YYYYMMDD-HHMMSS.tar.gz
+sudo ./server/scripts/migrate.sh restore <backup-file>
 ```
 
-### Regenerate installers (after changing server IP)
-```bash
-sudo ./server/scripts/generate-installers.sh
-```
-
-### View logs
+### Logs
 ```bash
 cd server && docker compose logs -f
 ```
 
-### Restart services
-```bash
-cd server && docker compose restart
-```
-
 ## Configuration
 
-All settings are in `server/.env`. Key parameters:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_HOST` | Server IP or domain | Auto-detected |
-| `HTTP_PORT` | HTTP port | `80` |
-| `ENABLE_REGISTRATION` | Allow new signups | `true` |
-| `ELEMENT_BRAND` | Brand name in UI | `Meshlink` |
-
-After changing `.env`, restart services:
+All settings are in `server/.env`. Edit and restart:
 ```bash
 cd server && docker compose restart
 ```
 
 Or use the web config panel at `http://YOUR_IP/config`.
 
-## Migration to Another Server
-
-1. On the old server: `sudo ./server/scripts/migrate.sh backup`
-2. Copy the `.tar.gz` file to the new server
-3. Clone this repo on the new server
-4. Run: `sudo ./server/scripts/migrate.sh restore <backup-file>`
-5. The script auto-detects the new IP and updates all configs
-
-## Adding a Domain Name
-
-1. Point your domain DNS to the server IP
-2. Edit `server/.env`: set `SERVER_HOST=yourdomain.com`
-3. Update configs: `sudo ./server/scripts/setup.sh` (re-run)
-4. Add SSL with Let's Encrypt (recommended)
-
 ## Security
 
 - All messages are end-to-end encrypted by default
-- Passwords are hashed server-side (bcrypt)
+- No phone number or email required for registration
 - TURN server uses shared-secret authentication
-- Admin API requires authentication
 - Rate limiting on login/registration endpoints
+- Admin API requires authentication
 
 ## Development
 
 ```bash
-# Frontend (Meshlink landing page)
 npm install
-npm run dev
-
-# Run tests
-npm test
+npm run dev    # Start dev server
+npm test       # Run tests
+npm run build  # Production build
 ```
 
 ## License
 
-See individual component licenses:
-- Synapse: Apache 2.0
-- Element Web: Apache 2.0
-- Coturn: BSD
+Meshlink is proprietary software. All rights reserved.

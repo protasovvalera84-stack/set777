@@ -1,4 +1,4 @@
-# Meshlink - Synapse Homeserver Configuration
+# Meshlink Server Configuration
 # This file is templated by setup.sh. Do not edit __PLACEHOLDERS__ manually.
 
 server_name: "__SERVER_NAME__"

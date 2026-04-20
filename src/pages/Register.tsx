@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { languages, platforms, PlatformId } from "@/data/languages";
 import { UserProfile } from "@/data/mockData";
-import { registerAccount, checkServer, MeshlinkSession } from "@/lib/matrixClient";
+import { registerAccount, checkServer, MeshlinkSession } from "@/lib/meshClient";
 
 interface RegisterPageProps {
   onComplete: (profile: UserProfile, language: string, platform: PlatformId | null) => void;
@@ -88,7 +88,7 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
   const [regError, setRegError] = useState<string | null>(null);
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
 
-  // Check if Matrix homeserver is reachable on mount
+  // Check if Meshlink server is reachable on mount
   useEffect(() => {
     checkServer().then(setServerOnline);
   }, []);
@@ -102,7 +102,7 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
     setRegError(null);
 
     try {
-      // Register on the Matrix homeserver
+      // Register on the Meshlink server
       const session: MeshlinkSession = await registerAccount(finalUsername, password, finalName);
 
       const profile: UserProfile = {

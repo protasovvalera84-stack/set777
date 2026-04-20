@@ -10,8 +10,8 @@ import NotFound from "./pages/NotFound.tsx";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { UserProfile, defaultProfile } from "@/data/mockData";
 import { PlatformId } from "@/data/languages";
-import { MatrixProvider } from "@/lib/MatrixProvider";
-import { loadSession, clearSession, type MeshlinkSession } from "@/lib/matrixClient";
+import { MeshProvider } from "@/lib/MeshProvider";
+import { loadSession, clearSession, type MeshlinkSession } from "@/lib/meshClient";
 
 const queryClient = new QueryClient();
 
@@ -67,14 +67,14 @@ const App = () => {
           <Toaster />
           <Sonner />
           {registered && session ? (
-            <MatrixProvider session={session}>
+            <MeshProvider session={session}>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index initialProfile={profile} onProfileChange={setProfile} onLogout={handleLogout} />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-            </MatrixProvider>
+            </MeshProvider>
           ) : (
             <RegisterPage onComplete={handleRegisterComplete} />
           )}

@@ -1,8 +1,8 @@
 /**
- * MatrixProvider -- React context that holds the live Matrix client.
+ * MeshProvider -- React context that holds the live Meshlink client.
  *
- * After login/register the App stores a MeshlinkSession.  This provider
- * creates a MatrixClient, starts sync, and exposes helpers that the
+ * After login/register the App stores a MeshlinkSession. This provider
+ * creates a client, starts sync, and exposes helpers that the
  * ChatSidebar / ChatView components consume.
  */
 
@@ -23,10 +23,10 @@ import {
   getUserDisplayName,
   getInitials,
   type MeshlinkSession,
-  type MatrixClient,
-  type Room,
-  type MatrixEvent,
-} from "@/lib/matrixClient";
+  type MeshClient,
+  type MeshRoom as SdkRoom,
+  type MeshEvent,
+} from "@/lib/meshClient";
 
 /* ------------------------------------------------------------------ */
 /*  Public types consumed by UI components                            */
@@ -35,7 +35,7 @@ import {
 export interface MeshRoom {
   id: string;
   name: string;
-  avatar: string;          // initials
+  avatar: string;
   avatarUrl: string | null;
   type: "dm" | "group";
   lastMessage: string;
@@ -57,36 +57,29 @@ export interface MeshMessage {
 /*  Context value                                                     */
 /* ------------------------------------------------------------------ */
 
-interface MatrixContextValue {
-  client: MatrixClient | null;
+interface MeshContextValue {
+  client: MeshClient | null;
   ready: boolean;
   userId: string;
   rooms: MeshRoom[];
-  /** Get messages for a room. */
   getMessages: (roomId: string) => MeshMessage[];
-  /** Send a text message. */
   sendMessage: (roomId: string, text: string) => Promise<void>;
-  /** Create a DM with another user. */
   createDm: (userId: string) => Promise<string>;
-  /** Create a group room. */
   createGroup: (name: string, userIds: string[]) => Promise<string>;
-  /** Join a room by ID or alias. */
   joinRoom: (roomIdOrAlias: string) => Promise<string>;
-  /** Leave a room. */
   leaveRoom: (roomId: string) => Promise<void>;
-  /** Search for users on the server. */
   searchUsers: (term: string) => Promise<{ userId: string; displayName: string }[]>;
 }
 
-const MatrixContext = createContext<MatrixContextValue | null>(null);
+const MeshContext = createContext<MeshContextValue | null>(null);
 
 /* ------------------------------------------------------------------ */
 /*  Hook                                                              */
 /* ------------------------------------------------------------------ */
 
-export function useMatrix(): MatrixContextValue {
-  const ctx = useContext(MatrixContext);
-  if (!ctx) throw new Error("useMatrix must be used inside <MatrixProvider>");
+export function useMesh(): MeshContextValue {
+  const ctx = useContext(MeshContext);
+  if (!ctx) throw new Error("useMesh must be used inside <MeshProvider>");
   return ctx;
 }
 
@@ -94,11 +87,10 @@ export function useMatrix(): MatrixContextValue {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-function roomToMesh(room: Room, myUserId: string): MeshRoom {
+function roomToMesh(room: SdkRoom, myUserId: string): MeshRoom {
   const members = room.getJoinedMembers();
   const isDm = members.length <= 2 && !room.isSpaceRoom();
 
-  // Last event
   const timeline = room.getLiveTimeline().getEvents();
   const lastEvt = [...timeline].reverse().find(
     (e) => e.getType() === "m.room.message",
@@ -112,7 +104,6 @@ function roomToMesh(room: Room, myUserId: string): MeshRoom {
     lastMessageTime = formatTime(ts);
   }
 
-  // Room name
   let name = room.name || "Unnamed";
   if (isDm) {
     const other = members.find((m) => m.userId !== myUserId);
@@ -132,7 +123,7 @@ function roomToMesh(room: Room, myUserId: string): MeshRoom {
   };
 }
 
-function eventToMesh(evt: MatrixEvent, client: MatrixClient): MeshMessage | null {
+function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   if (evt.getType() !== "m.room.message") return null;
   const content = evt.getContent();
   const senderId = evt.getSender()!;
@@ -167,25 +158,20 @@ interface Props {
   children: ReactNode;
 }
 
-export function MatrixProvider({ session, children }: Props) {
-  const clientRef = useRef<MatrixClient | null>(null);
+export function MeshProvider({ session, children }: Props) {
+  const clientRef = useRef<MeshClient | null>(null);
   const [ready, setReady] = useState(false);
   const [rooms, setRooms] = useState<MeshRoom[]>([]);
-  const [, setTick] = useState(0); // force re-render on events
+  const [, setTick] = useState(0);
 
-  // Refresh room list from client state
   const refreshRooms = useCallback(() => {
     const c = clientRef.current;
     if (!c) return;
-    const matrixRooms = c.getRooms();
-    const meshRooms = matrixRooms
-      .filter((r) => {
-        const membership = r.getMyMembership();
-        return membership === "join";
-      })
+    const allRooms = c.getRooms();
+    const meshRooms = allRooms
+      .filter((r) => r.getMyMembership() === "join")
       .map((r) => roomToMesh(r, session.userId))
       .sort((a, b) => {
-        // Sort by most recent message
         if (!a.lastMessageTime && b.lastMessageTime) return 1;
         if (a.lastMessageTime && !b.lastMessageTime) return -1;
         return 0;
@@ -193,7 +179,6 @@ export function MatrixProvider({ session, children }: Props) {
     setRooms(meshRooms);
   }, [session.userId]);
 
-  // Initialize client
   useEffect(() => {
     let cancelled = false;
     const client = createClient(session);
@@ -225,8 +210,6 @@ export function MatrixProvider({ session, children }: Props) {
       clientRef.current = null;
     };
   }, [session, refreshRooms]);
-
-  // --- Actions ---
 
   const getMessages = useCallback(
     (roomId: string): MeshMessage[] => {
@@ -304,7 +287,7 @@ export function MatrixProvider({ session, children }: Props) {
     [],
   );
 
-  const value: MatrixContextValue = {
+  const value: MeshContextValue = {
     client: clientRef.current,
     ready,
     userId: session.userId,
@@ -319,6 +302,6 @@ export function MatrixProvider({ session, children }: Props) {
   };
 
   return (
-    <MatrixContext.Provider value={value}>{children}</MatrixContext.Provider>
+    <MeshContext.Provider value={value}>{children}</MeshContext.Provider>
   );
 }
