@@ -10,7 +10,7 @@
 #   1. Installs Docker and Docker Compose (if missing)
 #   2. Generates secure secrets
 #   3. Templates all config files with your server parameters
-#   4. Starts the full stack (Synapse + Element + PostgreSQL + Coturn + Nginx)
+#   4. Starts the full server stack
 #   5. Creates the first admin user
 # =============================================================================
 
@@ -320,10 +320,10 @@ chmod +x "$SERVER_DIR/nginx/www/installers/meshlink-install.sh"
 log "Platform installers generated."
 
 # =============================================================================
-# Step 7: Generate Synapse signing key
+# Step 7: Generate server signing key
 # =============================================================================
 if [ ! -f "$SERVER_DIR/synapse/signing.key" ]; then
-    log "Generating Synapse signing key..."
+    log "Generating server signing key..."
     docker run --rm \
         -v "$SERVER_DIR/synapse:/data" \
         -e SYNAPSE_SERVER_NAME="$SERVER_HOST" \
@@ -377,7 +377,7 @@ cd "$SERVER_DIR"
 docker compose pull
 docker compose up -d
 
-log "Waiting for Synapse to become healthy..."
+log "Waiting for server to become healthy..."
 RETRIES=30
 while [ $RETRIES -gt 0 ]; do
     if docker compose exec -T synapse wget -qO /dev/null http://localhost:8008/health 2>/dev/null; then
@@ -388,11 +388,11 @@ while [ $RETRIES -gt 0 ]; do
 done
 
 if [ $RETRIES -eq 0 ]; then
-    err "Synapse did not become healthy in time. Check logs: docker compose logs synapse"
+    err "Server did not become healthy in time. Check logs: docker compose logs synapse"
     exit 1
 fi
 
-log "Synapse is healthy."
+log "Server is healthy."
 
 # =============================================================================
 # Step 9: Create admin user

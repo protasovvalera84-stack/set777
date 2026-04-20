@@ -1,5 +1,4 @@
 # Meshlink Server Stack
-# Matrix Synapse + Element Web + PostgreSQL + Coturn + Nginx
 # Usage: docker compose up -d
 
 services:
@@ -22,7 +21,7 @@ services:
     networks:
       - meshlink
 
-  # --- Synapse (Matrix homeserver) ---
+  # --- Meshlink core server ---
   synapse:
     image: matrixdotorg/synapse:latest
     restart: unless-stopped
@@ -46,7 +45,7 @@ services:
     networks:
       - meshlink
 
-  # --- Element Web (chat client) ---
+  # --- Meshlink web client (fallback) ---
   element:
     image: vectorim/element-web:latest
     restart: unless-stopped
@@ -85,7 +84,7 @@ services:
     networks:
       - meshlink
 
-  # --- Synapse Admin (web-based admin panel) ---
+  # --- Admin panel (user/room management) ---
   synapse-admin:
     image: ghcr.io/etkecc/synapse-admin:latest
     restart: unless-stopped
