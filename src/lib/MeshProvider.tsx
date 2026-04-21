@@ -136,7 +136,6 @@ function roomToMesh(room: SdkRoom, myUserId: string): MeshRoom {
 
 function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   if (evt.getType() !== "m.room.message") return null;
-  // Skip deleted/redacted messages
   if (evt.isRedacted()) return null;
   const content = evt.getContent();
   const senderId = evt.getSender()!;
@@ -206,7 +205,7 @@ export function MeshProvider({ session, children }: Props) {
   const clientRef = useRef<MeshClient | null>(null);
   const [ready, setReady] = useState(false);
   const [rooms, setRooms] = useState<MeshRoom[]>([]);
-  const [, setTick] = useState(0);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshRooms = useCallback(() => {
     const c = clientRef.current;
@@ -223,16 +222,21 @@ export function MeshProvider({ session, children }: Props) {
     setRooms(meshRooms);
   }, [session.userId]);
 
+  // Debounced refresh -- batches rapid events into one update
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      refreshRooms();
+    }, 150);
+  }, [refreshRooms]);
+
   useEffect(() => {
     let cancelled = false;
     const client = createClient(session);
     clientRef.current = client;
 
     const onEvent = () => {
-      if (!cancelled) {
-        refreshRooms();
-        setTick((t) => t + 1);
-      }
+      if (!cancelled) debouncedRefresh();
     };
 
     client.on(sdk.RoomEvent.Timeline, onEvent);
@@ -249,11 +253,14 @@ export function MeshProvider({ session, children }: Props) {
 
     return () => {
       cancelled = true;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
       client.removeAllListeners();
       stopClient(client);
       clientRef.current = null;
     };
-  }, [session, refreshRooms]);
+  }, [session, refreshRooms, debouncedRefresh]);
+
+  // --- Actions ---
 
   const getMessages = useCallback(
     (roomId: string): MeshMessage[] => {
@@ -278,25 +285,16 @@ export function MeshProvider({ session, children }: Props) {
   const sendMedia = useCallback(async (roomId: string, file: File) => {
     const c = clientRef.current;
     if (!c) return;
-
-    // Upload file to server
     const mxcUri = await uploadMedia(session.accessToken, file);
-
-    // Determine message type
     let msgtype = "m.file";
     if (file.type.startsWith("image/")) msgtype = "m.image";
     else if (file.type.startsWith("video/")) msgtype = "m.video";
     else if (file.type.startsWith("audio/")) msgtype = "m.audio";
-
-    // Send media message
     await c.sendMessage(roomId, {
       msgtype,
       body: file.name,
       url: mxcUri,
-      info: {
-        mimetype: file.type,
-        size: file.size,
-      },
+      info: { mimetype: file.type, size: file.size },
     });
   }, [session.accessToken]);
 
@@ -357,14 +355,15 @@ export function MeshProvider({ session, children }: Props) {
     const c = clientRef.current;
     if (!c) return;
     await c.leave(roomId);
-    // Forget the room so server can purge its data
-    try {
-      await c.forget(roomId);
-    } catch {
-      /* room may already be forgotten */
-    }
+    try { await c.forget(roomId); } catch { /* ok */ }
     refreshRooms();
   }, [refreshRooms]);
+
+  const inviteUser = useCallback(async (roomId: string, userId: string) => {
+    const c = clientRef.current;
+    if (!c) return;
+    await c.invite(roomId, userId);
+  }, []);
 
   const searchUsers = useCallback(
     async (term: string): Promise<{ userId: string; displayName: string }[]> => {
@@ -383,18 +382,18 @@ export function MeshProvider({ session, children }: Props) {
     [],
   );
 
-  const inviteUser = useCallback(async (roomId: string, userId: string) => {
-    const c = clientRef.current;
-    if (!c) return;
-    await c.invite(roomId, userId);
-  }, []);
+  const publicRoomsCache = useRef<{ data: MeshRoom[]; ts: number }>({ data: [], ts: 0 });
 
   const getPublicRooms = useCallback(async (): Promise<MeshRoom[]> => {
+    // Cache for 30 seconds
+    if (Date.now() - publicRoomsCache.current.ts < 30000) {
+      return publicRoomsCache.current.data;
+    }
     const c = clientRef.current;
     if (!c) return [];
     try {
       const resp = await c.publicRooms({ limit: 50 });
-      return (resp.chunk || []).map((r) => ({
+      const result = (resp.chunk || []).map((r) => ({
         id: r.room_id,
         name: r.name || r.canonical_alias || "Unnamed",
         avatar: getInitials(r.name || "??"),
@@ -405,6 +404,8 @@ export function MeshProvider({ session, children }: Props) {
         unread: 0,
         members: r.num_joined_members || 0,
       }));
+      publicRoomsCache.current = { data: result, ts: Date.now() };
+      return result;
     } catch {
       return [];
     }
