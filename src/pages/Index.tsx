@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ChatSidebar } from "@/components/ChatSidebar";
+import { ChatSidebar, type SearchResult } from "@/components/ChatSidebar";
 import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
 import { AccountSettings } from "@/components/AccountSettings";
@@ -156,12 +156,67 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   }, [mesh, selectedChatId]);
 
   const handleBlockUser = (chatId: string) => {
-    // Block handled locally for now
     const chat = chatList.find((c) => c.id === chatId);
     if (chat) {
       console.log(`Blocked user in chat: ${chat.name}`);
     }
   };
+
+  const handleSearch = useCallback(async (query: string): Promise<SearchResult[]> => {
+    const results: SearchResult[] = [];
+    const [users, rooms] = await Promise.all([
+      mesh.searchUsers(query),
+      mesh.getPublicRooms(),
+    ]);
+    for (const u of users) {
+      results.push({
+        type: "user",
+        id: u.userId,
+        name: u.displayName,
+        avatar: u.displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
+      });
+    }
+    for (const r of rooms) {
+      if (r.name.toLowerCase().includes(query.toLowerCase())) {
+        results.push({
+          type: "room",
+          id: r.id,
+          name: r.name,
+          avatar: r.avatar,
+          members: r.members,
+        });
+      }
+    }
+    return results;
+  }, [mesh]);
+
+  const handleStartDm = useCallback(async (userId: string) => {
+    try {
+      const roomId = await mesh.createDm(userId);
+      setSelectedChatId(roomId);
+      if (window.innerWidth < 768) setSidebarOpen(false);
+    } catch (err) {
+      console.error("Failed to start DM:", err);
+    }
+  }, [mesh]);
+
+  const handleJoinRoom = useCallback(async (roomId: string) => {
+    try {
+      const joined = await mesh.joinRoom(roomId);
+      setSelectedChatId(joined);
+      if (window.innerWidth < 768) setSidebarOpen(false);
+    } catch (err) {
+      console.error("Failed to join room:", err);
+    }
+  }, [mesh]);
+
+  const handleDeleteMessage = useCallback(async (chatId: string, messageId: string) => {
+    try {
+      await mesh.deleteMessage(chatId, messageId);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  }, [mesh]);
 
   const handleBack = () => setSidebarOpen(true);
 
@@ -191,6 +246,9 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           onAddStory={handleAddStory}
           onOpenSettings={() => setSettingsOpen(true)}
           onFoldersChange={setFolders}
+          onSearch={handleSearch}
+          onStartDm={handleStartDm}
+          onJoinRoom={handleJoinRoom}
         />
       </div>
       <div className={`${!sidebarOpen ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>

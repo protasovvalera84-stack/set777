@@ -71,6 +71,7 @@ interface MeshContextValue {
   getMessages: (roomId: string) => MeshMessage[];
   sendMessage: (roomId: string, text: string) => Promise<void>;
   sendMedia: (roomId: string, file: File) => Promise<void>;
+  deleteMessage: (roomId: string, eventId: string) => Promise<void>;
   createDm: (userId: string) => Promise<string>;
   createGroup: (name: string, userIds: string[]) => Promise<string>;
   createChannel: (name: string) => Promise<string>;
@@ -135,6 +136,8 @@ function roomToMesh(room: SdkRoom, myUserId: string): MeshRoom {
 
 function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   if (evt.getType() !== "m.room.message") return null;
+  // Skip deleted/redacted messages
+  if (evt.isRedacted()) return null;
   const content = evt.getContent();
   const senderId = evt.getSender()!;
   const msgtype = content.msgtype as string;
@@ -297,6 +300,12 @@ export function MeshProvider({ session, children }: Props) {
     });
   }, [session.accessToken]);
 
+  const deleteMessage = useCallback(async (roomId: string, eventId: string) => {
+    const c = clientRef.current;
+    if (!c) return;
+    await c.redactEvent(roomId, eventId);
+  }, []);
+
   const createDm = useCallback(async (targetUserId: string): Promise<string> => {
     const c = clientRef.current;
     if (!c) throw new Error("Not connected");
@@ -409,6 +418,7 @@ export function MeshProvider({ session, children }: Props) {
     getMessages,
     sendMessage,
     sendMedia,
+    deleteMessage,
     createDm,
     createGroup,
     createChannel,

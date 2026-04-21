@@ -1,9 +1,17 @@
-import { useState } from "react";
-import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { StoriesBar, AddStoryDialog } from "@/components/StoriesBar";
+
+export interface SearchResult {
+  type: "user" | "room";
+  id: string;
+  name: string;
+  avatar: string;
+  members?: number;
+}
 
 interface ChatSidebarProps {
   chats: Chat[];
@@ -16,6 +24,9 @@ interface ChatSidebarProps {
   onAddStory: (items: StoryItem[]) => void;
   onOpenSettings: () => void;
   onFoldersChange: (folders: ChatFolder[]) => void;
+  onSearch?: (query: string) => Promise<SearchResult[]>;
+  onStartDm?: (userId: string) => void;
+  onJoinRoom?: (roomId: string) => void;
 }
 
 type FilterType = "all" | "dm" | "group" | "channel" | "favorites";
@@ -26,12 +37,14 @@ const TypeIcon = ({ type }: { type: Chat["type"] }) => {
   return null;
 };
 
-export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, onSelectChat, onCreateChat, onAddStory, onOpenSettings, onFoldersChange }: ChatSidebarProps) {
+export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, onSelectChat, onCreateChat, onAddStory, onOpenSettings, onFoldersChange, onSearch, onStartDm, onJoinRoom }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createType, setCreateType] = useState<"group" | "channel">("group");
   const [storyOpen, setStoryOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   // Folders UI state (data comes from props)
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -40,6 +53,25 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [editingFolder, setEditingFolder] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [addingToFolder, setAddingToFolder] = useState<string | null>(null); // folderId being added to
+
+  // Server-side search with debounce
+  useEffect(() => {
+    if (!search.trim() || !onSearch) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await onSearch(search.trim());
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      }
+      setSearching(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, onSearch]);
 
   const filtered = chats.filter((c) => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -247,6 +279,60 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
 
         {/* Chat list */}
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
+          {/* Search results from server */}
+          {search.trim() && searchResults.length > 0 && (
+            <div className="px-3 py-2">
+              <div className="flex items-center gap-1.5 px-2 py-2">
+                <Search className="h-3 w-3 text-primary" />
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.15em] gradient-text">Found on server</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent ml-2" />
+              </div>
+              {searchResults.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    if (r.type === "user" && onStartDm) onStartDm(r.id);
+                    else if (r.type === "room" && onJoinRoom) onJoinRoom(r.id);
+                    setSearch("");
+                  }}
+                  className="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all hover:bg-surface-hover border border-transparent"
+                >
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-bold transition-transform group-hover:scale-105 ${
+                    r.type === "user"
+                      ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
+                      : "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
+                  }`}>
+                    {r.avatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-foreground truncate block">{r.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {r.type === "user" ? "User" : `${r.members || 0} members`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {r.type === "user" ? (
+                      <UserPlus className="h-4 w-4 text-primary" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 text-accent" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {search.trim() && searching && (
+            <div className="px-5 py-4 text-center">
+              <p className="text-xs text-muted-foreground animate-pulse">Searching...</p>
+            </div>
+          )}
+          {search.trim() && !searching && searchResults.length === 0 && filtered.length === 0 && (
+            <div className="px-5 py-8 text-center">
+              <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No results for "{search}"</p>
+            </div>
+          )}
+
           {pinned.length > 0 && (
             <div className="px-3 py-1">
               <div className="flex items-center gap-1.5 px-2 py-2">
