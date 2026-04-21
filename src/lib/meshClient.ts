@@ -63,70 +63,101 @@ export function createAnonClient(): MeshClient {
   return sdk.createClient({ baseUrl: getServerUrl() });
 }
 
-/** Register a new Meshlink account. */
+/**
+ * Register a new Meshlink account.
+ * Uses raw fetch for reliability (SDK registerRequest has inconsistent error handling).
+ */
 export async function registerAccount(
   username: string,
   password: string,
   displayName: string,
 ): Promise<MeshlinkSession> {
   const homeserverUrl = getServerUrl();
-  const client = sdk.createClient({ baseUrl: homeserverUrl });
+  const registerUrl = `${homeserverUrl}/_matrix/client/v3/register`;
 
-  let session: MeshlinkSession;
-  try {
-    const resp = await client.registerRequest({
+  // Step 1: Get auth session
+  const initResp = await fetch(registerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const initData = await initResp.json();
+
+  // If server returned an error (not 401 auth flow)
+  if (!initResp.ok && initResp.status !== 401) {
+    throw new Error(initData.error || `Registration failed (${initResp.status})`);
+  }
+
+  // If registration succeeded without auth (unlikely but handle it)
+  if (initResp.ok && initData.access_token) {
+    const session: MeshlinkSession = {
+      userId: initData.user_id,
+      accessToken: initData.access_token,
+      deviceId: initData.device_id,
+      homeserverUrl,
+    };
+    await trySetDisplayName(session, displayName);
+    saveSession(session);
+    return session;
+  }
+
+  // Step 2: Complete registration with dummy auth
+  const authSession = initData.session;
+  if (!authSession) {
+    throw new Error("Server did not return auth session. Registration may be disabled.");
+  }
+
+  const regResp = await fetch(registerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       username,
       password,
       initial_device_display_name: "Meshlink",
-      auth: undefined,
-    });
-    session = {
-      userId: resp.user_id,
-      accessToken: resp.access_token!,
-      deviceId: resp.device_id!,
-      homeserverUrl,
-    };
-  } catch (err: unknown) {
-    const error = err as { data?: { session?: string; error?: string; errcode?: string }; httpStatus?: number };
-    if (error.httpStatus === 401 && error.data?.session) {
-      try {
-        const resp = await client.registerRequest({
-          username,
-          password,
-          initial_device_display_name: "Meshlink",
-          auth: {
-            type: "m.login.dummy",
-            session: error.data.session,
-          },
-        });
-        session = {
-          userId: resp.user_id,
-          accessToken: resp.access_token!,
-          deviceId: resp.device_id!,
-          homeserverUrl,
-        };
-      } catch (err2: unknown) {
-        const error2 = err2 as { data?: { error?: string; errcode?: string }; httpStatus?: number };
-        const message = error2?.data?.error || "Registration failed. Please try again.";
-        throw new Error(message);
-      }
-    } else {
-      const message = error?.data?.error || "Registration failed. Check your connection.";
-      throw new Error(message);
-    }
+      auth: {
+        type: "m.login.dummy",
+        session: authSession,
+      },
+    }),
+  });
+
+  const regData = await regResp.json();
+
+  if (!regResp.ok) {
+    throw new Error(regData.error || `Registration failed (${regResp.status})`);
   }
 
-  if (displayName) {
-    const authedClient = createClient(session);
-    try {
-      await authedClient.setDisplayName(displayName);
-    } catch {
-      /* non-critical */
-    }
-  }
+  const session: MeshlinkSession = {
+    userId: regData.user_id,
+    accessToken: regData.access_token,
+    deviceId: regData.device_id,
+    homeserverUrl,
+  };
 
+  await trySetDisplayName(session, displayName);
   saveSession(session);
   return session;
+}
+
+/** Set display name (non-critical, don't throw). */
+async function trySetDisplayName(session: MeshlinkSession, displayName: string): Promise<void> {
+  if (!displayName) return;
+  try {
+    await fetch(
+      `${session.homeserverUrl}/_matrix/client/v3/profile/${encodeURIComponent(session.userId)}/displayname`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({ displayname: displayName }),
+      },
+    );
+  } catch {
+    /* non-critical */
+  }
 }
 
 /** Log in to an existing Meshlink account. */
@@ -135,18 +166,28 @@ export async function loginAccount(
   password: string,
 ): Promise<MeshlinkSession> {
   const homeserverUrl = getServerUrl();
-  const client = sdk.createClient({ baseUrl: homeserverUrl });
 
-  const resp = await client.login("m.login.password", {
-    identifier: { type: "m.id.user", user: username },
-    password,
-    initial_device_display_name: "Meshlink",
+  const resp = await fetch(`${homeserverUrl}/_matrix/client/v3/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "m.login.password",
+      identifier: { type: "m.id.user", user: username },
+      password,
+      initial_device_display_name: "Meshlink",
+    }),
   });
 
+  const data = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(data.error || `Login failed (${resp.status})`);
+  }
+
   const session: MeshlinkSession = {
-    userId: resp.user_id,
-    accessToken: resp.access_token,
-    deviceId: resp.device_id,
+    userId: data.user_id,
+    accessToken: data.access_token,
+    deviceId: data.device_id,
     homeserverUrl,
   };
 
@@ -156,11 +197,18 @@ export async function loginAccount(
 
 /** Start the client (sync with server). */
 export async function startClient(client: MeshClient): Promise<void> {
-  await client.startClient({ initialSyncLimit: 20 });
+  await client.startClient({ initialSyncLimit: 10 });
 
   return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      // Resolve after 15s even if sync not complete (avoid infinite wait)
+      client.removeListener(sdk.ClientEvent.Sync, onSync);
+      resolve();
+    }, 15000);
+
     const onSync = (state: string) => {
       if (state === "PREPARED") {
+        clearTimeout(timeout);
         client.removeListener(sdk.ClientEvent.Sync, onSync);
         resolve();
       }
