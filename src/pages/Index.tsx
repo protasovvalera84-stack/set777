@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ChatSidebar, type SearchResult } from "@/components/ChatSidebar";
 import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
@@ -10,44 +10,12 @@ import {
   contacts as defaultContacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic, ChatFolder,
 } from "@/data/mockData";
-import { useMesh, type MeshRoom, type MeshMessage } from "@/lib/MeshProvider";
+import { useMesh } from "@/lib/MeshProvider";
 
 interface IndexProps {
   initialProfile?: UserProfile;
   onProfileChange?: (p: UserProfile) => void;
   onLogout?: () => void;
-}
-
-/** Convert server rooms to the Chat[] format the existing UI expects. */
-function meshRoomToChat(room: MeshRoom, messages: MeshMessage[]): Chat {
-  return {
-    id: room.id,
-    name: room.name,
-    avatar: room.avatar,
-    avatarUrl: room.avatarUrl,
-    type: room.type,
-    online: false,
-    lastMessage: room.lastMessage,
-    lastMessageTime: room.lastMessageTime,
-    unread: room.unread,
-    pinned: false,
-    members: room.members,
-    messages: messages.map((m) => ({
-      id: m.id,
-      senderId: m.isOwn ? "me" : m.senderId,
-      text: m.text,
-      timestamp: m.timestamp,
-      read: true,
-      media: m.mediaUrl ? [{
-        id: m.id + "-media",
-        type: m.mediaType || "image",
-        name: m.mediaName || "file",
-        url: m.mediaUrl,
-        size: 0,
-        mimeType: m.mediaType === "video" ? "video/mp4" : m.mediaType === "audio" ? "audio/mpeg" : "image/jpeg",
-      }] : undefined,
-    })),
-  };
 }
 
 const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) => {
@@ -66,13 +34,46 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     { id: "fav-default", name: "Favorites", chatIds: [] },
   ]);
 
-  // Build chat list from server rooms
-  const chatList: Chat[] = mesh.rooms.map((room) => {
-    const messages = mesh.getMessages(room.id);
-    return meshRoomToChat(room, messages);
-  });
+  // Build chat list from server rooms (only room metadata, no messages)
+  const chatList: Chat[] = useMemo(() => mesh.rooms.map((room) => ({
+    id: room.id,
+    name: room.name,
+    avatar: room.avatar,
+    avatarUrl: room.avatarUrl,
+    type: room.type,
+    online: false,
+    lastMessage: room.lastMessage,
+    lastMessageTime: room.lastMessageTime,
+    unread: room.unread,
+    pinned: false,
+    members: room.members,
+    messages: [],
+  })), [mesh.rooms]);
 
-  const selectedChat = chatList.find((c) => c.id === selectedChatId) ?? null;
+  // Only load messages for the selected chat
+  const selectedChat = useMemo(() => {
+    const chat = chatList.find((c) => c.id === selectedChatId);
+    if (!chat) return null;
+    const messages = mesh.getMessages(chat.id);
+    return {
+      ...chat,
+      messages: messages.map((m) => ({
+        id: m.id,
+        senderId: m.isOwn ? "me" : m.senderId,
+        text: m.text,
+        timestamp: m.timestamp,
+        read: true,
+        media: m.mediaUrl ? [{
+          id: m.id + "-media",
+          type: m.mediaType || "image" as const,
+          name: m.mediaName || "file",
+          url: m.mediaUrl,
+          size: 0,
+          mimeType: m.mediaType === "video" ? "video/mp4" : m.mediaType === "audio" ? "audio/mpeg" : "image/jpeg",
+        }] : undefined,
+      })),
+    };
+  }, [chatList, selectedChatId, mesh]);
 
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
