@@ -18,7 +18,7 @@ Self-hosted, end-to-end encrypted social network built on the Matrix protocol.
 - Ubuntu 20.04+ server with a public IP
 - 2 GB RAM minimum
 - 10 GB disk space
-- Ports: 80, 443, 3478, 5349, 49152-49172
+- Ports: 80, 3478, 5349, 49152-49172
 
 ### Installation
 
@@ -37,29 +37,27 @@ The setup script will:
 5. Create the first admin user
 
 After setup:
-- **Meshlink**: `https://YOUR_IP`
-- **Admin panel**: `https://YOUR_IP/admin`
-- **Config panel**: `https://YOUR_IP/config`
-
-> **Note:** Setup generates a self-signed TLS certificate. Your browser will show a security warning on first visit -- click "Advanced" -> "Proceed" to continue.
+- **Meshlink**: `http://YOUR_IP`
+- **Admin panel**: `http://YOUR_IP/admin`
+- **Config panel**: `http://YOUR_IP/config`
 
 ## Platform Installation
 
 ### Windows
-Download and run `Meshlink-Install.bat` from `https://YOUR_IP/installers/Meshlink-Install.bat`
+Download and run `Meshlink-Install.bat` from `http://YOUR_IP/installers/Meshlink-Install.bat`
 
 ### Linux
 ```bash
-curl -kO https://YOUR_IP/installers/meshlink-install.sh
+curl -O http://YOUR_IP/installers/meshlink-install.sh
 chmod +x meshlink-install.sh
 ./meshlink-install.sh
 ```
 
 ### Android
-Open `https://YOUR_IP` in Chrome > menu > "Install app"
+Open `http://YOUR_IP` in Chrome > menu > "Install app"
 
 ### iOS
-Open `https://YOUR_IP` in Safari > Share > "Add to Home Screen"
+Open `http://YOUR_IP` in Safari > Share > "Add to Home Screen"
 
 ### Desktop (Electron)
 ```bash
