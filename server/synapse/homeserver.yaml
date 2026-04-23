@@ -1,7 +1,8 @@
 # Meshlink Server Configuration
-# This file is templated by setup.sh. Do not edit __PLACEHOLDERS__ manually.
+# This file is templated by setup.sh using envsubst.
+# Variables like ${VAR_NAME} are replaced during setup.
 
-server_name: "__SERVER_NAME__"
+server_name: "${SERVER_NAME}"
 
 pid_file: /data/homeserver.pid
 
@@ -19,9 +20,9 @@ listeners:
 database:
   name: psycopg2
   args:
-    user: "__POSTGRES_USER__"
-    password: "__POSTGRES_PASSWORD__"
-    database: "__POSTGRES_DB__"
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+    database: "${POSTGRES_DB}"
     host: postgres
     port: 5432
     cp_min: 5
@@ -48,21 +49,21 @@ url_preview_ip_range_blacklist:
   - "fc00::/7"
 
 # --- Registration ---
-enable_registration: __ENABLE_REGISTRATION__
-enable_registration_without_verification: __ENABLE_REGISTRATION__
-registration_shared_secret: "__REGISTRATION_SHARED_SECRET__"
+enable_registration: ${ENABLE_REGISTRATION}
+enable_registration_without_verification: ${ENABLE_REGISTRATION}
+registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
 
 # --- Security ---
 report_stats: false
-macaroon_secret_key: "__MACAROON_SECRET__"
-form_secret: "__FORM_SECRET__"
+macaroon_secret_key: "${MACAROON_SECRET}"
+form_secret: "${FORM_SECRET}"
 signing_key_path: /data/signing.key
 
 # --- TURN server (for voice/video calls) ---
 turn_uris:
-  - "turn:__SERVER_HOST__:__TURN_PORT__?transport=udp"
-  - "turn:__SERVER_HOST__:__TURN_PORT__?transport=tcp"
-turn_shared_secret: "__TURN_SECRET__"
+  - "turn:${SERVER_HOST}:${TURN_PORT}?transport=udp"
+  - "turn:${SERVER_HOST}:${TURN_PORT}?transport=tcp"
+turn_shared_secret: "${TURN_SECRET}"
 turn_user_lifetime: 1h
 turn_allow_guests: true
 
@@ -78,6 +79,12 @@ rc_login:
   account:
     per_second: 1
     burst_count: 5
+
+# --- User directory (allows users to find each other) ---
+user_directory:
+  enabled: true
+  search_all_users: true
+  prefer_local_users: true
 
 # --- Presence ---
 presence:

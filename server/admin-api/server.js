@@ -2,13 +2,15 @@
  * Meshlink Admin Configuration API
  *
  * Provides a simple REST API + web UI for managing server configuration.
- * Reads/writes the .env file and can restart services via Docker Compose.
+ * Reads/writes the .env file. Does NOT require Docker socket access.
+ *
+ * Authentication: HMAC-SHA256 token or Basic Auth over HTTPS.
+ * The HMAC token is derived from REGISTRATION_SHARED_SECRET.
  */
 
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
 const crypto = require("crypto");
 
 const app = express();
@@ -16,10 +18,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const ENV_PATH = path.resolve(__dirname, ".env");
-const COMPOSE_DIR = path.resolve(__dirname);
-const COMPOSE_PROJECT = "server"; // Must match the directory name where docker compose up was run
 
-// --- Auth middleware (basic token from .env REGISTRATION_SHARED_SECRET) ---
+// --- .env helpers ---
 function loadEnv() {
   const content = fs.readFileSync(ENV_PATH, "utf-8");
   const env = {};
@@ -43,21 +43,51 @@ function saveEnv(env) {
   fs.writeFileSync(ENV_PATH, header + lines + "\n", { mode: 0o600 });
 }
 
+// --- Auth middleware ---
+// Accepts:
+//   1. x-admin-token header with HMAC-SHA256(secret, "meshlink-admin")
+//   2. x-admin-token header with the raw REGISTRATION_SHARED_SECRET
+//   3. Basic Auth with ADMIN_USER / ADMIN_PASSWORD (for web UI login)
 function authMiddleware(req, res, next) {
   const env = loadEnv();
+  const secret = env.REGISTRATION_SHARED_SECRET;
   const token = req.headers["x-admin-token"] || req.query.token;
-  if (token === env.REGISTRATION_SHARED_SECRET) {
-    return next();
+
+  if (token) {
+    // Check HMAC token
+    const expectedHmac = crypto
+      .createHmac("sha256", secret)
+      .update("meshlink-admin")
+      .digest("hex");
+    if (crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedHmac))) {
+      return next();
+    }
+    // Also accept raw secret for backward compatibility
+    if (token.length === secret.length) {
+      try {
+        if (crypto.timingSafeEqual(Buffer.from(token), Buffer.from(secret))) {
+          return next();
+        }
+      } catch {
+        // length mismatch, ignore
+      }
+    }
   }
-  // Also accept basic auth with admin credentials
+
+  // Basic Auth (for web UI -- safe over HTTPS)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Basic ")) {
     const decoded = Buffer.from(authHeader.slice(6), "base64").toString();
-    const [user, pass] = decoded.split(":");
-    if (user === env.ADMIN_USER && pass === env.ADMIN_PASSWORD) {
-      return next();
+    const colonIdx = decoded.indexOf(":");
+    if (colonIdx > 0) {
+      const user = decoded.slice(0, colonIdx);
+      const pass = decoded.slice(colonIdx + 1);
+      if (user === env.ADMIN_USER && pass === env.ADMIN_PASSWORD) {
+        return next();
+      }
     }
   }
+
   res.status(401).json({ error: "Unauthorized" });
 }
 
@@ -67,7 +97,6 @@ function authMiddleware(req, res, next) {
 app.get("/api/config", authMiddleware, (req, res) => {
   const env = loadEnv();
   const safe = { ...env };
-  // Mask sensitive values
   const sensitiveKeys = [
     "POSTGRES_PASSWORD",
     "REGISTRATION_SHARED_SECRET",
@@ -121,48 +150,44 @@ app.patch("/api/config", authMiddleware, (req, res) => {
   }
 
   saveEnv(env);
-  res.json({ updated: changed, message: "Config saved. Restart required." });
+  res.json({ updated: changed, message: "Config saved. Restart services with: cd server && docker compose restart" });
 });
 
-// POST /api/restart - Restart all services
-app.post("/api/restart", authMiddleware, (req, res) => {
-  try {
-    execSync(`docker compose -p ${COMPOSE_PROJECT} restart`, {
-      timeout: 120000,
-    });
-    res.json({ message: "All services restarted." });
-  } catch (err) {
-    res.status(500).json({ error: "Restart failed", details: err.message });
-  }
-});
-
-// GET /api/status - Service health status
+// GET /api/status - Basic health check (no Docker socket needed)
 app.get("/api/status", authMiddleware, (req, res) => {
-  try {
-    const output = execSync(`docker compose -p ${COMPOSE_PROJECT} ps --format json`, {
-      timeout: 15000,
-    }).toString();
-    const services = output
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean)
-      .map((s) => ({
-        name: s.Service || s.Name,
-        state: s.State,
-        status: s.Status,
-      }));
-    res.json({ services });
-  } catch (err) {
-    res.status(500).json({ error: "Could not get status", details: err.message });
-  }
+  // Check Synapse health by making an HTTP request to it
+  const http = require("http");
+  const services = [];
+
+  const checkSynapse = new Promise((resolve) => {
+    const req = http.get("http://synapse:8008/health", { timeout: 5000 }, (resp) => {
+      resolve({ name: "synapse", state: resp.statusCode === 200 ? "running" : "unhealthy", status: `HTTP ${resp.statusCode}` });
+    });
+    req.on("error", () => resolve({ name: "synapse", state: "unreachable", status: "Connection failed" }));
+    req.on("timeout", () => { req.destroy(); resolve({ name: "synapse", state: "timeout", status: "Timeout" }); });
+  });
+
+  const checkPostgres = new Promise((resolve) => {
+    const net = require("net");
+    const sock = net.createConnection({ host: "postgres", port: 5432, timeout: 3000 });
+    sock.on("connect", () => { sock.destroy(); resolve({ name: "postgres", state: "running", status: "Port open" }); });
+    sock.on("error", () => resolve({ name: "postgres", state: "unreachable", status: "Connection failed" }));
+    sock.on("timeout", () => { sock.destroy(); resolve({ name: "postgres", state: "timeout", status: "Timeout" }); });
+  });
+
+  const checkElement = new Promise((resolve) => {
+    const req = http.get("http://element:80/", { timeout: 3000 }, (resp) => {
+      resolve({ name: "element", state: resp.statusCode === 200 ? "running" : "unhealthy", status: `HTTP ${resp.statusCode}` });
+    });
+    req.on("error", () => resolve({ name: "element", state: "unreachable", status: "Connection failed" }));
+    req.on("timeout", () => { req.destroy(); resolve({ name: "element", state: "timeout", status: "Timeout" }); });
+  });
+
+  Promise.all([checkSynapse, checkPostgres, checkElement]).then((results) => {
+    // Add admin-api itself
+    results.push({ name: "admin-api", state: "running", status: "OK" });
+    res.json({ services: results });
+  });
 });
 
 // --- Admin Panel HTML ---
@@ -188,11 +213,9 @@ app.get("/", (req, res) => {
     .btn { padding: 0.6rem 1.5rem; border: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .btn-primary { background: linear-gradient(135deg, #a855f7, #6366f1); color: white; }
     .btn-primary:hover { transform: scale(1.02); }
-    .btn-danger { background: #ef4444; color: white; margin-left: 0.5rem; }
-    .btn-danger:hover { background: #dc2626; }
     .status { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
     .status-running { background: rgba(34,197,94,0.2); color: #22c55e; }
-    .status-stopped { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .status-unreachable, .status-timeout, .status-unhealthy { background: rgba(239,68,68,0.2); color: #ef4444; }
     .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
     .service-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; padding: 0.75rem; }
     .service-name { font-weight: 600; font-size: 0.85rem; }
@@ -201,6 +224,7 @@ app.get("/", (req, res) => {
     .msg-success { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
     .msg-error { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
     .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .note { font-size: 0.8rem; color: #888; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
@@ -230,8 +254,9 @@ app.get("/", (req, res) => {
         <h2>Service Status</h2>
         <div id="services" class="services-grid">Loading...</div>
         <div class="actions">
-          <button class="btn btn-danger" onclick="restartAll()">Restart All Services</button>
+          <button class="btn btn-primary" onclick="loadStatus()">Refresh Status</button>
         </div>
+        <p class="note">To restart services, run on the server: <code>cd server && docker compose restart</code></p>
       </div>
 
       <div class="card">
@@ -258,12 +283,13 @@ app.get("/", (req, res) => {
         <div class="actions">
           <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
         </div>
+        <p class="note">After saving, restart services on the server to apply changes.</p>
       </div>
 
       <div class="card">
         <h2>Quick Links</h2>
         <p style="font-size:0.85rem;color:#aaa;line-height:1.8">
-          <a href="/" style="color:#a855f7">Element Web Client</a> &mdash; Main messenger UI<br>
+          <a href="/" style="color:#a855f7">Meshlink Web Client</a> &mdash; Main messenger UI<br>
           <a href="/admin" style="color:#a855f7">Synapse Admin</a> &mdash; User/room management<br>
         </p>
       </div>
@@ -310,21 +336,9 @@ app.get("/", (req, res) => {
         .then(r => r.json())
         .then(data => {
           if (data.error) showMsg(data.error, 'error');
-          else showMsg('Configuration saved. Restart services to apply.', 'success');
+          else showMsg('Configuration saved. Restart services on the server to apply.', 'success');
         })
         .catch(() => showMsg('Save failed', 'error'));
-    }
-
-    function restartAll() {
-      if (!confirm('Restart all Meshlink services?')) return;
-      showMsg('Restarting...', 'success');
-      fetch('/api/restart', { method: 'POST', headers: { 'Authorization': authHeader } })
-        .then(r => r.json())
-        .then(data => {
-          showMsg(data.message || data.error, data.error ? 'error' : 'success');
-          setTimeout(loadStatus, 5000);
-        })
-        .catch(() => showMsg('Restart request failed', 'error'));
     }
 
     function loadStatus() {
@@ -338,9 +352,9 @@ app.get("/", (req, res) => {
           }
           el.innerHTML = data.services.map(s =>
             '<div class="service-card">' +
-            '<div class="service-name">' + (s.name || 'unknown') + '</div>' +
-            '<span class="status ' + (s.state === 'running' ? 'status-running' : 'status-stopped') + '">' +
-            (s.state || 'unknown') + '</span>' +
+            '<div class="service-name">' + escHtml(s.name || 'unknown') + '</div>' +
+            '<span class="status status-' + escHtml(s.state || 'unknown') + '">' +
+            escHtml(s.state || 'unknown') + '</span>' +
             '</div>'
           ).join('');
         })
@@ -349,9 +363,15 @@ app.get("/", (req, res) => {
         });
     }
 
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
     function showMsg(text, type) {
       const el = document.getElementById('message');
-      el.innerHTML = '<div class="msg msg-' + type + '">' + text + '</div>';
+      el.innerHTML = '<div class="msg msg-' + type + '">' + escHtml(text) + '</div>';
       setTimeout(() => el.innerHTML = '', 5000);
     }
 
