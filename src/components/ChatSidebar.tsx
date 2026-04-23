@@ -326,10 +326,11 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               <p className="text-xs text-muted-foreground animate-pulse">Searching...</p>
             </div>
           )}
-          {search.trim() && !searching && searchResults.length === 0 && filtered.length === 0 && (
-            <div className="px-5 py-8 text-center">
-              <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No results for "{search}"</p>
+          {search.trim() && !searching && searchResults.length === 0 && (
+            <div className="px-5 py-4 text-center">
+              <Search className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">No users or rooms found for "{search}"</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">Try searching by username or display name</p>
             </div>
           )}
 

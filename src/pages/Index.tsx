@@ -165,11 +165,12 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
 
   const handleSearch = useCallback(async (query: string): Promise<SearchResult[]> => {
     const results: SearchResult[] = [];
-    const [users, rooms] = await Promise.all([
-      mesh.searchUsers(query),
-      mesh.getPublicRooms(),
-    ]);
+
+    // Search users on the server
+    const users = await mesh.searchUsers(query);
     for (const u of users) {
+      // Don't show yourself in search results
+      if (u.userId === mesh.userId) continue;
       results.push({
         type: "user",
         id: u.userId,
@@ -177,17 +178,25 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         avatar: u.displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
       });
     }
-    for (const r of rooms) {
-      if (r.name.toLowerCase().includes(query.toLowerCase())) {
-        results.push({
-          type: "room",
-          id: r.id,
-          name: r.name,
-          avatar: r.avatar,
-          members: r.members,
-        });
+
+    // Also search public rooms
+    try {
+      const rooms = await mesh.getPublicRooms();
+      for (const r of rooms) {
+        if (r.name.toLowerCase().includes(query.toLowerCase())) {
+          results.push({
+            type: "room",
+            id: r.id,
+            name: r.name,
+            avatar: r.avatar,
+            members: r.members,
+          });
+        }
       }
+    } catch {
+      // Public rooms search is optional, don't fail the whole search
     }
+
     return results;
   }, [mesh]);
 
