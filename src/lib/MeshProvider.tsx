@@ -68,6 +68,7 @@ interface MeshContextValue {
   ready: boolean;
   userId: string;
   rooms: MeshRoom[];
+  messageVersion: number;
   getMessages: (roomId: string) => MeshMessage[];
   sendMessage: (roomId: string, text: string) => Promise<void>;
   sendMedia: (roomId: string, file: File) => Promise<void>;
@@ -205,6 +206,7 @@ export function MeshProvider({ session, children }: Props) {
   const clientRef = useRef<MeshClient | null>(null);
   const [ready, setReady] = useState(false);
   const [rooms, setRooms] = useState<MeshRoom[]>([]);
+  const [messageVersion, setMessageVersion] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshRooms = useCallback(() => {
@@ -236,13 +238,43 @@ export function MeshProvider({ session, children }: Props) {
     clientRef.current = client;
 
     const onEvent = () => {
-      if (!cancelled) debouncedRefresh();
+      if (!cancelled) {
+        debouncedRefresh();
+        // Bump message version to trigger re-render of active chat messages
+        setMessageVersion((v) => v + 1);
+      }
+    };
+
+    // Auto-accept room invites so DMs and group invites work immediately
+    const onMembership = (_event: MeshEvent, member: { userId: string; membership: string }, _old: string | null) => {
+      if (member.userId === session.userId && member.membership === "invite") {
+        client.joinRoom(member.userId).catch(() => {
+          // Fallback: try joining by room ID from the event
+        });
+      }
+      if (!cancelled) {
+        debouncedRefresh();
+        setMessageVersion((v) => v + 1);
+      }
+    };
+
+    // Auto-join invited rooms
+    const onMyMembership = (room: SdkRoom, membership: string) => {
+      if (membership === "invite") {
+        client.joinRoom(room.roomId).catch((err) => {
+          console.error("Failed to auto-join room:", room.roomId, err);
+        });
+      }
+      if (!cancelled) {
+        debouncedRefresh();
+        setMessageVersion((v) => v + 1);
+      }
     };
 
     client.on(sdk.RoomEvent.Timeline, onEvent);
     client.on(sdk.RoomEvent.Name, onEvent);
-    client.on(sdk.RoomEvent.MyMembership, onEvent);
-    client.on(sdk.RoomMemberEvent.Membership, onEvent);
+    client.on(sdk.RoomEvent.MyMembership, onMyMembership);
+    client.on(sdk.RoomMemberEvent.Membership, onMembership);
 
     startClient(client).then(() => {
       if (!cancelled) {
@@ -307,11 +339,43 @@ export function MeshProvider({ session, children }: Props) {
   const createDm = useCallback(async (targetUserId: string): Promise<string> => {
     const c = clientRef.current;
     if (!c) throw new Error("Not connected");
+
+    // Check if we already have a DM with this user
+    const existingRooms = c.getRooms();
+    for (const room of existingRooms) {
+      if (room.getMyMembership() !== "join") continue;
+      const members = room.getJoinedMembers();
+      const invited = room.getMembersWithMembership("invite");
+      const allMembers = [...members, ...invited];
+      if (allMembers.length <= 2 && allMembers.some((m) => m.userId === targetUserId)) {
+        return room.roomId;
+      }
+    }
+
     const resp = await c.createRoom({
       preset: "trusted_private_chat" as sdk.Preset,
       invite: [targetUserId],
       is_direct: true,
+      initial_state: [{
+        type: "m.room.guest_access",
+        state_key: "",
+        content: { guest_access: "can_join" },
+      }],
     });
+
+    // Mark as direct message in account data
+    try {
+      const directEvent = c.getAccountData("m.direct");
+      const directMap: Record<string, string[]> = directEvent ? { ...directEvent.getContent() } : {};
+      if (!directMap[targetUserId]) directMap[targetUserId] = [];
+      if (!directMap[targetUserId].includes(resp.room_id)) {
+        directMap[targetUserId].push(resp.room_id);
+      }
+      await c.setAccountData("m.direct", directMap);
+    } catch (err) {
+      console.warn("Failed to set m.direct account data:", err);
+    }
+
     return resp.room_id;
   }, []);
 
@@ -442,6 +506,7 @@ export function MeshProvider({ session, children }: Props) {
     ready,
     userId: session.userId,
     rooms,
+    messageVersion,
     getMessages,
     sendMessage,
     sendMedia,

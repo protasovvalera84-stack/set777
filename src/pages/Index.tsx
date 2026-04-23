@@ -73,7 +73,8 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         }] : undefined,
       })),
     };
-  }, [chatList, selectedChatId, mesh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatList, selectedChatId, mesh.messageVersion]);
 
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
