@@ -395,6 +395,40 @@ fi
 log "Server is running."
 
 # =============================================================================
+# Step 9b: Verify external accessibility
+# =============================================================================
+log "Verifying server is accessible..."
+
+# Check if port 80 is listening
+if command -v ss &>/dev/null; then
+    if ss -tlnp | grep -q ":80 "; then
+        log "Port 80 is listening."
+    else
+        warn "Port 80 does NOT appear to be listening!"
+        warn "Check: docker compose ps nginx"
+    fi
+fi
+
+# Try to reach the server from localhost
+if curl -sf --max-time 5 "http://127.0.0.1/health" >/dev/null 2>&1; then
+    log "Server responds on localhost."
+else
+    warn "Server does not respond on localhost yet. It may still be starting."
+fi
+
+# Try to reach via the public IP
+if curl -sf --max-time 10 "http://${SERVER_HOST}/health" >/dev/null 2>&1; then
+    log "Server responds on ${SERVER_HOST} -- accessible from outside!"
+else
+    warn "Server does NOT respond on ${SERVER_HOST}."
+    warn "Possible causes:"
+    warn "  1. Firewall blocking port 80 (check: sudo ufw status / iptables -L)"
+    warn "  2. Cloud provider security group not allowing port 80"
+    warn "  3. Server is still starting up (wait 1-2 minutes)"
+    warn "  4. Wrong IP address (detected: ${SERVER_HOST})"
+fi
+
+# =============================================================================
 # Step 9: Create admin user
 # =============================================================================
 log "Creating admin user: @${ADMIN_USER}:${SERVER_HOST}"
@@ -419,6 +453,18 @@ if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
     ufw allow 5349/udp comment "Meshlink TURN TLS UDP"
     ufw allow 49152:49172/udp comment "Meshlink TURN relay"
     log "Firewall rules added."
+else
+    # Try iptables as fallback (non-destructive, only adds ACCEPT rules)
+    if command -v iptables &>/dev/null; then
+        log "Adding iptables ACCEPT rules for Meshlink ports..."
+        iptables -I INPUT -p tcp --dport "$HTTP_PORT" -j ACCEPT 2>/dev/null || true
+        iptables -I INPUT -p tcp --dport 3478 -j ACCEPT 2>/dev/null || true
+        iptables -I INPUT -p udp --dport 3478 -j ACCEPT 2>/dev/null || true
+        iptables -I INPUT -p tcp --dport 5349 -j ACCEPT 2>/dev/null || true
+        iptables -I INPUT -p udp --dport 5349 -j ACCEPT 2>/dev/null || true
+        iptables -I INPUT -p udp --dport 49152:49172 -j ACCEPT 2>/dev/null || true
+        log "iptables rules added."
+    fi
 fi
 
 # =============================================================================
