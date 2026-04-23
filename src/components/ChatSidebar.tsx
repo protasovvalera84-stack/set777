@@ -140,7 +140,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             </div>
             <div className="flex flex-col leading-tight">
               <span className="font-serif italic text-lg gradient-text font-semibold">Meshlink</span>
-              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">decentralized</span>
+              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">self-hosted</span>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -402,7 +402,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             </div>
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-mono text-online">● ONLINE</span>
-              <span className="text-[9px] font-mono text-muted-foreground">3 relays</span>
+              <span className="text-[9px] font-mono text-muted-foreground">encrypted</span>
             </div>
           </div>
         </button>

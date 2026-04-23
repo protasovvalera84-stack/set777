@@ -209,8 +209,8 @@ function MainPage({
       <div className="space-y-1">
         <MenuItem icon={<User className="h-4 w-4" />} label="Edit Profile" sub="Name, username, bio, photo" onClick={() => setPage("editProfile")} />
         <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy & Security" sub="Last seen, read receipts, calls" onClick={() => setPage("privacy")} />
-        <MenuItem icon={<Lock className="h-4 w-4" />} label="Encryption" sub="X3DH + Double Ratchet active" />
-        <MenuItem icon={<Wifi className="h-4 w-4" />} label="Network" sub="3 relay nodes connected" />
+        <MenuItem icon={<Lock className="h-4 w-4" />} label="Encryption" sub="Matrix E2EE active" />
+        <MenuItem icon={<Wifi className="h-4 w-4" />} label="Network" sub="Connected to server" />
       </div>
 
       {/* Danger zone */}

@@ -165,24 +165,24 @@ chmod 600 "$SERVER_DIR/.env"
 log ".env file written."
 
 # =============================================================================
-# Step 5: Template config files
+# Step 5: Template config files (using envsubst for reliability)
 # =============================================================================
+
+# Export all variables needed by templates
+export SERVER_HOST SERVER_NAME="${SERVER_HOST}"
+export POSTGRES_USER="synapse" POSTGRES_PASSWORD POSTGRES_DB="synapse"
+export ENABLE_REGISTRATION REGISTRATION_SHARED_SECRET
+export MACAROON_SECRET FORM_SECRET TURN_SECRET
+export TURN_PORT="3478"
+
+TEMPLATE_VARS='${SERVER_HOST} ${SERVER_NAME} ${POSTGRES_USER} ${POSTGRES_PASSWORD} ${POSTGRES_DB} ${ENABLE_REGISTRATION} ${REGISTRATION_SHARED_SECRET} ${MACAROON_SECRET} ${FORM_SECRET} ${TURN_SECRET} ${TURN_PORT}'
+
 template_file() {
     local file="$1"
     log "Templating: $file"
-    sed -i \
-        -e "s|__SERVER_HOST__|${SERVER_HOST}|g" \
-        -e "s|__SERVER_NAME__|${SERVER_HOST}|g" \
-        -e "s|__POSTGRES_USER__|synapse|g" \
-        -e "s|__POSTGRES_PASSWORD__|${POSTGRES_PASSWORD}|g" \
-        -e "s|__POSTGRES_DB__|synapse|g" \
-        -e "s|__ENABLE_REGISTRATION__|${ENABLE_REGISTRATION}|g" \
-        -e "s|__REGISTRATION_SHARED_SECRET__|${REGISTRATION_SHARED_SECRET}|g" \
-        -e "s|__MACAROON_SECRET__|${MACAROON_SECRET}|g" \
-        -e "s|__FORM_SECRET__|${FORM_SECRET}|g" \
-        -e "s|__TURN_SECRET__|${TURN_SECRET}|g" \
-        -e "s|__TURN_PORT__|3478|g" \
-        "$file"
+    local tmp="${file}.tmp"
+    envsubst "$TEMPLATE_VARS" < "$file" > "$tmp"
+    mv "$tmp" "$file"
 }
 
 # Copy originals from git before templating (allows re-running setup.sh)
@@ -199,14 +199,35 @@ template_file "$SERVER_DIR/element/config.json"
 log "All config files templated."
 
 # =============================================================================
-# Step 6: Create directories for nginx static files (installers)
+# Step 6: Generate self-signed TLS certificate
+# =============================================================================
+SSL_DIR="$SERVER_DIR/nginx/ssl"
+mkdir -p "$SSL_DIR"
+
+if [ ! -f "$SSL_DIR/meshlink.crt" ] || [ ! -f "$SSL_DIR/meshlink.key" ]; then
+    log "Generating self-signed TLS certificate..."
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout "$SSL_DIR/meshlink.key" \
+        -out "$SSL_DIR/meshlink.crt" \
+        -subj "/CN=${SERVER_HOST}/O=Meshlink/C=XX" \
+        -addext "subjectAltName=IP:${SERVER_HOST},DNS:${SERVER_HOST}" \
+        2>/dev/null
+    chmod 600 "$SSL_DIR/meshlink.key"
+    chmod 644 "$SSL_DIR/meshlink.crt"
+    log "TLS certificate generated (valid for 10 years)."
+else
+    log "TLS certificate already exists, skipping generation."
+fi
+
+# =============================================================================
+# Step 6b: Create directories for nginx static files (installers)
 # =============================================================================
 mkdir -p "$SERVER_DIR/nginx/www/installers"
 
-# Generate platform installers pointing to this server
-BASE_URL="http://${SERVER_HOST}"
+# Generate platform installers pointing to this server (HTTPS)
+BASE_URL="https://${SERVER_HOST}"
 if [ "$HTTP_PORT" != "80" ]; then
-    BASE_URL="http://${SERVER_HOST}:${HTTP_PORT}"
+    BASE_URL="https://${SERVER_HOST}"
 fi
 
 # Windows installer
@@ -412,6 +433,7 @@ log "Admin user created."
 if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
     log "Configuring firewall (ufw)..."
     ufw allow "$HTTP_PORT"/tcp comment "Meshlink HTTP"
+    ufw allow 443/tcp comment "Meshlink HTTPS"
     ufw allow 3478/tcp comment "Meshlink TURN TCP"
     ufw allow 3478/udp comment "Meshlink TURN UDP"
     ufw allow 5349/tcp comment "Meshlink TURN TLS TCP"
@@ -434,6 +456,19 @@ else
 fi
 
 # =============================================================================
+# Step 12: Setup daily database backup cron job
+# =============================================================================
+BACKUP_DIR="/var/backups/meshlink"
+mkdir -p "$BACKUP_DIR"
+BACKUP_CRON="0 2 * * * cd $SERVER_DIR && docker compose exec -T postgres pg_dump -U \${POSTGRES_USER:-synapse} \${POSTGRES_DB:-synapse} | gzip > $BACKUP_DIR/meshlink-db-\$(date +\\%Y\\%m\\%d).sql.gz && find $BACKUP_DIR -name 'meshlink-db-*.sql.gz' -mtime +7 -delete >> /var/log/meshlink-backup.log 2>&1"
+if ! crontab -l 2>/dev/null | grep -q "meshlink-db-"; then
+    (crontab -l 2>/dev/null; echo "$BACKUP_CRON") | crontab -
+    log "Daily database backup cron job installed (2am, keeps 7 days)."
+else
+    log "Database backup cron job already exists."
+fi
+
+# =============================================================================
 # Done!
 # =============================================================================
 echo ""
@@ -443,7 +478,12 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "  Web client:    ${CYAN}${BASE_URL}${NC}"
 echo -e "  Admin panel:   ${CYAN}${BASE_URL}/admin${NC}"
+echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
+echo ""
+echo -e "  ${YELLOW}NOTE: Using self-signed TLS certificate.${NC}"
+echo -e "  ${YELLOW}Your browser will show a security warning -- this is normal.${NC}"
+echo -e "  ${YELLOW}Click 'Advanced' -> 'Proceed' to continue.${NC}"
 echo ""
 echo -e "  Installers:"
 echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC}"

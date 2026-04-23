@@ -89,9 +89,11 @@ services:
         condition: service_started
     ports:
       - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/www:/usr/share/nginx/www:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - meshlink
 
@@ -110,8 +112,6 @@ services:
     logging: *default-logging
     volumes:
       - ./.env:/app/.env:rw
-      - ./docker-compose.yml:/app/docker-compose.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       ADMIN_API_PORT: "9090"
     networks:
