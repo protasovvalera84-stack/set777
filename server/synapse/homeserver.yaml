@@ -52,6 +52,8 @@ url_preview_ip_range_blacklist:
 enable_registration: ${ENABLE_REGISTRATION}
 enable_registration_without_verification: ${ENABLE_REGISTRATION}
 registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
+enable_set_displayname: true
+enable_set_avatar_url: true
 
 # --- Security ---
 report_stats: false

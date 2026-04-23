@@ -370,16 +370,42 @@ export function MeshProvider({ session, children }: Props) {
       const c = clientRef.current;
       if (!c) return [];
       try {
-        const resp = await c.searchUserDirectory({ term, limit: 20 });
+        const resp = await c.searchUserDirectory({ term, limit: 50 });
         return resp.results.map((r) => ({
           userId: r.user_id,
           displayName: r.display_name || r.user_id,
         }));
-      } catch {
-        return [];
+      } catch (err) {
+        console.warn("searchUserDirectory SDK failed, trying direct fetch:", err);
+        // Fallback: direct API call (SDK sometimes has issues with this endpoint)
+        try {
+          const resp = await fetch(
+            `${session.homeserverUrl}/_matrix/client/v3/user_directory/search`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.accessToken}`,
+              },
+              body: JSON.stringify({ search_term: term, limit: 50 }),
+            },
+          );
+          if (!resp.ok) {
+            console.error("User directory search failed:", resp.status, await resp.text());
+            return [];
+          }
+          const data = await resp.json();
+          return ((data as { results?: { user_id: string; display_name?: string }[] }).results || []).map((r) => ({
+            userId: r.user_id,
+            displayName: r.display_name || r.user_id,
+          }));
+        } catch (fetchErr) {
+          console.error("User directory search fetch failed:", fetchErr);
+          return [];
+        }
       }
     },
-    [],
+    [session.homeserverUrl, session.accessToken],
   );
 
   const publicRoomsCache = useRef<{ data: MeshRoom[]; ts: number }>({ data: [], ts: 0 });
