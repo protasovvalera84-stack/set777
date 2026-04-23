@@ -15,7 +15,6 @@ release
 
 # Server runtime files (generated per-server)
 server/.env
-server/nginx/ssl/
 server/nginx/www/
 
 # Large binary installers (built on server)

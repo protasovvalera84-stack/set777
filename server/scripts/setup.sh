@@ -199,35 +199,15 @@ template_file "$SERVER_DIR/element/config.json"
 log "All config files templated."
 
 # =============================================================================
-# Step 6: Generate self-signed TLS certificate
-# =============================================================================
-SSL_DIR="$SERVER_DIR/nginx/ssl"
-mkdir -p "$SSL_DIR"
-
-if [ ! -f "$SSL_DIR/meshlink.crt" ] || [ ! -f "$SSL_DIR/meshlink.key" ]; then
-    log "Generating self-signed TLS certificate..."
-    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-        -keyout "$SSL_DIR/meshlink.key" \
-        -out "$SSL_DIR/meshlink.crt" \
-        -subj "/CN=${SERVER_HOST}/O=Meshlink/C=XX" \
-        -addext "subjectAltName=IP:${SERVER_HOST},DNS:${SERVER_HOST}" \
-        2>/dev/null
-    chmod 600 "$SSL_DIR/meshlink.key"
-    chmod 644 "$SSL_DIR/meshlink.crt"
-    log "TLS certificate generated (valid for 10 years)."
-else
-    log "TLS certificate already exists, skipping generation."
-fi
-
-# =============================================================================
-# Step 6b: Create directories for nginx static files (installers)
+# Step 6: Create directories for nginx static files (installers)
 # =============================================================================
 mkdir -p "$SERVER_DIR/nginx/www/installers"
+mkdir -p "$SERVER_DIR/nginx/www/meshlink"
 
-# Generate platform installers pointing to this server (HTTPS)
-BASE_URL="https://${SERVER_HOST}"
+# Generate platform installers pointing to this server
+BASE_URL="http://${SERVER_HOST}"
 if [ "$HTTP_PORT" != "80" ]; then
-    BASE_URL="https://${SERVER_HOST}"
+    BASE_URL="http://${SERVER_HOST}:${HTTP_PORT}"
 fi
 
 # Windows installer
@@ -433,7 +413,6 @@ log "Admin user created."
 if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
     log "Configuring firewall (ufw)..."
     ufw allow "$HTTP_PORT"/tcp comment "Meshlink HTTP"
-    ufw allow 443/tcp comment "Meshlink HTTPS"
     ufw allow 3478/tcp comment "Meshlink TURN TCP"
     ufw allow 3478/udp comment "Meshlink TURN UDP"
     ufw allow 5349/tcp comment "Meshlink TURN TLS TCP"
@@ -480,10 +459,6 @@ echo -e "  Web client:    ${CYAN}${BASE_URL}${NC}"
 echo -e "  Admin panel:   ${CYAN}${BASE_URL}/admin${NC}"
 echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
-echo ""
-echo -e "  ${YELLOW}NOTE: Using self-signed TLS certificate.${NC}"
-echo -e "  ${YELLOW}Your browser will show a security warning -- this is normal.${NC}"
-echo -e "  ${YELLOW}Click 'Advanced' -> 'Proceed' to continue.${NC}"
 echo ""
 echo -e "  Installers:"
 echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC}"
