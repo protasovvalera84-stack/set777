@@ -238,6 +238,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 rounded-2xl gradient-primary animate-pulse" />
           <p className="text-sm text-muted-foreground">Connecting to Meshlink...</p>
+          <p className="text-[10px] text-muted-foreground/60">Syncing with server, please wait</p>
         </div>
       </div>
     );
