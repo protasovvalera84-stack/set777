@@ -197,13 +197,14 @@ export async function loginAccount(
 
 /** Start the client (sync with server). */
 export async function startClient(client: MeshClient): Promise<void> {
-  await client.startClient({ initialSyncLimit: 5 });
+  await client.startClient({ initialSyncLimit: 10 });
 
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
+      console.warn("Sync timeout after 15s, proceeding anyway");
       client.removeListener(sdk.ClientEvent.Sync, onSync);
       resolve();
-    }, 8000);
+    }, 15000);
 
     const onSync = (state: string) => {
       if (state === "PREPARED") {
@@ -240,11 +241,15 @@ export function getInitials(name: string): string {
 /** Check if Meshlink server is reachable. */
 export async function checkServer(): Promise<boolean> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     const resp = await fetch(`${getServerUrl()}/_matrix/client/versions`, {
-      signal: AbortSignal.timeout(5000),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     return resp.ok;
-  } catch {
+  } catch (err) {
+    console.warn("Server check failed:", err);
     return false;
   }
 }

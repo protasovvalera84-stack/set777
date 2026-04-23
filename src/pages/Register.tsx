@@ -252,16 +252,44 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
             </div>
             <button
               onClick={() => setStep("language")}
-              className="w-full max-w-xs rounded-2xl py-3.5 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all"
+              disabled={serverOnline === false}
+              className={`w-full max-w-xs rounded-2xl py-3.5 text-sm font-semibold transition-all ${
+                serverOnline === false
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]"
+              }`}
             >
               Create Account
             </button>
             <button
               onClick={() => setStep("login")}
-              className="w-full max-w-xs rounded-2xl py-3 text-sm font-medium text-foreground border border-border/50 hover:bg-surface-hover hover:border-primary/40 transition-all"
+              disabled={serverOnline === false}
+              className={`w-full max-w-xs rounded-2xl py-3 text-sm font-medium transition-all ${
+                serverOnline === false
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "text-foreground border border-border/50 hover:bg-surface-hover hover:border-primary/40"
+              }`}
             >
               Sign In
             </button>
+            {serverOnline === true && (
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-online animate-pulse" />
+                <p className="text-[10px] font-mono text-online">Server online</p>
+              </div>
+            )}
+            {serverOnline === false && (
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-destructive" />
+                <p className="text-[10px] font-mono text-destructive">Server offline - check connection</p>
+              </div>
+            )}
+            {serverOnline === null && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <p className="text-[10px] font-mono text-muted-foreground">Checking server...</p>
+              </div>
+            )}
             <p className="text-[10px] font-mono text-muted-foreground">No phone number required - fully anonymous</p>
           </div>
         )}
