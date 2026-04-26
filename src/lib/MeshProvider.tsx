@@ -40,7 +40,7 @@ export interface MeshRoom {
   name: string;
   avatar: string;
   avatarUrl: string | null;
-  type: "dm" | "group";
+  type: "dm" | "group" | "channel";
   lastMessage: string;
   lastMessageTime: string;
   unread: number;
@@ -100,9 +100,27 @@ export function useMesh(): MeshContextValue {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-function roomToMesh(room: SdkRoom, myUserId: string): MeshRoom {
+function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>): MeshRoom {
   const members = room.getJoinedMembers();
-  const isDm = members.length <= 2 && !room.isSpaceRoom();
+
+  // Determine room type:
+  // 1. Check if it's a DM (marked in m.direct account data or is_direct flag)
+  const isDm = directRoomIds.has(room.roomId) ||
+    (members.length <= 2 && !room.isSpaceRoom() && !room.getCanonicalAlias());
+
+  // 2. Check if it's a channel (public join_rule or has canonical alias)
+  let isChannel = false;
+  if (!isDm) {
+    try {
+      const joinRule = room.getJoinRule();
+      isChannel = joinRule === "public";
+    } catch {
+      // If we can't determine join rule, check for canonical alias (channels have aliases)
+      isChannel = !!room.getCanonicalAlias();
+    }
+  }
+
+  const roomType: "dm" | "group" | "channel" = isDm ? "dm" : isChannel ? "channel" : "group";
 
   const timeline = room.getLiveTimeline().getEvents();
   const lastEvt = [...timeline].reverse().find(
@@ -128,7 +146,7 @@ function roomToMesh(room: SdkRoom, myUserId: string): MeshRoom {
     name,
     avatar: getInitials(name),
     avatarUrl: null,
-    type: isDm ? "dm" : "group",
+    type: roomType,
     lastMessage,
     lastMessageTime,
     unread: room.getUnreadNotificationCount("total") || 0,
@@ -214,10 +232,27 @@ export function MeshProvider({ session, children }: Props) {
   const refreshRooms = useCallback(() => {
     const c = clientRef.current;
     if (!c) return;
+
+    // Build set of DM room IDs from m.direct account data
+    const directRoomIds = new Set<string>();
+    try {
+      const directEvent = c.getAccountData("m.direct");
+      if (directEvent) {
+        const directMap = directEvent.getContent() as Record<string, string[]>;
+        for (const roomIds of Object.values(directMap)) {
+          if (Array.isArray(roomIds)) {
+            for (const id of roomIds) directRoomIds.add(id);
+          }
+        }
+      }
+    } catch {
+      // m.direct may not exist yet
+    }
+
     const allRooms = c.getRooms();
     const meshRooms = allRooms
       .filter((r) => r.getMyMembership() === "join")
-      .map((r) => roomToMesh(r, session.userId))
+      .map((r) => roomToMesh(r, session.userId, directRoomIds))
       .sort((a, b) => {
         if (!a.lastMessageTime && b.lastMessageTime) return 1;
         if (a.lastMessageTime && !b.lastMessageTime) return -1;
