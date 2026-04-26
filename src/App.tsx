@@ -34,18 +34,52 @@ const App = () => {
   const [registered, setRegistered] = useState(loadRegistered);
   const [profile, setProfile] = useState<UserProfile>(loadProfile);
   const [session, setSession] = useState<MeshlinkSession | null>(loadSession);
+  const [validating, setValidating] = useState(true);
+
+  // Validate session on load -- check if token is still valid
+  useEffect(() => {
+    const sess = loadSession();
+    if (!sess) {
+      setValidating(false);
+      return;
+    }
+
+    // Quick check: can we reach the server with this token?
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    fetch(`${sess.homeserverUrl}/_matrix/client/v3/account/whoami`, {
+      headers: { Authorization: `Bearer ${sess.accessToken}` },
+      signal: controller.signal,
+    })
+      .then((resp) => {
+        clearTimeout(timeoutId);
+        if (!resp.ok) {
+          // Token invalid -- force re-login
+          console.warn("Session token invalid, clearing");
+          localStorage.removeItem(REGISTERED_KEY);
+          clearSession();
+          setRegistered(false);
+          setSession(null);
+        }
+        setValidating(false);
+      })
+      .catch(() => {
+        clearTimeout(timeoutId);
+        // Network error -- proceed anyway, MeshProvider will handle it
+        setValidating(false);
+      });
+  }, []);
 
   const handleRegisterComplete = (newProfile: UserProfile, _lang: string, _platform: PlatformId | null) => {
     setProfile(newProfile);
     setRegistered(true);
     localStorage.setItem(REGISTERED_KEY, "true");
     localStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
-    // Reload session that was saved during registration
     setSession(loadSession());
   };
 
   const handleLogout = () => {
-    // Logout from server and clean up
     if (session) {
       logoutAccount(session).catch(() => {});
     }
@@ -63,6 +97,20 @@ const App = () => {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     }
   }, [profile, registered]);
+
+  // Show nothing while validating session
+  if (validating) {
+    return (
+      <ThemeProvider>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl gradient-primary animate-pulse" />
+            <p className="text-xs text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

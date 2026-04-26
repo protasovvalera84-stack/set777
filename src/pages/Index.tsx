@@ -244,6 +244,33 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     );
   }
 
+  // Show error if connection failed
+  if (mesh.error) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 max-w-sm text-center">
+          <div className="h-12 w-12 rounded-2xl bg-destructive/20 flex items-center justify-center">
+            <span className="text-destructive text-xl">!</span>
+          </div>
+          <p className="text-sm text-foreground font-medium">Connection Error</p>
+          <p className="text-xs text-muted-foreground">{mesh.error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-2xl px-6 py-2.5 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all"
+          >
+            Retry
+          </button>
+          <button
+            onClick={onLogout}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Sign out and try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>

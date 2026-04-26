@@ -72,22 +72,37 @@ export async function logoutAccount(session: MeshlinkSession): Promise<void> {
   clearSession();
 }
 
-/** Create an authenticated client with persistent IndexedDB storage. */
+/** Create an authenticated client. Tries IndexedDB store, falls back to memory. */
 export async function createClientWithStore(session: MeshlinkSession): Promise<MeshClient> {
-  const store = new IndexedDBStore({
-    indexedDB: window.indexedDB,
-    dbName: "meshlink-sync-" + session.userId,
-    localStorage: window.localStorage,
-  });
-  await store.startup();
+  // Try IndexedDB for persistent storage
+  try {
+    if (window.indexedDB) {
+      const store = new IndexedDBStore({
+        indexedDB: window.indexedDB,
+        dbName: "meshlink-sync-" + session.userId,
+        localStorage: window.localStorage,
+      });
+      await store.startup();
+      console.log("Using IndexedDB store for persistent sync");
+      return sdk.createClient({
+        baseUrl: session.homeserverUrl,
+        accessToken: session.accessToken,
+        userId: session.userId,
+        deviceId: session.deviceId,
+        store,
+        timelineSupport: true,
+      });
+    }
+  } catch (err) {
+    console.warn("IndexedDB store failed, using memory store:", err);
+  }
 
+  // Fallback: in-memory store (works everywhere but loses data on reload)
   return sdk.createClient({
     baseUrl: session.homeserverUrl,
     accessToken: session.accessToken,
     userId: session.userId,
     deviceId: session.deviceId,
-    store,
-    timelineSupport: true,
   });
 }
 
@@ -238,22 +253,33 @@ export async function loginAccount(
   return session;
 }
 
-/** Start the client (sync with server). */
-export async function startClient(client: MeshClient): Promise<void> {
-  await client.startClient({ initialSyncLimit: 10 });
+/** Start the client (sync with server). Resolves when ready or on timeout. */
+export async function startClient(client: MeshClient): Promise<boolean> {
+  try {
+    await client.startClient({ initialSyncLimit: 10 });
+  } catch (err) {
+    console.error("Failed to start Matrix client:", err);
+    return false;
+  }
 
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
-      console.warn("Sync timeout after 15s, proceeding anyway");
+      console.warn("Sync timeout after 20s, proceeding with available data");
       client.removeListener(sdk.ClientEvent.Sync, onSync);
-      resolve();
-    }, 15000);
+      resolve(true); // Still resolve -- partial data is better than stuck
+    }, 20000);
 
-    const onSync = (state: string) => {
+    const onSync = (state: string, _prev: string | null, data?: { error?: Error }) => {
       if (state === "PREPARED") {
         clearTimeout(timeout);
         client.removeListener(sdk.ClientEvent.Sync, onSync);
-        resolve();
+        console.log("Matrix sync ready");
+        resolve(true);
+      } else if (state === "ERROR") {
+        console.error("Matrix sync error:", data?.error);
+        // Don't resolve yet -- might recover
+      } else if (state === "RECONNECTING") {
+        console.warn("Matrix sync reconnecting...");
       }
     };
     client.on(sdk.ClientEvent.Sync, onSync);
