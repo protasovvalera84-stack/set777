@@ -63,10 +63,11 @@ signing_key_path: /data/signing.key
 
 # --- TURN server (for voice/video calls) ---
 turn_uris:
+  - "stun:${SERVER_HOST}:${TURN_PORT}"
   - "turn:${SERVER_HOST}:${TURN_PORT}?transport=udp"
   - "turn:${SERVER_HOST}:${TURN_PORT}?transport=tcp"
 turn_shared_secret: "${TURN_SECRET}"
-turn_user_lifetime: 1h
+turn_user_lifetime: 86400000
 turn_allow_guests: true
 
 # --- Rate limiting (relaxed for small deployments) ---

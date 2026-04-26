@@ -12,6 +12,7 @@ import {
 } from "@/data/mockData";
 import { useMesh } from "@/lib/MeshProvider";
 import type { MatrixCall } from "matrix-js-sdk/lib/webrtc/call";
+import { CallEvent } from "matrix-js-sdk/lib/webrtc/call";
 import { CallEventHandlerEvent } from "matrix-js-sdk/lib/webrtc/callEventHandler";
 import { getUserDisplayName } from "@/lib/meshClient";
 
@@ -167,19 +168,39 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
 
   const handleCall = useCallback((type: CallType) => {
     if (!mesh.client || !selectedChatId) return;
+
+    if (!mesh.client.supportsVoip()) {
+      console.error("VoIP not supported by this client");
+      return;
+    }
+
     const call = mesh.client.createCall(selectedChatId);
     if (!call) {
       console.error("Failed to create call for room:", selectedChatId);
       return;
     }
+
+    // Listen for errors before placing call
+    call.on("error" as CallEvent, (err: unknown) => {
+      console.error("Call error:", err);
+    });
+
     setActiveCall(call);
     setCallType(type);
     setCallOpen(true);
 
     if (type === "video") {
-      call.placeVideoCall().catch((err) => console.error("Failed to place video call:", err));
+      call.placeVideoCall().catch((err) => {
+        console.error("Failed to place video call:", err);
+        setCallOpen(false);
+        setActiveCall(null);
+      });
     } else {
-      call.placeVoiceCall().catch((err) => console.error("Failed to place voice call:", err));
+      call.placeVoiceCall().catch((err) => {
+        console.error("Failed to place voice call:", err);
+        setCallOpen(false);
+        setActiveCall(null);
+      });
     }
   }, [mesh.client, selectedChatId]);
 
@@ -189,7 +210,12 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     setCallType(video ? "video" : "audio");
     setCallOpen(true);
     setIncomingCall(null);
-    incomingCall.answer(video, !video).catch((err) => console.error("Failed to answer call:", err));
+    // answer(audio, video) -- audio is always true, video depends on user choice
+    incomingCall.answer(true, video).catch((err) => {
+      console.error("Failed to answer call:", err);
+      setCallOpen(false);
+      setActiveCall(null);
+    });
   }, [incomingCall]);
 
   const handleRejectIncoming = useCallback(() => {
