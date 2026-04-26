@@ -174,8 +174,9 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     setIsVideoOn(newVideoOn);
   };
 
-  const hasRemoteVideo = remoteStream ? remoteStream.getVideoTracks().some(t => t.enabled && !t.muted) : false;
-  const hasLocalVideo = localStream ? localStream.getVideoTracks().some(t => t.enabled && !t.muted) : false;
+  const hasRemoteVideo = remoteStream ? remoteStream.getVideoTracks().length > 0 : false;
+  const hasLocalVideo = localStream ? localStream.getVideoTracks().length > 0 : false;
+  const isVideoCall = type === "video" || hasRemoteVideo || hasLocalVideo;
 
   const statusText = callError ? callError :
     callState === "ringing" ? "Calling..." :
@@ -212,19 +213,18 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center z-10 px-4">
-          {/* Video call: show remote video fullscreen, local as PiP */}
-          {(hasRemoteVideo || hasLocalVideo) ? (
+          {isVideoCall ? (
             <div className="relative w-full flex-1 flex items-center justify-center">
-              {/* Remote video (large) */}
+              {/* Remote video (large) -- always rendered, hidden when no stream */}
               <div className="w-full h-full max-h-[65vh] rounded-3xl bg-black border border-border/30 overflow-hidden">
-                {hasRemoteVideo ? (
-                  <video
-                    ref={remoteVideoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className={`w-full h-full object-cover ${hasRemoteVideo && remoteStream ? "" : "hidden"}`}
+                />
+                {/* Avatar placeholder when no remote video */}
+                {(!hasRemoteVideo || !remoteStream) && (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-4">
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-3xl font-bold text-foreground border border-border animate-pulse">
                       {contactAvatar}
@@ -237,19 +237,17 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
                 )}
               </div>
 
-              {/* Local video PiP (small, bottom-right) */}
-              {hasLocalVideo && (
-                <div className="absolute bottom-3 right-3 w-24 h-32 md:w-32 md:h-44 rounded-2xl overflow-hidden border-2 border-primary/50 shadow-glow bg-black">
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover mirror"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                </div>
-              )}
+              {/* Local video PiP (small, bottom-right) -- always rendered */}
+              <div className={`absolute bottom-3 right-3 w-24 h-32 md:w-32 md:h-44 rounded-2xl overflow-hidden border-2 border-primary/50 shadow-glow bg-black ${hasLocalVideo && localStream ? "" : "hidden"}`}>
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                  style={{ transform: "scaleX(-1)" }}
+                />
+              </div>
 
               {/* Duration overlay */}
               {callState === "connected" && (
