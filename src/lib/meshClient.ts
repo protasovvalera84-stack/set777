@@ -6,6 +6,7 @@
  */
 
 import * as sdk from "matrix-js-sdk";
+import { IndexedDBStore } from "matrix-js-sdk/lib/store/indexeddb";
 
 // Re-export internal types under Meshlink names
 export type MeshClient = sdk.MatrixClient;
@@ -43,12 +44,54 @@ export function loadSession(): MeshlinkSession | null {
   return null;
 }
 
-/** Clear session. */
+/** Clear session and clean up stored data. */
 export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
-/** Create an authenticated client from a stored session. */
+/** Full logout: invalidate token on server, clear local data. */
+export async function logoutAccount(session: MeshlinkSession): Promise<void> {
+  // Invalidate access token on server
+  try {
+    await fetch(`${session.homeserverUrl}/_matrix/client/v3/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+  } catch {
+    // Server may be unreachable, continue with local cleanup
+  }
+
+  // Clear IndexedDB sync store
+  try {
+    const dbName = "meshlink-sync-" + session.userId;
+    window.indexedDB.deleteDatabase(dbName);
+  } catch {
+    // Non-critical
+  }
+
+  clearSession();
+}
+
+/** Create an authenticated client with persistent IndexedDB storage. */
+export async function createClientWithStore(session: MeshlinkSession): Promise<MeshClient> {
+  const store = new IndexedDBStore({
+    indexedDB: window.indexedDB,
+    dbName: "meshlink-sync-" + session.userId,
+    localStorage: window.localStorage,
+  });
+  await store.startup();
+
+  return sdk.createClient({
+    baseUrl: session.homeserverUrl,
+    accessToken: session.accessToken,
+    userId: session.userId,
+    deviceId: session.deviceId,
+    store,
+    timelineSupport: true,
+  });
+}
+
+/** Create an authenticated client (in-memory, for quick operations). */
 export function createClient(session: MeshlinkSession): MeshClient {
   return sdk.createClient({
     baseUrl: session.homeserverUrl,
