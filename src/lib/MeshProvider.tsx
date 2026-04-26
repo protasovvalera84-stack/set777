@@ -103,24 +103,36 @@ export function useMesh(): MeshContextValue {
 function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>): MeshRoom {
   const members = room.getJoinedMembers();
 
-  // Determine room type:
-  // 1. Check if it's a DM (marked in m.direct account data or is_direct flag)
-  const isDm = directRoomIds.has(room.roomId) ||
-    (members.length <= 2 && !room.isSpaceRoom() && !room.getCanonicalAlias());
+  // Determine room type using multiple signals:
 
-  // 2. Check if it's a channel (public join_rule or has canonical alias)
-  let isChannel = false;
-  if (!isDm) {
-    try {
-      const joinRule = room.getJoinRule();
-      isChannel = joinRule === "public";
-    } catch {
-      // If we can't determine join rule, check for canonical alias (channels have aliases)
-      isChannel = !!room.getCanonicalAlias();
-    }
+  // 1. Check join_rule first -- public rooms are always channels
+  let joinRule = "invite";
+  try {
+    joinRule = room.getJoinRule();
+  } catch { /* default to invite */ }
+
+  const isPublic = joinRule === "public";
+
+  // 2. Check if explicitly marked as DM in m.direct account data
+  const isMarkedDirect = directRoomIds.has(room.roomId);
+
+  // 3. Determine final type
+  let roomType: "dm" | "group" | "channel";
+  if (isPublic) {
+    // Public rooms are always channels, regardless of member count
+    roomType = "channel";
+  } else if (isMarkedDirect) {
+    // Explicitly marked as DM
+    roomType = "dm";
+  } else if (members.length === 2 && !room.isSpaceRoom() && !room.name) {
+    // Unnamed room with exactly 2 members -- likely a DM that wasn't marked
+    roomType = "dm";
+  } else {
+    // Everything else is a group
+    roomType = "group";
   }
 
-  const roomType: "dm" | "group" | "channel" = isDm ? "dm" : isChannel ? "channel" : "group";
+  console.debug(`Room "${room.name || room.roomId}": joinRule=${joinRule}, markedDirect=${isMarkedDirect}, members=${members.length} -> type=${roomType}`);
 
   const timeline = room.getLiveTimeline().getEvents();
   const lastEvt = [...timeline].reverse().find(
@@ -136,7 +148,7 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>)
   }
 
   let name = room.name || "Unnamed";
-  if (isDm) {
+  if (roomType === "dm") {
     const other = members.find((m) => m.userId !== myUserId);
     if (other) name = other.name || other.userId;
   }
