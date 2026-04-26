@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Phone, PhoneOff, Video, VideoOff, Mic, MicOff,
-  Volume2, VolumeX, Monitor, X, Maximize2, Minimize2,
+  Volume2, VolumeX, X, Maximize2, Minimize2,
   Lock,
 } from "lucide-react";
+import type { MatrixCall } from "matrix-js-sdk/lib/webrtc/call";
+import { CallState, CallEvent } from "matrix-js-sdk/lib/webrtc/call";
+import { CallFeedEvent } from "matrix-js-sdk/lib/webrtc/callFeed";
 
 export type CallType = "audio" | "video";
 
@@ -12,87 +15,110 @@ interface CallScreenProps {
   type: CallType;
   contactName: string;
   contactAvatar: string;
+  matrixCall: MatrixCall | null;
   onEnd: () => void;
 }
 
-export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: CallScreenProps) {
-  const [callState, setCallState] = useState<"ringing" | "connected" | "ended">("ringing");
+export function CallScreen({ open, type, contactName, contactAvatar, matrixCall, onEnd }: CallScreenProps) {
+  const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | "ended">("ringing");
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(type === "video");
-  const [isSpeaker, setIsSpeaker] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [hasStream, setHasStream] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
-  // Stop all tracks on the current stream
-  const stopStream = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setHasStream(false);
-    }
-  }, []);
-
-  // Start camera+mic
-  const startCamera = useCallback(async () => {
-    stopStream();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      streamRef.current = stream;
-      setHasStream(true);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-    } catch {
-      setIsVideoOn(false);
-    }
-  }, [stopStream]);
-
-  // Reset state when call opens
+  // Attach Matrix call events
   useEffect(() => {
-    if (!open) {
-      stopStream();
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
+    if (!matrixCall || !open) return;
+
+    const onStateChange = (state: CallState) => {
+      console.log("Call state:", state);
+      switch (state) {
+        case CallState.Ringing:
+        case CallState.InviteSent:
+        case CallState.WaitLocalMedia:
+        case CallState.CreateOffer:
+        case CallState.CreateAnswer:
+          setCallState("ringing");
+          break;
+        case CallState.Connecting:
+          setCallState("connecting");
+          break;
+        case CallState.Connected:
+          setCallState("connected");
+          break;
+        case CallState.Ended:
+          setCallState("ended");
+          setTimeout(onEnd, 1000);
+          break;
+      }
+    };
+
+    const onFeedsChanged = () => {
+      // Attach remote stream
+      const remoteFeed = matrixCall.remoteUsermediaFeed;
+      if (remoteFeed?.stream) {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteFeed.stream;
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = remoteFeed.stream;
+        }
+      }
+
+      // Attach local stream
+      const localFeed = matrixCall.localUsermediaFeed;
+      if (localFeed?.stream && localVideoRef.current) {
+        localVideoRef.current.srcObject = localFeed.stream;
+      }
+    };
+
+    matrixCall.on(CallEvent.State, onStateChange);
+    matrixCall.on(CallEvent.FeedsChanged, onFeedsChanged);
+
+    // Set initial state
+    onStateChange(matrixCall.state);
+    onFeedsChanged();
+
+    // Also listen for new streams on existing feeds
+    const feeds = matrixCall.getFeeds();
+    for (const feed of feeds) {
+      feed.on(CallFeedEvent.NewStream, onFeedsChanged);
     }
 
-    setCallState("ringing");
-    setDuration(0);
-    setIsMuted(false);
-    setIsVideoOn(type === "video");
-    setIsSpeaker(false);
-
-    const connectTimer = setTimeout(() => setCallState("connected"), 2000);
-    return () => clearTimeout(connectTimer);
-  }, [open, type, stopStream]);
+    return () => {
+      matrixCall.removeListener(CallEvent.State, onStateChange);
+      matrixCall.removeListener(CallEvent.FeedsChanged, onFeedsChanged);
+      for (const feed of feeds) {
+        feed.removeListener(CallFeedEvent.NewStream, onFeedsChanged);
+      }
+    };
+  }, [matrixCall, open, onEnd]);
 
   // Duration counter
   useEffect(() => {
-    if (callState !== "connected") return;
+    if (callState !== "connected") {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    setDuration(0);
     timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [callState]);
 
-  // Start/stop camera when isVideoOn changes
+  // Cleanup on close
   useEffect(() => {
-    if (!open) return;
-    if (isVideoOn) {
-      startCamera();
-    } else {
-      stopStream();
+    if (!open) {
+      setDuration(0);
+      setCallState("ringing");
+      setIsMuted(false);
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-  }, [isVideoOn, open, startCamera, stopStream]);
-
-  // Attach stream to video element when ref becomes available
-  useEffect(() => {
-    if (localVideoRef.current && streamRef.current) {
-      localVideoRef.current.srcObject = streamRef.current;
-    }
-  }, [hasStream]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -103,22 +129,35 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
   };
 
   const handleEnd = () => {
+    if (matrixCall) {
+      try { matrixCall.hangup("user_hangup", false); } catch { /* ok */ }
+    }
     setCallState("ended");
-    stopStream();
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeout(onEnd, 500);
   };
 
   const toggleMute = () => {
-    setIsMuted((prev) => {
-      if (streamRef.current) {
-        streamRef.current.getAudioTracks().forEach((t) => { t.enabled = prev; });
-      }
-      return !prev;
-    });
+    if (!matrixCall) return;
+    const newMuted = !isMuted;
+    matrixCall.setMicrophoneMuted(newMuted);
+    setIsMuted(newMuted);
   };
 
-  const toggleVideo = () => setIsVideoOn((prev) => !prev);
+  const toggleVideo = () => {
+    if (!matrixCall) return;
+    const newVideoOn = !isVideoOn;
+    matrixCall.setLocalVideoMuted(!newVideoOn);
+    setIsVideoOn(newVideoOn);
+  };
+
+  const hasRemoteVideo = matrixCall?.remoteUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
+  const hasLocalVideo = matrixCall?.localUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
+
+  const statusText = callState === "ringing" ? "Calling..." :
+    callState === "connecting" ? "Connecting..." :
+    callState === "ended" ? "Call ended" :
+    formatDuration(duration);
 
   return (
     <div className={`fixed inset-0 z-[70] flex flex-col bg-background ${isFullscreen ? "" : "md:p-8 md:items-center md:justify-center"}`}>
@@ -135,7 +174,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
           <div className="flex items-center gap-2">
             <Lock className="h-3 w-3 text-primary" />
             <span className="text-[10px] font-mono uppercase tracking-[0.15em] gradient-text font-semibold">
-              encrypted {type} call
+              {type} call
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -150,34 +189,38 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center z-10 px-6">
-          {isVideoOn && hasStream ? (
+          {(hasRemoteVideo || hasLocalVideo) ? (
             /* Video call view */
             <div className="relative w-full flex-1 flex items-center justify-center">
-              {/* Remote video placeholder */}
+              {/* Remote video */}
               <div className="w-full h-full max-h-[60vh] rounded-3xl bg-black/30 border border-border/30 flex items-center justify-center overflow-hidden">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-3xl font-bold text-foreground border border-border animate-pulse">
-                    {contactAvatar}
+                {hasRemoteVideo ? (
+                  <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-3xl" />
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-3xl font-bold text-foreground border border-border animate-pulse">
+                      {contactAvatar}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{contactName}</p>
+                    <p className={`text-xs font-mono ${callState === "connected" ? "text-online" : "text-primary animate-pulse"}`}>
+                      {statusText}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {callState === "ringing" ? "Connecting..." : contactName}
-                  </p>
-                  {callState === "connected" && (
-                    <p className="text-xs font-mono text-online">{formatDuration(duration)}</p>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Local video PiP */}
-              <div className="absolute bottom-4 right-4 w-28 h-40 md:w-36 md:h-48 rounded-2xl overflow-hidden border-2 border-primary/40 shadow-glow bg-black">
-                <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-              </div>
+              {hasLocalVideo && (
+                <div className="absolute bottom-4 right-4 w-28 h-40 md:w-36 md:h-48 rounded-2xl overflow-hidden border-2 border-primary/40 shadow-glow bg-black">
+                  <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
           ) : (
             /* Audio call view */
             <div className="flex flex-col items-center gap-6">
               <div className="relative">
-                {callState === "ringing" && (
+                {(callState === "ringing" || callState === "connecting") && (
                   <div className="absolute inset-0 rounded-full gradient-primary opacity-30 animate-ping" style={{ animationDuration: "1.5s" }} />
                 )}
                 {callState === "connected" && (
@@ -191,10 +234,10 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
               <div className="text-center">
                 <h2 className="text-2xl font-semibold text-foreground">{contactName}</h2>
                 <p className={`text-sm font-mono mt-1 ${
-                  callState === "ringing" ? "text-primary animate-pulse" :
-                  callState === "ended" ? "text-destructive" : "text-online"
+                  callState === "connected" ? "text-online" :
+                  callState === "ended" ? "text-destructive" : "text-primary animate-pulse"
                 }`}>
-                  {callState === "ringing" ? "Calling..." : callState === "ended" ? "Call ended" : formatDuration(duration)}
+                  {statusText}
                 </p>
               </div>
 
@@ -217,6 +260,9 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
           )}
         </div>
 
+        {/* Hidden audio element for remote audio */}
+        <audio ref={remoteAudioRef} autoPlay />
+
         {/* Controls */}
         <div className="z-10 px-6 py-8">
           <div className="flex items-center justify-center gap-4">
@@ -225,9 +271,52 @@ export function CallScreen({ open, type, contactName, contactAvatar, onEnd }: Ca
             <button onClick={handleEnd} className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-105 transition-all">
               <PhoneOff className="h-6 w-6" />
             </button>
-            <CallButton icon={isSpeaker ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />} label={isSpeaker ? "Earpiece" : "Speaker"} active={isSpeaker} onClick={() => setIsSpeaker((s) => !s)} />
-            <CallButton icon={<Monitor className="h-5 w-5" />} label="Share" onClick={() => {}} />
+            <CallButton icon={<Volume2 className="h-5 w-5" />} label="Speaker" active={false} onClick={() => {}} />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Incoming call notification banner */
+export function IncomingCallBanner({ call, callerName, onAccept, onReject }: {
+  call: MatrixCall;
+  callerName: string;
+  onAccept: (video: boolean) => void;
+  onReject: () => void;
+}) {
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] w-full max-w-sm animate-fade-in-up">
+      <div className="rounded-3xl glass-strong border border-primary/40 shadow-elegant p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full gradient-primary text-primary-foreground font-bold animate-pulse">
+            <Phone className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">{callerName}</p>
+            <p className="text-xs text-muted-foreground">Incoming call...</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onAccept(false)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 bg-online/20 text-online border border-online/30 text-sm font-medium hover:bg-online/30 transition-all"
+          >
+            <Phone className="h-4 w-4" /> Audio
+          </button>
+          <button
+            onClick={() => onAccept(true)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 gradient-primary text-primary-foreground text-sm font-medium hover:scale-[1.02] transition-all"
+          >
+            <Video className="h-4 w-4" /> Video
+          </button>
+          <button
+            onClick={onReject}
+            className="flex items-center justify-center rounded-2xl px-4 py-2.5 bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-all"
+          >
+            <PhoneOff className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

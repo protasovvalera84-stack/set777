@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { ChatSidebar, type SearchResult } from "@/components/ChatSidebar";
 import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
 import { AccountSettings } from "@/components/AccountSettings";
-import { CallScreen, CallType } from "@/components/CallScreen";
+import { CallScreen, IncomingCallBanner, CallType } from "@/components/CallScreen";
 import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import { DmSettingsDialog } from "@/components/DmSettingsDialog";
 import {
@@ -11,6 +11,9 @@ import {
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic, ChatFolder,
 } from "@/data/mockData";
 import { useMesh } from "@/lib/MeshProvider";
+import type { MatrixCall } from "matrix-js-sdk/lib/webrtc/call";
+import { CallEventHandlerEvent } from "matrix-js-sdk/lib/webrtc/callEventHandler";
+import { getUserDisplayName } from "@/lib/meshClient";
 
 interface IndexProps {
   initialProfile?: UserProfile;
@@ -28,6 +31,9 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callType, setCallType] = useState<CallType>("audio");
+  const [activeCall, setActiveCall] = useState<MatrixCall | null>(null);
+  const [incomingCall, setIncomingCall] = useState<MatrixCall | null>(null);
+  const [incomingCallerName, setIncomingCallerName] = useState("");
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [dmSettingsOpen, setDmSettingsOpen] = useState(false);
   const [folders, setFolders] = useState<ChatFolder[]>([
@@ -143,10 +149,59 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     onProfileChange?.(updated);
   };
 
-  const handleCall = (type: CallType) => {
+  // Listen for incoming calls
+  useEffect(() => {
+    const client = mesh.client;
+    if (!client) return;
+
+    const onIncoming = (call: MatrixCall) => {
+      console.log("Incoming call from:", call.invitee);
+      const callerId = call.getOpponentMember()?.userId || "Unknown";
+      setIncomingCallerName(getUserDisplayName(client, callerId));
+      setIncomingCall(call);
+    };
+
+    client.on(CallEventHandlerEvent.Incoming, onIncoming);
+    return () => { client.removeListener(CallEventHandlerEvent.Incoming, onIncoming); };
+  }, [mesh.client]);
+
+  const handleCall = useCallback((type: CallType) => {
+    if (!mesh.client || !selectedChatId) return;
+    const call = mesh.client.createCall(selectedChatId);
+    if (!call) {
+      console.error("Failed to create call for room:", selectedChatId);
+      return;
+    }
+    setActiveCall(call);
     setCallType(type);
     setCallOpen(true);
-  };
+
+    if (type === "video") {
+      call.placeVideoCall().catch((err) => console.error("Failed to place video call:", err));
+    } else {
+      call.placeVoiceCall().catch((err) => console.error("Failed to place voice call:", err));
+    }
+  }, [mesh.client, selectedChatId]);
+
+  const handleAcceptIncoming = useCallback((video: boolean) => {
+    if (!incomingCall) return;
+    setActiveCall(incomingCall);
+    setCallType(video ? "video" : "audio");
+    setCallOpen(true);
+    setIncomingCall(null);
+    incomingCall.answer(video, !video).catch((err) => console.error("Failed to answer call:", err));
+  }, [incomingCall]);
+
+  const handleRejectIncoming = useCallback(() => {
+    if (!incomingCall) return;
+    incomingCall.reject();
+    setIncomingCall(null);
+  }, [incomingCall]);
+
+  const handleEndCall = useCallback(() => {
+    setCallOpen(false);
+    setActiveCall(null);
+  }, []);
 
   const handleUpdateChat = (_updated: Chat) => {
     // Room updates handled by server sync
@@ -351,7 +406,17 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           type={callType}
           contactName={selectedChat.name}
           contactAvatar={selectedChat.avatar}
-          onEnd={() => setCallOpen(false)}
+          matrixCall={activeCall}
+          onEnd={handleEndCall}
+        />
+      )}
+
+      {incomingCall && !callOpen && (
+        <IncomingCallBanner
+          call={incomingCall}
+          callerName={incomingCallerName}
+          onAccept={handleAcceptIncoming}
+          onReject={handleRejectIncoming}
         />
       )}
     </div>
