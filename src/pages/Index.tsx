@@ -439,7 +439,6 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
 
       {incomingCall && !callOpen && (
         <IncomingCallBanner
-          call={incomingCall}
           callerName={incomingCallerName}
           onAccept={handleAcceptIncoming}
           onReject={handleRejectIncoming}

@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Phone, PhoneOff, Video, VideoOff, Mic, MicOff,
-  Volume2, VolumeX, X, Maximize2, Minimize2,
+  Volume2, X, Maximize2, Minimize2,
   Lock,
 } from "lucide-react";
 import type { MatrixCall } from "matrix-js-sdk/lib/webrtc/call";
 import { CallState, CallEvent } from "matrix-js-sdk/lib/webrtc/call";
-import { CallFeedEvent } from "matrix-js-sdk/lib/webrtc/callFeed";
 
 export type CallType = "audio" | "video";
 
@@ -26,11 +25,25 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(type === "video");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Reactive stream tracking -- forces re-render when streams change
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+
+  // Grab streams from the call object
+  const updateStreams = useCallback(() => {
+    if (!matrixCall) return;
+
+    const remote = matrixCall.remoteUsermediaFeed?.stream || null;
+    const local = matrixCall.localUsermediaFeed?.stream || null;
+
+    setRemoteStream((prev) => (prev !== remote ? remote : prev));
+    setLocalStream((prev) => (prev !== local ? local : prev));
+  }, [matrixCall]);
 
   // Attach Matrix call events
   useEffect(() => {
@@ -51,6 +64,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
           break;
         case CallState.Connected:
           setCallState("connected");
+          updateStreams();
           break;
         case CallState.Ended:
           setCallState("ended");
@@ -60,49 +74,50 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     };
 
     const onFeedsChanged = () => {
-      // Attach remote stream
-      const remoteFeed = matrixCall.remoteUsermediaFeed;
-      if (remoteFeed?.stream) {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteFeed.stream;
-        }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = remoteFeed.stream;
-        }
-      }
+      console.log("Feeds changed, remote:", !!matrixCall.remoteUsermediaFeed, "local:", !!matrixCall.localUsermediaFeed);
+      updateStreams();
+    };
 
-      // Attach local stream
-      const localFeed = matrixCall.localUsermediaFeed;
-      if (localFeed?.stream && localVideoRef.current) {
-        localVideoRef.current.srcObject = localFeed.stream;
-      }
+    const onError = (err: { message?: string; code?: string }) => {
+      console.error("Call error:", err);
+      setCallError(err?.message || err?.code || "Call failed");
     };
 
     matrixCall.on(CallEvent.State, onStateChange);
     matrixCall.on(CallEvent.FeedsChanged, onFeedsChanged);
-    matrixCall.on(CallEvent.Error, (err: { message?: string; code?: string }) => {
-      console.error("Call error event:", err);
-      setCallError(err?.message || err?.code || "Call failed");
-    });
+    matrixCall.on(CallEvent.Error, onError);
 
     // Set initial state
     onStateChange(matrixCall.state);
-    onFeedsChanged();
+    updateStreams();
 
-    // Also listen for new streams on existing feeds
-    const feeds = matrixCall.getFeeds();
-    for (const feed of feeds) {
-      feed.on(CallFeedEvent.NewStream, onFeedsChanged);
-    }
+    // Poll for streams every 500ms as backup (feeds events can be unreliable)
+    const streamPoll = setInterval(updateStreams, 500);
 
     return () => {
       matrixCall.removeListener(CallEvent.State, onStateChange);
       matrixCall.removeListener(CallEvent.FeedsChanged, onFeedsChanged);
-      for (const feed of feeds) {
-        feed.removeListener(CallFeedEvent.NewStream, onFeedsChanged);
-      }
+      matrixCall.removeListener(CallEvent.Error, onError);
+      clearInterval(streamPoll);
     };
-  }, [matrixCall, open, onEnd]);
+  }, [matrixCall, open, onEnd, updateStreams]);
+
+  // Attach remote stream to video/audio elements
+  useEffect(() => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
+  // Attach local stream to video element
+  useEffect(() => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
 
   // Duration counter
   useEffect(() => {
@@ -122,6 +137,8 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
       setCallState("ringing");
       setCallError(null);
       setIsMuted(false);
+      setRemoteStream(null);
+      setLocalStream(null);
       if (timerRef.current) clearInterval(timerRef.current);
     }
   }, [open]);
@@ -157,8 +174,8 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     setIsVideoOn(newVideoOn);
   };
 
-  const hasRemoteVideo = matrixCall?.remoteUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
-  const hasLocalVideo = matrixCall?.localUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
+  const hasRemoteVideo = remoteStream ? remoteStream.getVideoTracks().some(t => t.enabled && !t.muted) : false;
+  const hasLocalVideo = localStream ? localStream.getVideoTracks().some(t => t.enabled && !t.muted) : false;
 
   const statusText = callError ? callError :
     callState === "ringing" ? "Calling..." :
@@ -168,7 +185,6 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
 
   return (
     <div className={`fixed inset-0 z-[70] flex flex-col bg-background ${isFullscreen ? "" : "md:p-8 md:items-center md:justify-center"}`}>
-      {/* Background */}
       <div className="absolute inset-0">
         <div className="pointer-events-none absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary/15 blur-3xl animate-float" />
         <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-accent/15 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
@@ -195,16 +211,21 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col items-center justify-center z-10 px-6">
+        <div className="flex-1 flex flex-col items-center justify-center z-10 px-4">
+          {/* Video call: show remote video fullscreen, local as PiP */}
           {(hasRemoteVideo || hasLocalVideo) ? (
-            /* Video call view */
             <div className="relative w-full flex-1 flex items-center justify-center">
-              {/* Remote video */}
-              <div className="w-full h-full max-h-[60vh] rounded-3xl bg-black/30 border border-border/30 flex items-center justify-center overflow-hidden">
+              {/* Remote video (large) */}
+              <div className="w-full h-full max-h-[65vh] rounded-3xl bg-black border border-border/30 overflow-hidden">
                 {hasRemoteVideo ? (
-                  <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover rounded-3xl" />
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-4">
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-3xl font-bold text-foreground border border-border animate-pulse">
                       {contactAvatar}
                     </div>
@@ -216,10 +237,24 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
                 )}
               </div>
 
-              {/* Local video PiP */}
+              {/* Local video PiP (small, bottom-right) */}
               {hasLocalVideo && (
-                <div className="absolute bottom-4 right-4 w-28 h-40 md:w-36 md:h-48 rounded-2xl overflow-hidden border-2 border-primary/40 shadow-glow bg-black">
-                  <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                <div className="absolute bottom-3 right-3 w-24 h-32 md:w-32 md:h-44 rounded-2xl overflow-hidden border-2 border-primary/50 shadow-glow bg-black">
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover mirror"
+                    style={{ transform: "scaleX(-1)" }}
+                  />
+                </div>
+              )}
+
+              {/* Duration overlay */}
+              {callState === "connected" && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm">
+                  <p className="text-xs font-mono text-white">{formatDuration(duration)}</p>
                 </div>
               )}
             </div>
@@ -267,11 +302,11 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
           )}
         </div>
 
-        {/* Hidden audio element for remote audio */}
+        {/* Hidden audio element for remote audio (always present) */}
         <audio ref={remoteAudioRef} autoPlay />
 
         {/* Controls */}
-        <div className="z-10 px-6 py-8">
+        <div className="z-10 px-6 py-6">
           <div className="flex items-center justify-center gap-4">
             <CallButton icon={isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />} label={isMuted ? "Unmute" : "Mute"} active={isMuted} onClick={toggleMute} />
             <CallButton icon={isVideoOn ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />} label={isVideoOn ? "Cam Off" : "Cam On"} active={!isVideoOn && type === "video"} onClick={toggleVideo} />
@@ -287,8 +322,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
 }
 
 /** Incoming call notification banner */
-export function IncomingCallBanner({ call, callerName, onAccept, onReject }: {
-  call: MatrixCall;
+export function IncomingCallBanner({ callerName, onAccept, onReject }: {
   callerName: string;
   onAccept: (video: boolean) => void;
   onReject: () => void;
