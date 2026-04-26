@@ -21,6 +21,7 @@ interface CallScreenProps {
 
 export function CallScreen({ open, type, contactName, contactAvatar, matrixCall, onEnd }: CallScreenProps) {
   const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | "ended">("ringing");
+  const [callError, setCallError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(type === "video");
@@ -79,6 +80,10 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
 
     matrixCall.on(CallEvent.State, onStateChange);
     matrixCall.on(CallEvent.FeedsChanged, onFeedsChanged);
+    matrixCall.on(CallEvent.Error, (err: { message?: string; code?: string }) => {
+      console.error("Call error event:", err);
+      setCallError(err?.message || err?.code || "Call failed");
+    });
 
     // Set initial state
     onStateChange(matrixCall.state);
@@ -115,6 +120,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     if (!open) {
       setDuration(0);
       setCallState("ringing");
+      setCallError(null);
       setIsMuted(false);
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -154,7 +160,8 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
   const hasRemoteVideo = matrixCall?.remoteUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
   const hasLocalVideo = matrixCall?.localUsermediaFeed?.stream?.getVideoTracks().some(t => t.enabled) ?? false;
 
-  const statusText = callState === "ringing" ? "Calling..." :
+  const statusText = callError ? callError :
+    callState === "ringing" ? "Calling..." :
     callState === "connecting" ? "Connecting..." :
     callState === "ended" ? "Call ended" :
     formatDuration(duration);
