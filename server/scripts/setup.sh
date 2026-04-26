@@ -205,67 +205,75 @@ template_file "$SERVER_DIR/element/config.json"
 log "All config files templated."
 
 # =============================================================================
-# Step 6: Generate self-signed TLS certificate and HTTPS nginx config
+# Step 6: Generate TLS certificate (Let's Encrypt via nip.io or self-signed)
 # =============================================================================
 SSL_DIR="$SERVER_DIR/nginx/ssl"
 mkdir -p "$SSL_DIR"
+mkdir -p "$SERVER_DIR/nginx/certbot"
 
-log "Generating self-signed TLS certificate..."
-openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+# Create nip.io domain from IP (e.g. 72.56.244.207 -> 72-56-244-207.nip.io)
+NIP_DOMAIN=$(echo "$SERVER_HOST" | tr '.' '-').nip.io
+log "Domain for TLS: $NIP_DOMAIN"
+
+# First generate self-signed cert so nginx can start
+log "Generating temporary self-signed certificate..."
+openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
     -keyout "$SSL_DIR/meshlink.key" \
     -out "$SSL_DIR/meshlink.crt" \
-    -subj "/CN=${SERVER_HOST}/O=Meshlink/C=XX" \
-    -addext "subjectAltName=IP:${SERVER_HOST},DNS:${SERVER_HOST}" \
-    2>/dev/null
+    -subj "/CN=${NIP_DOMAIN}" 2>/dev/null
 chmod 600 "$SSL_DIR/meshlink.key"
 chmod 644 "$SSL_DIR/meshlink.crt"
-log "TLS certificate generated."
 
-# Write HTTPS nginx config (replaces the default HTTP-only config from git)
+# Write HTTPS nginx config with ACME challenge support
 log "Writing HTTPS nginx config..."
-cat > "$SERVER_DIR/nginx/conf.d/default.conf" <<'NGINXCONF'
-limit_req_zone $binary_remote_addr zone=synapse_login:10m rate=5r/s;
-limit_req_zone $binary_remote_addr zone=synapse_register:10m rate=3r/s;
+cat > "$SERVER_DIR/nginx/conf.d/default.conf" <<NGINXCONF
+limit_req_zone \$binary_remote_addr zone=synapse_login:10m rate=5r/s;
+limit_req_zone \$binary_remote_addr zone=synapse_register:10m rate=3r/s;
 
 server {
     listen 0.0.0.0:80 default_server;
     server_name _;
+
+    # Let's Encrypt ACME challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
     location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
-    location / { return 301 https://$host$request_uri; }
+    location / { return 301 https://\$host\$request_uri; }
 }
 
 server {
     listen 0.0.0.0:443 ssl default_server;
     server_name _;
 
+    # Try Let's Encrypt cert first, fall back to self-signed
     ssl_certificate     /etc/nginx/ssl/meshlink.crt;
     ssl_certificate_key /etc/nginx/ssl/meshlink.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
 
-    add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options nosniff always;
-
     client_max_body_size 50m;
 
     location / {
         root /usr/share/nginx/www/meshlink;
         index index.html;
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
 
-    location /element/ { proxy_pass http://element:80/; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
+    location /element/ { proxy_pass http://element:80/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; }
     location = /element { return 301 /element/; }
 
     location /_matrix {
         proxy_pass http://synapse:8008;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 600s;
         proxy_buffering off;
@@ -273,29 +281,29 @@ server {
 
     location /_matrix/media {
         proxy_pass http://synapse:8008;
-        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_buffering off; proxy_read_timeout 300s; client_max_body_size 50m;
     }
 
-    location /.well-known/matrix/ { proxy_pass http://synapse:8008; proxy_set_header Host $host; }
-    location /_synapse { proxy_pass http://synapse:8008; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }
-    location /admin/ { proxy_pass http://synapse-admin:80/; proxy_set_header Host $host; }
+    location /.well-known/matrix/ { proxy_pass http://synapse:8008; proxy_set_header Host \$host; }
+    location /_synapse { proxy_pass http://synapse:8008; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; }
+    location /admin/ { proxy_pass http://synapse-admin:80/; proxy_set_header Host \$host; }
     location = /admin { return 301 /admin/; }
 
     location /_matrix/client/v3/login {
         limit_req zone=synapse_login burst=10 nodelay;
         proxy_pass http://synapse:8008;
-        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme;
     }
     location /_matrix/client/v3/register {
         limit_req zone=synapse_register burst=10 nodelay;
         proxy_pass http://synapse:8008;
-        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location = /config { proxy_pass http://admin-api:9090/; proxy_set_header Host $host; }
-    location /api/ { proxy_pass http://admin-api:9090; proxy_set_header Host $host; }
+    location = /config { proxy_pass http://admin-api:9090/; proxy_set_header Host \$host; }
+    location /api/ { proxy_pass http://admin-api:9090; proxy_set_header Host \$host; }
     location /installers/ { alias /usr/share/nginx/www/installers/; autoindex off; }
     location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
 }
@@ -308,8 +316,8 @@ log "HTTPS nginx config written."
 mkdir -p "$SERVER_DIR/nginx/www/installers"
 mkdir -p "$SERVER_DIR/nginx/www/meshlink"
 
-# Generate platform installers pointing to this server (HTTPS)
-BASE_URL="https://${SERVER_HOST}"
+# Generate platform installers pointing to this server (HTTPS with nip.io)
+BASE_URL="https://${NIP_DOMAIN}"
 if [ "$HTTP_PORT" != "80" ]; then
     BASE_URL="http://${SERVER_HOST}:${HTTP_PORT}"
 fi
@@ -499,6 +507,54 @@ fi
 log "Server is running."
 
 # =============================================================================
+# Step 9b: Get Let's Encrypt certificate (trusted by all browsers)
+# =============================================================================
+log "Requesting Let's Encrypt certificate for $NIP_DOMAIN..."
+
+# Install certbot if not available
+if ! command -v certbot &>/dev/null; then
+    apt-get install -y -qq certbot 2>/dev/null || true
+fi
+
+if command -v certbot &>/dev/null; then
+    # Stop nginx briefly to use standalone mode (more reliable than webroot)
+    docker compose stop nginx 2>/dev/null || true
+    sleep 2
+
+    certbot certonly --standalone \
+        --non-interactive --agree-tos \
+        --register-unsafely-without-email \
+        -d "$NIP_DOMAIN" \
+        --preferred-challenges http \
+        2>&1 | tail -5
+
+    if [ -f "/etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem" ]; then
+        # Copy Let's Encrypt certs to nginx ssl dir
+        cp "/etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem" "$SSL_DIR/meshlink.crt"
+        cp "/etc/letsencrypt/live/${NIP_DOMAIN}/privkey.pem" "$SSL_DIR/meshlink.key"
+        chmod 644 "$SSL_DIR/meshlink.crt"
+        chmod 600 "$SSL_DIR/meshlink.key"
+        log "Let's Encrypt certificate installed! No browser warnings."
+
+        # Setup auto-renewal cron
+        RENEW_CRON="0 4 * * * certbot renew --quiet && cp /etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem ${SSL_DIR}/meshlink.crt && cp /etc/letsencrypt/live/${NIP_DOMAIN}/privkey.pem ${SSL_DIR}/meshlink.key && cd ${SERVER_DIR} && docker compose restart nginx >> /var/log/meshlink-certbot.log 2>&1"
+        if ! crontab -l 2>/dev/null | grep -q "certbot renew"; then
+            (crontab -l 2>/dev/null; echo "$RENEW_CRON") | crontab -
+            log "Certificate auto-renewal cron installed."
+        fi
+    else
+        warn "Let's Encrypt failed. Using self-signed certificate."
+        warn "Browser will show security warning -- click Advanced -> Proceed."
+    fi
+
+    # Restart nginx with new cert
+    docker compose start nginx 2>/dev/null || docker compose up -d --no-deps nginx
+else
+    warn "certbot not available. Using self-signed certificate."
+    warn "Browser will show security warning -- click Advanced -> Proceed."
+fi
+
+# =============================================================================
 # Step 9b: Verify external accessibility
 # =============================================================================
 log "Verifying server is accessible..."
@@ -643,6 +699,7 @@ echo -e "${GREEN}   Meshlink Server is running!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "  Web client:    ${CYAN}${BASE_URL}${NC}"
+echo -e "  Also via IP:   ${CYAN}https://${SERVER_HOST}${NC}"
 echo -e "  Admin panel:   ${CYAN}${BASE_URL}/admin${NC}"
 echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"

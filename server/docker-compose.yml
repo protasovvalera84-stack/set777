@@ -94,6 +94,8 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/www:/usr/share/nginx/www:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/certbot:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
     networks:
       - meshlink
 
@@ -120,6 +122,7 @@ services:
 volumes:
   postgres_data:
   synapse_data:
+  certbot_certs:
 
 networks:
   meshlink:
