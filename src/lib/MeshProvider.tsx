@@ -66,6 +66,7 @@ export interface MeshMessage {
 interface MeshContextValue {
   client: MeshClient | null;
   ready: boolean;
+  error: string | null;
   userId: string;
   rooms: MeshRoom[];
   messageVersion: number;
@@ -205,6 +206,7 @@ interface Props {
 export function MeshProvider({ session, children }: Props) {
   const clientRef = useRef<MeshClient | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<MeshRoom[]>([]);
   const [messageVersion, setMessageVersion] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -273,6 +275,8 @@ export function MeshProvider({ session, children }: Props) {
 
     init().catch((err) => {
       console.error("Failed to initialize Meshlink client:", err);
+      setError(err instanceof Error ? err.message : "Connection failed");
+      setReady(true); // Set ready so UI shows error instead of infinite loading
     });
 
     return () => {
@@ -498,6 +502,7 @@ export function MeshProvider({ session, children }: Props) {
   const value: MeshContextValue = {
     client: clientRef.current,
     ready,
+    error,
     userId: session.userId,
     rooms,
     messageVersion,
