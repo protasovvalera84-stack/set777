@@ -11,7 +11,7 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import { UserProfile, defaultProfile } from "@/data/mockData";
 import { PlatformId } from "@/data/languages";
 import { MeshProvider } from "@/lib/MeshProvider";
-import { loadSession, clearSession, type MeshlinkSession } from "@/lib/meshClient";
+import { loadSession, clearSession, logoutAccount, type MeshlinkSession } from "@/lib/meshClient";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +45,10 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    // Logout from server and clean up
+    if (session) {
+      logoutAccount(session).catch(() => {});
+    }
     localStorage.removeItem(REGISTERED_KEY);
     localStorage.removeItem(PROFILE_KEY);
     clearSession();

@@ -17,7 +17,7 @@ import {
 } from "react";
 import * as sdk from "matrix-js-sdk";
 import {
-  createClient,
+  createClientWithStore,
   startClient,
   stopClient,
   getUserDisplayName,
@@ -234,61 +234,55 @@ export function MeshProvider({ session, children }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    const client = createClient(session);
-    clientRef.current = client;
 
-    const onEvent = () => {
-      if (!cancelled) {
-        debouncedRefresh();
-        // Bump message version to trigger re-render of active chat messages
-        setMessageVersion((v) => v + 1);
-      }
-    };
+    async function init() {
+      const client = await createClientWithStore(session);
+      if (cancelled) { client.stopClient(); return; }
+      clientRef.current = client;
 
-    // Auto-accept room invites so DMs and group invites work immediately
-    const onMembership = (_event: MeshEvent, member: { userId: string; membership: string }, _old: string | null) => {
-      if (member.userId === session.userId && member.membership === "invite") {
-        client.joinRoom(member.userId).catch(() => {
-          // Fallback: try joining by room ID from the event
-        });
-      }
-      if (!cancelled) {
-        debouncedRefresh();
-        setMessageVersion((v) => v + 1);
-      }
-    };
+      const onEvent = () => {
+        if (!cancelled) {
+          debouncedRefresh();
+          setMessageVersion((v) => v + 1);
+        }
+      };
 
-    // Auto-join invited rooms
-    const onMyMembership = (room: SdkRoom, membership: string) => {
-      if (membership === "invite") {
-        client.joinRoom(room.roomId).catch((err) => {
-          console.error("Failed to auto-join room:", room.roomId, err);
-        });
-      }
-      if (!cancelled) {
-        debouncedRefresh();
-        setMessageVersion((v) => v + 1);
-      }
-    };
+      const onMyMembership = (room: SdkRoom, membership: string) => {
+        if (membership === "invite") {
+          client.joinRoom(room.roomId).catch((err) => {
+            console.error("Failed to auto-join room:", room.roomId, err);
+          });
+        }
+        if (!cancelled) {
+          debouncedRefresh();
+          setMessageVersion((v) => v + 1);
+        }
+      };
 
-    client.on(sdk.RoomEvent.Timeline, onEvent);
-    client.on(sdk.RoomEvent.Name, onEvent);
-    client.on(sdk.RoomEvent.MyMembership, onMyMembership);
-    client.on(sdk.RoomMemberEvent.Membership, onMembership);
+      client.on(sdk.RoomEvent.Timeline, onEvent);
+      client.on(sdk.RoomEvent.Name, onEvent);
+      client.on(sdk.RoomEvent.MyMembership, onMyMembership);
+      client.on(sdk.RoomMemberEvent.Membership, onEvent);
 
-    startClient(client).then(() => {
+      await startClient(client);
       if (!cancelled) {
         setReady(true);
         refreshRooms();
       }
+    }
+
+    init().catch((err) => {
+      console.error("Failed to initialize Meshlink client:", err);
     });
 
     return () => {
       cancelled = true;
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
-      client.removeAllListeners();
-      stopClient(client);
-      clientRef.current = null;
+      if (clientRef.current) {
+        clientRef.current.removeAllListeners();
+        stopClient(clientRef.current);
+        clientRef.current = null;
+      }
     };
   }, [session, refreshRooms, debouncedRefresh]);
 

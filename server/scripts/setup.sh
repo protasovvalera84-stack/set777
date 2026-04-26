@@ -62,6 +62,12 @@ HTTP_PORT="80"
 
 read -rp "Admin username [admin]: " ADMIN_USER
 ADMIN_USER="${ADMIN_USER:-admin}"
+# Sanitize: only allow a-z, 0-9, underscore, dash, dot
+ADMIN_USER=$(echo "$ADMIN_USER" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_.-]//g')
+if [ -z "$ADMIN_USER" ]; then
+    ADMIN_USER="admin"
+fi
+log "Admin username: $ADMIN_USER"
 
 while true; do
     read -rsp "Admin password (min 8 chars): " ADMIN_PASSWORD
