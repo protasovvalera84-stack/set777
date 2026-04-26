@@ -205,13 +205,111 @@ template_file "$SERVER_DIR/element/config.json"
 log "All config files templated."
 
 # =============================================================================
-# Step 6: Create directories for nginx static files (installers)
+# Step 6: Generate self-signed TLS certificate and HTTPS nginx config
+# =============================================================================
+SSL_DIR="$SERVER_DIR/nginx/ssl"
+mkdir -p "$SSL_DIR"
+
+log "Generating self-signed TLS certificate..."
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout "$SSL_DIR/meshlink.key" \
+    -out "$SSL_DIR/meshlink.crt" \
+    -subj "/CN=${SERVER_HOST}/O=Meshlink/C=XX" \
+    -addext "subjectAltName=IP:${SERVER_HOST},DNS:${SERVER_HOST}" \
+    2>/dev/null
+chmod 600 "$SSL_DIR/meshlink.key"
+chmod 644 "$SSL_DIR/meshlink.crt"
+log "TLS certificate generated."
+
+# Write HTTPS nginx config (replaces the default HTTP-only config from git)
+log "Writing HTTPS nginx config..."
+cat > "$SERVER_DIR/nginx/conf.d/default.conf" <<'NGINXCONF'
+limit_req_zone $binary_remote_addr zone=synapse_login:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=synapse_register:10m rate=3r/s;
+
+server {
+    listen 0.0.0.0:80 default_server;
+    server_name _;
+    location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 0.0.0.0:443 ssl default_server;
+    server_name _;
+
+    ssl_certificate     /etc/nginx/ssl/meshlink.crt;
+    ssl_certificate_key /etc/nginx/ssl/meshlink.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+
+    client_max_body_size 50m;
+
+    location / {
+        root /usr/share/nginx/www/meshlink;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /element/ { proxy_pass http://element:80/; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
+    location = /element { return 301 /element/; }
+
+    location /_matrix {
+        proxy_pass http://synapse:8008;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 600s;
+        proxy_buffering off;
+    }
+
+    location /_matrix/media {
+        proxy_pass http://synapse:8008;
+        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off; proxy_read_timeout 300s; client_max_body_size 50m;
+    }
+
+    location /.well-known/matrix/ { proxy_pass http://synapse:8008; proxy_set_header Host $host; }
+    location /_synapse { proxy_pass http://synapse:8008; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }
+    location /admin/ { proxy_pass http://synapse-admin:80/; proxy_set_header Host $host; }
+    location = /admin { return 301 /admin/; }
+
+    location /_matrix/client/v3/login {
+        limit_req zone=synapse_login burst=10 nodelay;
+        proxy_pass http://synapse:8008;
+        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /_matrix/client/v3/register {
+        limit_req zone=synapse_register burst=10 nodelay;
+        proxy_pass http://synapse:8008;
+        proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /config { proxy_pass http://admin-api:9090/; proxy_set_header Host $host; }
+    location /api/ { proxy_pass http://admin-api:9090; proxy_set_header Host $host; }
+    location /installers/ { alias /usr/share/nginx/www/installers/; autoindex off; }
+    location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
+}
+NGINXCONF
+log "HTTPS nginx config written."
+
+# =============================================================================
+# Step 6b: Create directories for nginx static files
 # =============================================================================
 mkdir -p "$SERVER_DIR/nginx/www/installers"
 mkdir -p "$SERVER_DIR/nginx/www/meshlink"
 
-# Generate platform installers pointing to this server
-BASE_URL="http://${SERVER_HOST}"
+# Generate platform installers pointing to this server (HTTPS)
+BASE_URL="https://${SERVER_HOST}"
 if [ "$HTTP_PORT" != "80" ]; then
     BASE_URL="http://${SERVER_HOST}:${HTTP_PORT}"
 fi
@@ -458,6 +556,7 @@ if command -v ufw &>/dev/null; then
 
     # Add standard port rules
     ufw allow "$HTTP_PORT"/tcp comment "Meshlink HTTP" 2>/dev/null || true
+    ufw allow 443/tcp comment "Meshlink HTTPS" 2>/dev/null || true
     ufw allow 3478/tcp comment "Meshlink TURN TCP" 2>/dev/null || true
     ufw allow 3478/udp comment "Meshlink TURN UDP" 2>/dev/null || true
     ufw allow 5349/tcp comment "Meshlink TURN TLS TCP" 2>/dev/null || true
@@ -478,6 +577,7 @@ if command -v ufw &>/dev/null; then
 *filter
 :DOCKER-USER - [0:0]
 -A DOCKER-USER -p tcp --dport 80 -j ACCEPT
+-A DOCKER-USER -p tcp --dport 443 -j ACCEPT
 -A DOCKER-USER -p tcp --dport 3478 -j ACCEPT
 -A DOCKER-USER -p udp --dport 3478 -j ACCEPT
 -A DOCKER-USER -p tcp --dport 5349 -j ACCEPT

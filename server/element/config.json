@@ -1,7 +1,7 @@
 {
     "default_server_config": {
         "m.homeserver": {
-            "base_url": "http://${SERVER_HOST}",
+            "base_url": "https://${SERVER_HOST}",
             "server_name": "${SERVER_NAME}"
         }
     },
