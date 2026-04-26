@@ -448,21 +448,56 @@ docker compose exec -T synapse register_new_matrix_user \
 log "Admin user created."
 
 # =============================================================================
-# Step 10: Configure firewall (if ufw is active)
+# Step 10: Configure firewall for Docker compatibility
 # =============================================================================
-if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
-    log "Configuring firewall (ufw)..."
-    ufw allow "$HTTP_PORT"/tcp comment "Meshlink HTTP"
-    ufw allow 3478/tcp comment "Meshlink TURN TCP"
-    ufw allow 3478/udp comment "Meshlink TURN UDP"
-    ufw allow 5349/tcp comment "Meshlink TURN TLS TCP"
-    ufw allow 5349/udp comment "Meshlink TURN TLS UDP"
-    ufw allow 49152:49172/udp comment "Meshlink TURN relay"
-    log "Firewall rules added."
+log "Configuring firewall..."
+
+if command -v ufw &>/dev/null; then
+    # Enable UFW if not active
+    ufw --force enable 2>/dev/null || true
+
+    # Add standard port rules
+    ufw allow "$HTTP_PORT"/tcp comment "Meshlink HTTP" 2>/dev/null || true
+    ufw allow 3478/tcp comment "Meshlink TURN TCP" 2>/dev/null || true
+    ufw allow 3478/udp comment "Meshlink TURN UDP" 2>/dev/null || true
+    ufw allow 5349/tcp comment "Meshlink TURN TLS TCP" 2>/dev/null || true
+    ufw allow 5349/udp comment "Meshlink TURN TLS UDP" 2>/dev/null || true
+    ufw allow 49152:49172/udp comment "Meshlink TURN relay" 2>/dev/null || true
+
+    # Fix Docker + UFW compatibility issue:
+    # Docker bypasses UFW by adding iptables rules directly.
+    # On systems with UFW policy DROP, external traffic to Docker ports is blocked.
+    # This fix adds rules to the DOCKER-USER chain which UFW respects.
+    UFW_AFTER="/etc/ufw/after.rules"
+    if ! grep -q "MESHLINK-DOCKER-FIX" "$UFW_AFTER" 2>/dev/null; then
+        log "Adding Docker+UFW compatibility rules..."
+        cat >> "$UFW_AFTER" <<'DOCKERFIX'
+
+# BEGIN MESHLINK-DOCKER-FIX
+# Allow external access to Docker-published ports
+*filter
+:DOCKER-USER - [0:0]
+-A DOCKER-USER -p tcp --dport 80 -j ACCEPT
+-A DOCKER-USER -p tcp --dport 3478 -j ACCEPT
+-A DOCKER-USER -p udp --dport 3478 -j ACCEPT
+-A DOCKER-USER -p tcp --dport 5349 -j ACCEPT
+-A DOCKER-USER -p udp --dport 5349 -j ACCEPT
+-A DOCKER-USER -p udp --dport 49152:49172 -j ACCEPT
+-A DOCKER-USER -j RETURN
+COMMIT
+# END MESHLINK-DOCKER-FIX
+DOCKERFIX
+        ufw reload
+        log "Docker+UFW compatibility rules installed."
+    else
+        log "Docker+UFW compatibility rules already present."
+    fi
+
+    log "Firewall configured."
 else
-    # Try iptables as fallback (non-destructive, only adds ACCEPT rules)
+    # No UFW -- add iptables rules directly
     if command -v iptables &>/dev/null; then
-        log "Adding iptables ACCEPT rules for Meshlink ports..."
+        log "Adding iptables ACCEPT rules..."
         iptables -I INPUT -p tcp --dport "$HTTP_PORT" -j ACCEPT 2>/dev/null || true
         iptables -I INPUT -p tcp --dport 3478 -j ACCEPT 2>/dev/null || true
         iptables -I INPUT -p udp --dport 3478 -j ACCEPT 2>/dev/null || true
