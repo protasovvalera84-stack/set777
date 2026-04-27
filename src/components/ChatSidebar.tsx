@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
@@ -43,6 +43,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [createType, setCreateType] = useState<"group" | "channel">("group");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [logoMenuOpen, setLogoMenuOpen] = useState(false);
+  const logoMenuRef = useRef<HTMLDivElement>(null);
 
   // Shorts state (persisted in localStorage)
   const [shorts, setShorts] = useState<Short[]>(() => {
@@ -75,6 +77,18 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       return filtered.length > 0 ? { ...s, items: filtered } : s;
     }).filter((s) => s.items.length > 0));
   };
+
+  // Close logo menu on click outside
+  useEffect(() => {
+    if (!logoMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (logoMenuRef.current && !logoMenuRef.current.contains(e.target as Node)) {
+        setLogoMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [logoMenuOpen]);
 
   // Folders UI state (data comes from props)
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -160,9 +174,12 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       <div className="relative flex h-full w-full md:w-80 flex-col border-r border-border/40 glass-strong">
         <div className="pointer-events-none absolute -top-20 -left-20 h-60 w-60 rounded-full bg-primary/20 blur-3xl" />
 
-        {/* Header */}
-        <div className="relative flex items-center justify-between px-5 py-4 border-b border-border/40">
-          <div className="flex items-center gap-2.5">
+        {/* Header with logo menu */}
+        <div className="relative flex items-center justify-between px-5 py-4 border-b border-border/40" ref={logoMenuRef}>
+          <button
+            onClick={() => setLogoMenuOpen((v) => !v)}
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+          >
             <div className="relative">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary shadow-glow">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
@@ -172,7 +189,19 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               <span className="font-serif italic text-lg gradient-text font-semibold">Meshlink</span>
               <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">self-hosted</span>
             </div>
-          </div>
+            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${logoMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Dropdown menu */}
+          {logoMenuOpen && (
+            <div className="absolute top-full left-3 right-3 mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 animate-fade-in-up">
+              <LogoMenuItem icon={<Zap className="h-4 w-4 text-amber-400" />} label="Ультимейт" sub="Скоро" />
+              <LogoMenuItem icon={<Briefcase className="h-4 w-4 text-blue-400" />} label="Для бизнеса" sub="Скоро" />
+              <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="Скоро" />
+              <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="Скоро" />
+              <LogoMenuItem icon={<Globe className="h-4 w-4 text-cyan-400" />} label="Экосистема Meshlink" sub="Скоро" />
+            </div>
+          )}
         </div>
 
         {/* Shorts */}
@@ -488,6 +517,21 @@ function ChatItem({ chat, selected, onSelect, index, isFavorite }: { chat: Chat;
           )}
         </div>
       </div>
+    </button>
+  );
+}
+
+function LogoMenuItem({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
+  return (
+    <button
+      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-surface-hover opacity-60 cursor-default"
+      disabled
+    >
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/80">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+      </div>
+      <span className="text-[9px] font-mono text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded-md">{sub}</span>
     </button>
   );
 }
