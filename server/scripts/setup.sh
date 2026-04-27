@@ -327,9 +327,6 @@ server {
         sendfile on;
         tcp_nopush on;
         tcp_nodelay on;
-
-        # No rate limiting on downloads
-        limit_req off;
     }
     location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
 }
