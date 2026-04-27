@@ -319,6 +319,7 @@ server {
             application/x-sh sh;
             application/x-executable AppImage;
             application/x-msdownload exe;
+            application/vnd.android.package-archive apk;
             text/html html;
         }
 
@@ -595,8 +596,63 @@ else
     warn "Windows .exe build failed (Wine may not be available). Windows installer will be .bat only."
 fi
 
-# Clean up build artifacts to save disk space
+# Clean up Electron build artifacts to save disk space
 rm -rf "$REPO_DIR/release" 2>/dev/null || true
+
+# Build Android APK via Bubblewrap (TWA - Trusted Web Activity)
+log "Building Android APK..."
+APK_BUILD_DIR="/tmp/meshlink-apk-$$"
+mkdir -p "$APK_BUILD_DIR"
+
+# Install JDK if not present
+if ! command -v javac &>/dev/null; then
+    log "Installing JDK for Android build..."
+    apt-get install -y -qq default-jdk-headless 2>/dev/null || true
+fi
+
+if command -v javac &>/dev/null; then
+    cd "$APK_BUILD_DIR"
+
+    # Set JAVA_HOME
+    export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac))))
+
+    # Install bubblewrap CLI
+    npm install -g @bubblewrap/cli 2>/dev/null || true
+
+    if command -v bubblewrap &>/dev/null || npx @bubblewrap/cli --version &>/dev/null 2>&1; then
+        # Initialize TWA project from manifest
+        log "Initializing Bubblewrap TWA project..."
+        npx @bubblewrap/cli init \
+            --manifest="${BASE_URL}/manifest.json" \
+            --directory="$APK_BUILD_DIR" \
+            2>&1 | tail -5 || true
+
+        # Build the APK
+        log "Building APK..."
+        npx @bubblewrap/cli build \
+            --directory="$APK_BUILD_DIR" \
+            --skipPwaValidation \
+            2>&1 | tail -5 || true
+
+        APK_FILE=$(find "$APK_BUILD_DIR" -name "*.apk" -type f 2>/dev/null | head -1)
+        if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
+            cp "$APK_FILE" "$SERVER_DIR/nginx/www/installers/Meshlink.apk"
+            log "Android APK built successfully."
+        else
+            warn "Android APK build produced no output."
+            warn "Android users can install via PWA: open site in Chrome -> menu -> Install app"
+        fi
+    else
+        warn "Bubblewrap CLI not available. Skipping Android APK build."
+        warn "Android users can install via PWA: open site in Chrome -> menu -> Install app"
+    fi
+
+    rm -rf "$APK_BUILD_DIR" 2>/dev/null || true
+    cd "$SERVER_DIR"
+else
+    warn "JDK not available. Skipping Android APK build."
+    warn "Android users can install via PWA: open site in Chrome -> menu -> Install app"
+fi
 rm -f "$REPO_DIR/meshlink.conf" 2>/dev/null || true
 
 log "Desktop applications built."
@@ -841,6 +897,9 @@ else
     echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC} (script)"
 fi
 echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink-Android.html${NC}"
+if [ -f "$SERVER_DIR/nginx/www/installers/Meshlink.apk" ]; then
+    echo -e "    Android APK: ${CYAN}${BASE_URL}/installers/Meshlink.apk${NC}"
+fi
 echo -e "    iOS:         ${CYAN}${BASE_URL}/installers/Meshlink-iOS.html${NC}"
 echo ""
 echo -e "  Config file:   ${CYAN}${SERVER_DIR}/.env${NC}"
