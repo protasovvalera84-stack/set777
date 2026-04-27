@@ -174,31 +174,19 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
     }
   };
 
-  /** Force-download a file from server by fetching as blob */
-  const forceDownload = async (url: string, fileName: string) => {
-    try {
-      const resp = await fetch(url);
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 100);
-    } catch {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.click();
-    }
+  /** Download a file -- uses direct link with download attribute */
+  const forceDownload = (url: string, fileName: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.rel = "noopener noreferrer";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 200);
   };
 
-  const handleInstall = async () => {
+  const handleInstall = () => {
     if (!platform) return;
 
     if (platform === "android" || platform === "ios") {
@@ -208,18 +196,15 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
     }
 
     setDownloading(true);
-    try {
-      if (platform === "linux") {
-        await forceDownload("/installers/meshlink-install.sh", "meshlink-install.sh");
-      } else {
-        await forceDownload("/installers/Meshlink-Install.bat", "Meshlink-Install.bat");
-      }
-    } finally {
-      setTimeout(() => {
-        setDownloading(false);
-        setStep("profile");
-      }, 1500);
+    if (platform === "linux") {
+      forceDownload("/installers/meshlink-install.sh", "meshlink-install.sh");
+    } else {
+      forceDownload("/installers/Meshlink-Install.bat", "Meshlink-Install.bat");
     }
+    setTimeout(() => {
+      setDownloading(false);
+      setStep("profile");
+    }, 1500);
   };
 
   const canProceedProfile = name.trim().length >= 2 && password.length >= 6;

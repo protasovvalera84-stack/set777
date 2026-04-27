@@ -304,7 +304,30 @@ server {
 
     location = /config { proxy_pass http://admin-api:9090/; proxy_set_header Host \$host; }
     location /api/ { proxy_pass http://admin-api:9090; proxy_set_header Host \$host; }
-    location /installers/ { alias /usr/share/nginx/www/installers/; autoindex off; }
+    location /installers/ {
+        alias /usr/share/nginx/www/installers/;
+        autoindex off;
+
+        # Force download for all installer files
+        add_header Content-Disposition 'attachment' always;
+        add_header Cache-Control 'public, max-age=3600' always;
+        add_header X-Content-Type-Options 'nosniff' always;
+
+        # Correct MIME types
+        types {
+            application/x-bat bat;
+            application/x-sh sh;
+            text/html html;
+        }
+
+        # Efficient file serving for high concurrency
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+
+        # No rate limiting on downloads
+        limit_req off;
+    }
     location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
 }
 NGINXCONF
@@ -423,6 +446,52 @@ echo ""
 xdg-open "${BASE_URL}" 2>/dev/null || sensible-browser "${BASE_URL}" 2>/dev/null || echo "Open ${BASE_URL} in your browser"
 LINEOF
 chmod +x "$SERVER_DIR/nginx/www/installers/meshlink-install.sh"
+
+# Android installer page
+cat > "$SERVER_DIR/nginx/www/installers/Meshlink-Android.html" <<ANDROIDEOF
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Meshlink - Android</title>
+<style>body{font-family:system-ui;background:#0a0a12;color:#e0e0e0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
+.card{max-width:400px;text-align:center;padding:2rem;border-radius:1.5rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+h1{font-size:1.5rem;background:linear-gradient(135deg,#a855f7,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.step{text-align:left;margin:1rem 0;line-height:1.8;font-size:.9rem;color:#aaa}
+.btn{display:inline-block;padding:.8rem 2rem;border-radius:1rem;background:linear-gradient(135deg,#a855f7,#6366f1);color:#fff;text-decoration:none;font-weight:600;margin-top:1rem}</style>
+</head><body><div class="card">
+<h1>Meshlink for Android</h1>
+<div class="step">
+<p>1. Open <a href="${BASE_URL}" style="color:#a855f7">${BASE_URL}</a> in Chrome</p>
+<p>2. Tap menu <b>⋮</b> (top right)</p>
+<p>3. Tap <b>"Install app"</b> or <b>"Add to Home screen"</b></p>
+<p>4. Meshlink icon appears on your home screen</p>
+</div>
+<a href="${BASE_URL}" class="btn">Open Meshlink</a>
+</div></body></html>
+ANDROIDEOF
+
+# iOS installer page
+cat > "$SERVER_DIR/nginx/www/installers/Meshlink-iOS.html" <<IOSEOF
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Meshlink - iOS</title>
+<style>body{font-family:system-ui;background:#0a0a12;color:#e0e0e0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
+.card{max-width:400px;text-align:center;padding:2rem;border-radius:1.5rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+h1{font-size:1.5rem;background:linear-gradient(135deg,#a855f7,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.step{text-align:left;margin:1rem 0;line-height:1.8;font-size:.9rem;color:#aaa}
+.btn{display:inline-block;padding:.8rem 2rem;border-radius:1rem;background:linear-gradient(135deg,#a855f7,#6366f1);color:#fff;text-decoration:none;font-weight:600;margin-top:1rem}</style>
+</head><body><div class="card">
+<h1>Meshlink for iOS</h1>
+<div class="step">
+<p>1. Open <a href="${BASE_URL}" style="color:#a855f7">${BASE_URL}</a> in Safari</p>
+<p>2. Tap Share <b>↑</b> (bottom bar)</p>
+<p>3. Tap <b>"Add to Home Screen"</b></p>
+<p>4. Meshlink icon appears on your home screen</p>
+</div>
+<a href="${BASE_URL}" class="btn">Open Meshlink</a>
+</div></body></html>
+IOSEOF
 
 log "Platform installers generated."
 

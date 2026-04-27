@@ -1,7 +1,7 @@
 {
   "name": "Meshlink",
   "short_name": "Meshlink",
-  "description": "Decentralized, self-hosted, end-to-end encrypted messenger",
+  "description": "Self-hosted, end-to-end encrypted messenger",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a12",
@@ -11,11 +11,18 @@
     {
       "src": "/icons/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "categories": ["social", "communication"],
   "lang": "en",
-  "dir": "ltr"
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
 }
