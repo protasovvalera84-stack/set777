@@ -2,9 +2,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   X, Camera, ArrowLeft, User, AtSign, FileText, Shield,
   Eye, EyeOff, Phone, Users, MessageSquare, CheckCheck,
-  Wifi, ChevronRight, Trash2, LogOut, Lock,
+  Wifi, ChevronRight, Trash2, LogOut, Lock, Palette, Moon, Sun, Check,
 } from "lucide-react";
 import { UserProfile } from "@/data/mockData";
+import { useTheme } from "@/theme/ThemeProvider";
 
 interface AccountSettingsProps {
   open: boolean;
@@ -294,6 +295,9 @@ function EditProfilePage({
         </div>
         <p className="text-[10px] text-muted-foreground text-right mt-1">{draft.bio.length}/140</p>
       </div>
+
+      {/* Appearance */}
+      <AppearanceSection />
     </div>
   );
 }
@@ -400,5 +404,69 @@ function PrivacyToggle({ icon, label, sub, checked, onChange }: {
         <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
       </div>
     </button>
+  );
+}
+
+/* ===== Appearance Section (inside Edit Profile) ===== */
+function AppearanceSection() {
+  const { palette, mode, setPalette, toggleMode, palettes } = useTheme();
+
+  return (
+    <div className="border-t border-border/40 pt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Palette className="h-4 w-4 text-primary" />
+        <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">Appearance</p>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <button
+          onClick={() => mode !== "dark" && toggleMode()}
+          className={`flex items-center justify-center gap-2 rounded-xl border py-2 text-xs font-medium transition-all ${
+            mode === "dark" ? "border-primary/50 gradient-primary text-primary-foreground shadow-glow" : "border-border/50 text-muted-foreground hover:bg-surface-hover"
+          }`}
+        >
+          <Moon className="h-3.5 w-3.5" /> Dark
+        </button>
+        <button
+          onClick={() => mode !== "light" && toggleMode()}
+          className={`flex items-center justify-center gap-2 rounded-xl border py-2 text-xs font-medium transition-all ${
+            mode === "light" ? "border-primary/50 gradient-primary text-primary-foreground shadow-glow" : "border-border/50 text-muted-foreground hover:bg-surface-hover"
+          }`}
+        >
+          <Sun className="h-3.5 w-3.5" /> Light
+        </button>
+      </div>
+
+      {/* Color palettes */}
+      <div className="space-y-1.5">
+        {palettes.map((p) => {
+          const active = p.id === palette;
+          return (
+            <button
+              key={p.id}
+              onClick={() => setPalette(p.id)}
+              className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition-all ${
+                active ? "border-primary/50 bg-primary/10 shadow-glow" : "border-border/50 hover:border-primary/30 hover:bg-surface-hover"
+              }`}
+            >
+              <div className="flex -space-x-1.5">
+                {p.swatch.map((c, i) => (
+                  <span key={i} className="h-5 w-5 rounded-full border-2 border-card" style={{ background: c }} />
+                ))}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">{p.name}</p>
+              </div>
+              {active && (
+                <div className="flex h-5 w-5 items-center justify-center rounded-full gradient-primary">
+                  <Check className="h-3 w-3 text-primary-foreground" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

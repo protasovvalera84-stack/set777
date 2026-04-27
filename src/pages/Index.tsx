@@ -41,6 +41,20 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     { id: "fav-default", name: "Favorites", chatIds: [] },
   ]);
 
+  // Topics stored per room (persisted in localStorage)
+  const [topicsMap, setTopicsMap] = useState<Record<string, Topic[]>>(() => {
+    try {
+      const saved = localStorage.getItem("meshlink-topics");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return {};
+  });
+
+  // Persist topics to localStorage
+  useEffect(() => {
+    localStorage.setItem("meshlink-topics", JSON.stringify(topicsMap));
+  }, [topicsMap]);
+
   // Build chat list from server rooms (only room metadata, no messages)
   const chatList: Chat[] = useMemo(() => mesh.rooms.map((room) => ({
     id: room.id,
@@ -54,8 +68,9 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     unread: room.unread,
     pinned: false,
     members: room.members,
+    topics: topicsMap[room.id] || undefined,
     messages: [],
-  })), [mesh.rooms]);
+  })), [mesh.rooms, topicsMap]);
 
   // Only load messages for the selected chat
   const selectedChat = useMemo(() => {
@@ -233,6 +248,28 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     // Room updates handled by server sync
   };
 
+  const handleCreateTopic = useCallback((chatId: string, name: string, icon: string) => {
+    setTopicsMap((prev) => {
+      const existing = prev[chatId] || [];
+      const newTopic: Topic = {
+        id: `topic-${Date.now()}`,
+        name,
+        icon,
+        messageCount: 0,
+        lastMessage: "Topic created",
+        lastMessageTime: "now",
+      };
+      return { ...prev, [chatId]: [...existing, newTopic] };
+    });
+  }, []);
+
+  const handleDeleteTopic = useCallback((chatId: string, topicId: string) => {
+    setTopicsMap((prev) => {
+      const existing = prev[chatId] || [];
+      return { ...prev, [chatId]: existing.filter((t) => t.id !== topicId) };
+    });
+  }, []);
+
   const handleDeleteChat = useCallback(async (chatId: string) => {
     await mesh.leaveRoom(chatId);
     if (selectedChatId === chatId) setSelectedChatId(null);
@@ -378,6 +415,8 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
             onSendMessage={handleSendMessage}
             onBack={handleBack}
             onCall={selectedChat.type !== "channel" ? handleCall : undefined}
+            onCreateTopic={handleCreateTopic}
+            onDeleteTopic={handleDeleteTopic}
             onSettingsClick={
               selectedChat.type === "group" || selectedChat.type === "channel"
                 ? () => setGroupSettingsOpen(true)
