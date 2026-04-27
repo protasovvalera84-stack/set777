@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
-import { StoriesBar, AddStoryDialog } from "@/components/StoriesBar";
 
 export interface SearchResult {
   type: "user" | "room";
@@ -42,7 +40,6 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [filter, setFilter] = useState<FilterType>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createType, setCreateType] = useState<"group" | "channel">("group");
-  const [storyOpen, setStoryOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
@@ -144,14 +141,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <ThemeSwitcher />
-            <button onClick={() => setStoryOpen(true)} className="rounded-lg p-2 gradient-primary shadow-glow transition-all hover:scale-105" title="Add Story">
-              <Plus className="h-4 w-4 text-primary-foreground" />
-            </button>
           </div>
         </div>
-
-        <StoriesBar stories={stories} onAddStory={() => setStoryOpen(true)} />
 
         {/* Search */}
         <div className="relative px-4 py-3">
@@ -410,7 +401,6 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       </div>
 
       <CreateChatDialog open={createOpen} type={createType} onClose={() => setCreateOpen(false)} onCreate={onCreateChat} />
-      <AddStoryDialog open={storyOpen} onClose={() => setStoryOpen(false)} onAdd={onAddStory} />
     </>
   );
 }
