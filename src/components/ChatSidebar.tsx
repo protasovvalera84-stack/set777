@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
+import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
 
 export interface SearchResult {
   type: "user" | "room";
@@ -42,6 +43,38 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [createType, setCreateType] = useState<"group" | "channel">("group");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Shorts state (persisted in localStorage)
+  const [shorts, setShorts] = useState<Short[]>(() => {
+    try {
+      const saved = localStorage.getItem("meshlink-shorts");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  // Persist shorts
+  useEffect(() => {
+    localStorage.setItem("meshlink-shorts", JSON.stringify(shorts));
+  }, [shorts]);
+
+  const handleAddShort = (items: ShortItem[]) => {
+    setShorts((prev) => {
+      const existing = prev.find((s) => s.userId === "me");
+      if (existing) {
+        return prev.map((s) => s.userId === "me" ? { ...s, items: [...s.items, ...items] } : s);
+      }
+      return [{ id: `short-${Date.now()}`, userId: "me", userName: profile.name, avatar: profile.avatarInitials, items, viewed: true }, ...prev];
+    });
+  };
+
+  const handleDeleteShort = (shortId: string, itemId: string) => {
+    setShorts((prev) => prev.map((s) => {
+      if (s.id !== shortId) return s;
+      const filtered = s.items.filter((i) => i.id !== itemId);
+      return filtered.length > 0 ? { ...s, items: filtered } : s;
+    }).filter((s) => s.items.length > 0));
+  };
 
   // Folders UI state (data comes from props)
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -141,6 +174,16 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             </div>
           </div>
         </div>
+
+        {/* Shorts */}
+        <ShortsBar
+          shorts={shorts}
+          myUserId="me"
+          myName={profile.name}
+          myAvatar={profile.avatarInitials}
+          onAddShort={handleAddShort}
+          onDeleteShort={handleDeleteShort}
+        />
 
         {/* Search */}
         <div className="relative px-4 py-3">

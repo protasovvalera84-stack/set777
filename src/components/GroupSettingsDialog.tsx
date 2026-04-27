@@ -199,7 +199,6 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
               <div className="space-y-1">
                 <MenuItem icon={<Star className={`h-4 w-4 ${isInAnyFolder ? "text-primary" : ""}`} />} label={isInAnyFolder ? "In Favorites" : "Add to Favorites"} sub="Save to a folder" onClick={() => setPage("favorites")} />
                 <MenuItem icon={<Users className="h-4 w-4" />} label="Members" sub={`${(draft.memberIds || []).length} members`} onClick={() => setPage("members")} />
-                {!isChannel && <MenuItem icon={<Hash className="h-4 w-4" />} label="Topics" sub={`${(draft.topics || []).length} topics`} onClick={() => setPage("topics")} />}
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy" sub="Permissions & access" onClick={() => setPage("privacy")} />
                 <MenuItem icon={muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />} label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((m) => !m)} />
               </div>
