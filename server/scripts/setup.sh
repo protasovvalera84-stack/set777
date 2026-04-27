@@ -546,60 +546,6 @@ cp -r "$REPO_DIR/dist/"* "$SERVER_DIR/nginx/www/meshlink/"
 log "Meshlink UI built and deployed."
 
 # =============================================================================
-# Step 8b: Build Electron desktop apps (Windows .exe + Linux .AppImage)
-# =============================================================================
-log "Building desktop applications..."
-
-# Write server URL config that Electron will read
-echo "$BASE_URL" > "$REPO_DIR/meshlink.conf"
-
-# Install Wine for Windows cross-compilation (if not present)
-if ! command -v wine &>/dev/null; then
-    log "Installing Wine for Windows .exe build..."
-    dpkg --add-architecture i386 2>/dev/null || true
-    apt-get update -qq 2>/dev/null
-    apt-get install -y -qq wine wine64 2>/dev/null || apt-get install -y -qq wine 2>/dev/null || true
-fi
-
-cd "$REPO_DIR"
-
-# Build Linux AppImage
-log "Building Linux AppImage..."
-if npx electron-builder --linux AppImage --x64 2>&1 | tail -3; then
-    APPIMAGE=$(find "$REPO_DIR/release" -name "*.AppImage" -type f | head -1)
-    if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
-        cp "$APPIMAGE" "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage"
-        # Copy config next to AppImage
-        cp "$REPO_DIR/meshlink.conf" "$SERVER_DIR/nginx/www/installers/meshlink.conf"
-        log "Linux AppImage built: $(basename "$APPIMAGE")"
-    else
-        warn "Linux AppImage build produced no output."
-    fi
-else
-    warn "Linux AppImage build failed. Linux installer will be shell script only."
-fi
-
-# Build Windows exe
-log "Building Windows installer..."
-if npx electron-builder --win nsis --x64 2>&1 | tail -3; then
-    WINEXE=$(find "$REPO_DIR/release" -name "*.exe" -type f | head -1)
-    if [ -n "$WINEXE" ] && [ -f "$WINEXE" ]; then
-        cp "$WINEXE" "$SERVER_DIR/nginx/www/installers/Meshlink-Setup.exe"
-        log "Windows installer built: $(basename "$WINEXE")"
-    else
-        warn "Windows build produced no output."
-    fi
-else
-    warn "Windows .exe build failed (Wine may not be available). Windows installer will be .bat only."
-fi
-
-# Clean up Electron build artifacts to save disk space
-rm -rf "$REPO_DIR/release" 2>/dev/null || true
-rm -f "$REPO_DIR/meshlink.conf" 2>/dev/null || true
-
-log "Desktop applications built."
-
-# =============================================================================
 # Step 9: Start the stack
 # =============================================================================
 log "Starting Meshlink server stack..."
@@ -828,16 +774,8 @@ echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
 echo ""
 echo -e "  Installers:"
-if [ -f "$SERVER_DIR/nginx/www/installers/Meshlink-Setup.exe" ]; then
-    echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Setup.exe${NC}"
-else
-    echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC} (script)"
-fi
-if [ -f "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage" ]; then
-    echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/Meshlink-Linux.AppImage${NC}"
-else
-    echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC} (script)"
-fi
+echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC}"
+echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC}"
 echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink-Android.html${NC} (PWA)"
 echo -e "    iOS:         ${CYAN}${BASE_URL}/installers/Meshlink-iOS.html${NC} (PWA)"
 echo ""
