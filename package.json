@@ -103,6 +103,7 @@
     "files": [
       "dist/**/*",
       "electron.cjs",
+      "meshlink.conf",
       "public/icons/**/*"
     ],
     "win": {
