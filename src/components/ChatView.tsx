@@ -193,10 +193,10 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         <Sparkles className="h-3 w-3 text-accent" />
       </div>
 
-      {/* Topics bar for groups */}
-      {chat.type === "group" && chat.topics && chat.topics.length > 0 && (
+      {/* Topics bar for groups -- always show so users can create first topic */}
+      {(chat.type === "group" || chat.type === "channel") && onCreateTopic && (
         <TopicsBar
-          topics={chat.topics}
+          topics={chat.topics || []}
           activeTopic={activeTopic}
           onSelectTopic={setActiveTopic}
           onCreateTopic={(name, icon) => onCreateTopic?.(chat.id, name, icon)}
@@ -208,7 +208,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       <div className="relative z-10 flex-1 overflow-y-auto px-4 md:px-6 py-6 scrollbar-thin">
         <div className="mx-auto max-w-3xl space-y-4">
           {(() => {
-            const hasTopics = chat.type === "group" && chat.topics && chat.topics.length > 0;
+            const hasTopics = (chat.type === "group" || chat.type === "channel") && chat.topics && chat.topics.length > 0;
             const filtered = hasTopics && activeTopic !== null
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;

@@ -4,6 +4,8 @@ import {
   Bell, BellOff, Lock, Trash2, LogOut, ChevronRight, Search, Check, Plus, Star,
 } from "lucide-react";
 import { Chat, Contact, Topic, ChatFolder } from "@/data/mockData";
+import { useMesh } from "@/lib/MeshProvider";
+import { uploadMedia } from "@/lib/meshClient";
 
 interface GroupSettingsDialogProps {
   open: boolean;
@@ -41,6 +43,7 @@ function resizeImg(file: File): Promise<string> {
 }
 
 export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, onUpdateChat, onDeleteChat, onFoldersChange }: GroupSettingsDialogProps) {
+  const mesh = useMesh();
   const [page, setPage] = useState<Page>("main");
   const [draft, setDraft] = useState<Chat>({ ...chat });
   const [memberSearch, setMemberSearch] = useState("");
@@ -72,9 +75,21 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
     if (!file) return;
     e.target.value = "";
     try {
-      const url = await resizeImg(file);
-      setDraft((d) => ({ ...d, avatarUrl: url }));
-    } catch { /* */ }
+      // Show preview immediately
+      const previewUrl = await resizeImg(file);
+      setDraft((d) => ({ ...d, avatarUrl: previewUrl }));
+
+      // Upload to Matrix server and set as room avatar
+      if (mesh.client) {
+        const mxcUri = await uploadMedia(
+          mesh.client.getAccessToken() || "",
+          file,
+        );
+        await mesh.client.sendStateEvent(chat.id, "m.room.avatar", { url: mxcUri }, "");
+      }
+    } catch (err) {
+      console.error("Failed to set room avatar:", err);
+    }
   };
 
   const handleSave = () => {

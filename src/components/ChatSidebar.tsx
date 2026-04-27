@@ -140,8 +140,6 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">self-hosted</span>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-          </div>
         </div>
 
         {/* Search */}
