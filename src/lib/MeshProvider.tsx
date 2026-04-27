@@ -100,7 +100,7 @@ export function useMesh(): MeshContextValue {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>): MeshRoom {
+function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>, homeserverUrl: string): MeshRoom {
   const members = room.getJoinedMembers();
 
   // Determine room type using multiple signals:
@@ -153,11 +153,18 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>)
     if (other) name = other.name || other.userId;
   }
 
+  // Get room avatar URL
+  let avatarUrl: string | null = null;
+  try {
+    const mxcAvatar = room.getAvatarUrl(homeserverUrl, 128, 128, "crop", false);
+    if (mxcAvatar) avatarUrl = mxcAvatar;
+  } catch { /* no avatar */ }
+
   return {
     id: room.roomId,
     name,
     avatar: getInitials(name),
-    avatarUrl: null,
+    avatarUrl,
     type: roomType,
     lastMessage,
     lastMessageTime,
@@ -264,7 +271,7 @@ export function MeshProvider({ session, children }: Props) {
     const allRooms = c.getRooms();
     const meshRooms = allRooms
       .filter((r) => r.getMyMembership() === "join")
-      .map((r) => roomToMesh(r, session.userId, directRoomIds))
+      .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl))
       .sort((a, b) => {
         if (!a.lastMessageTime && b.lastMessageTime) return 1;
         if (a.lastMessageTime && !b.lastMessageTime) return -1;
