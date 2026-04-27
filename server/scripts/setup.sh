@@ -546,6 +546,27 @@ cp -r "$REPO_DIR/dist/"* "$SERVER_DIR/nginx/www/meshlink/"
 log "Meshlink UI built and deployed."
 
 # =============================================================================
+# Step 8b: Download pre-built desktop installers from GitHub Releases
+# =============================================================================
+log "Downloading pre-built desktop installers..."
+
+RELEASE_URL="https://github.com/protasovvalera84-stack/set777/releases/download/v1.0.0"
+
+# Download Linux AppImage
+if curl -fsSL -o "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage" \
+    "${RELEASE_URL}/Meshlink-1.0.0.AppImage" 2>/dev/null; then
+    chmod +x "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage"
+    log "Linux AppImage downloaded ($(du -h "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage" | cut -f1))."
+else
+    warn "Failed to download Linux AppImage."
+fi
+
+# Write meshlink.conf next to installers (so users can copy it next to AppImage)
+echo "$BASE_URL" > "$SERVER_DIR/nginx/www/installers/meshlink.conf"
+
+log "Desktop installers ready."
+
+# =============================================================================
 # Step 9: Start the stack
 # =============================================================================
 log "Starting Meshlink server stack..."
@@ -775,7 +796,10 @@ echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
 echo ""
 echo -e "  Installers:"
 echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC}"
-echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC}"
+if [ -f "$SERVER_DIR/nginx/www/installers/Meshlink-Linux.AppImage" ]; then
+    echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/Meshlink-Linux.AppImage${NC}"
+fi
+echo -e "    Linux (sh):  ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC}"
 echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink-Android.html${NC} (PWA)"
 echo -e "    iOS:         ${CYAN}${BASE_URL}/installers/Meshlink-iOS.html${NC} (PWA)"
 echo ""
