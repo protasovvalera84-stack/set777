@@ -23,11 +23,12 @@ interface ShortsBarProps {
   myUserId: string;
   myName: string;
   myAvatar: string;
+  myAvatarUrl?: string | null;
   onAddShort: (items: ShortItem[]) => void;
   onDeleteShort: (shortId: string, itemId: string) => void;
 }
 
-export function ShortsBar({ shorts, myUserId, myName, myAvatar, onAddShort, onDeleteShort }: ShortsBarProps) {
+export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onAddShort, onDeleteShort }: ShortsBarProps) {
   const [viewingShort, setViewingShort] = useState<Short | null>(null);
   const [viewingIndex, setViewingIndex] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
@@ -56,8 +57,10 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, onAddShort, onDe
                     <Play className="h-5 w-5 text-primary" />
                   </div>
                 )
+              ) : myAvatarUrl ? (
+                <img src={myAvatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center text-xs font-bold text-foreground">
+                <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary-glow/10 flex items-center justify-center text-xs font-bold text-primary">
                   {myAvatar}
                 </div>
               )}

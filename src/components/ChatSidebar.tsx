@@ -210,6 +210,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           myUserId="me"
           myName={profile.name}
           myAvatar={profile.avatarInitials}
+          myAvatarUrl={profile.avatarUrl}
           onAddShort={handleAddShort}
           onDeleteShort={handleDeleteShort}
         />
