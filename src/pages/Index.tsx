@@ -101,6 +101,18 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
     if (window.innerWidth < 768) setSidebarOpen(false);
+
+    // Mark messages as read by sending read receipt for last event
+    if (mesh.client) {
+      const room = mesh.client.getRoom(id);
+      if (room) {
+        const timeline = room.getLiveTimeline().getEvents();
+        const lastEvent = timeline[timeline.length - 1];
+        if (lastEvent) {
+          mesh.client.sendReadReceipt(lastEvent).catch(() => {});
+        }
+      }
+    }
   };
 
   const handleSendMessage = useCallback(async (chatId: string, text: string, media?: MediaAttachment[], _topicId?: string | null) => {

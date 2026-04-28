@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
-  Image, Film, Music, X, Download,
+  Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsUp,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
+import { useMesh } from "@/lib/MeshProvider";
 
 interface ChatViewProps {
   chat: Chat;
@@ -214,7 +215,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               : chat.messages;
             return filtered.length > 0 ? (
               filtered.map((msg, i) => (
-                <MessageBubble key={msg.id} message={msg} index={i} />
+                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} />
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -361,9 +362,45 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
   return null;
 }
 
-function MessageBubble({ message, index }: { message: Message; index: number }) {
+function MessageBubble({ message, index, chatType, roomId }: { message: Message; index: number; chatType?: string; roomId?: string }) {
   const isOwn = message.senderId === "me";
   const isSystem = message.senderId === "system";
+  const isGroup = chatType === "group" || chatType === "channel";
+  const hasMedia = message.media && message.media.length > 0;
+  const mesh = useMesh();
+
+  const [likes, setLikes] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  const handleLike = () => {
+    if (!mesh.client || !roomId) return;
+    if (liked) return;
+    setLiked(true);
+    setLikes((l) => l + 1);
+    // Send reaction via Matrix
+    mesh.client.sendEvent(roomId, "m.reaction" as Parameters<typeof mesh.client.sendEvent>[1], {
+      "m.relates_to": {
+        rel_type: "m.annotation",
+        event_id: message.id,
+        key: "\u2764\ufe0f",
+      },
+    }).catch(() => {});
+  };
+
+  const handleReply = () => {
+    if (!replyText.trim() || !mesh.client || !roomId) return;
+    mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+      msgtype: "m.text",
+      body: replyText.trim(),
+      "m.relates_to": {
+        "m.in_reply_to": { event_id: message.id },
+      },
+    }).catch(() => {});
+    setReplyText("");
+    setShowReply(false);
+  };
 
   if (isSystem) {
     return (
@@ -408,6 +445,52 @@ function MessageBubble({ message, index }: { message: Message; index: number }) 
             <span className="ml-1">{message.read ? "\u2713\u2713" : "\u2713"}</span>
           )}
         </p>
+
+        {/* Reactions bar for media in groups/channels */}
+        {isGroup && hasMedia && (
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/20">
+            <button
+              onClick={handleLike}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-all ${
+                liked ? "bg-red-500/20 text-red-400" : "hover:bg-surface-hover text-muted-foreground"
+              }`}
+            >
+              <Heart className={`h-3 w-3 ${liked ? "fill-red-400" : ""}`} />
+              {likes > 0 && <span>{likes}</span>}
+            </button>
+            <button
+              onClick={() => setShowReply((v) => !v)}
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
+            >
+              <MessageCircle className="h-3 w-3" />
+              <span>Reply</span>
+            </button>
+            <button
+              onClick={handleLike}
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
+            >
+              <ThumbsUp className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Reply input */}
+        {showReply && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleReply()}
+              placeholder="Write a comment..."
+              autoFocus
+              className="flex-1 rounded-xl bg-background/50 border border-border/40 px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+            />
+            <button onClick={handleReply} disabled={!replyText.trim()} className="rounded-lg p-1.5 text-primary hover:bg-primary/10 disabled:opacity-30">
+              <Send className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
