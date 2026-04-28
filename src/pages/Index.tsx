@@ -55,6 +55,19 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     localStorage.setItem("meshlink-topics", JSON.stringify(topicsMap));
   }, [topicsMap]);
 
+  // Message-to-topic mapping (persisted in localStorage)
+  const [msgTopicMap, setMsgTopicMap] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem("meshlink-msg-topics");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem("meshlink-msg-topics", JSON.stringify(msgTopicMap));
+  }, [msgTopicMap]);
+
   // Build chat list from server rooms (only room metadata, no messages)
   const chatList: Chat[] = useMemo(() => mesh.rooms.map((room) => ({
     id: room.id,
@@ -85,6 +98,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         text: m.text,
         timestamp: m.timestamp,
         read: true,
+        topicId: msgTopicMap[m.id] || undefined,
         media: m.mediaUrl ? [{
           id: m.id + "-media",
           type: m.mediaType || "image" as const,
@@ -96,7 +110,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       })),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatList, selectedChatId, mesh.messageVersion]);
+  }, [chatList, selectedChatId, mesh.messageVersion, msgTopicMap]);
 
   const handleSelectChat = (id: string) => {
     setSelectedChatId(id);
@@ -115,12 +129,11 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     }
   };
 
-  const handleSendMessage = useCallback(async (chatId: string, text: string, media?: MediaAttachment[], _topicId?: string | null) => {
+  const handleSendMessage = useCallback(async (chatId: string, text: string, media?: MediaAttachment[], topicId?: string | null) => {
     // Send media files first
     if (media && media.length > 0) {
       for (const attachment of media) {
         try {
-          // Convert blob URL back to File
           const resp = await fetch(attachment.url);
           const blob = await resp.blob();
           const file = new File([blob], attachment.name, { type: attachment.mimeType });
@@ -133,6 +146,30 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     // Send text if any
     if (text.trim()) {
       await mesh.sendMessage(chatId, text.trim());
+    }
+
+    // Save topic mapping for sent messages (after a short delay to get the event ID)
+    if (topicId) {
+      setTimeout(() => {
+        const client = mesh.client;
+        if (!client) return;
+        const room = client.getRoom(chatId);
+        if (!room) return;
+        const events = room.getLiveTimeline().getEvents();
+        // Map the last few events from this user to the topic
+        const myUserId = client.getUserId();
+        const recentMine = events.filter((e) => e.getSender() === myUserId).slice(-3);
+        setMsgTopicMap((prev) => {
+          const updated = { ...prev };
+          for (const e of recentMine) {
+            const eid = e.getId();
+            if (eid && !updated[eid]) {
+              updated[eid] = topicId;
+            }
+          }
+          return updated;
+        });
+      }, 1000);
     }
   }, [mesh]);
 

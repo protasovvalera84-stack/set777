@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
-  Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsUp,
+  Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsDown,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -371,6 +371,8 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
 
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [dislikes, setDislikes] = useState(0);
+  const [disliked, setDisliked] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -385,6 +387,20 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
         rel_type: "m.annotation",
         event_id: message.id,
         key: "\u2764\ufe0f",
+      },
+    }).catch(() => {});
+  };
+
+  const handleDislike = () => {
+    if (!mesh.client || !roomId) return;
+    if (disliked) return;
+    setDisliked(true);
+    setDislikes((d) => d + 1);
+    mesh.client.sendEvent(roomId, "m.reaction" as Parameters<typeof mesh.client.sendEvent>[1], {
+      "m.relates_to": {
+        rel_type: "m.annotation",
+        event_id: message.id,
+        key: "\ud83d\udc4e",
       },
     }).catch(() => {});
   };
@@ -466,10 +482,13 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
               <span>Reply</span>
             </button>
             <button
-              onClick={handleLike}
-              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
+              onClick={handleDislike}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-all ${
+                disliked ? "bg-blue-500/20 text-blue-400" : "hover:bg-surface-hover text-muted-foreground"
+              }`}
             >
-              <ThumbsUp className="h-3 w-3" />
+              <ThumbsDown className={`h-3 w-3 ${disliked ? "fill-blue-400" : ""}`} />
+              {dislikes > 0 && <span>{dislikes}</span>}
             </button>
           </div>
         )}

@@ -49,18 +49,10 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
             <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${
               myShort ? "border-primary shadow-glow" : "border-border/50"
             }`}>
-              {myShort && myShort.items.length > 0 ? (
-                myShort.items[0].type === "image" ? (
-                  <img src={myShort.items[0].url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center">
-                    <Play className="h-5 w-5 text-primary" />
-                  </div>
-                )
-              ) : myAvatarUrl ? (
+              {myAvatarUrl ? (
                 <img src={myAvatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary-glow/10 flex items-center justify-center text-xs font-bold text-primary">
+                <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary-glow/10 flex items-center justify-center text-sm font-bold text-primary">
                   {myAvatar}
                 </div>
               )}
