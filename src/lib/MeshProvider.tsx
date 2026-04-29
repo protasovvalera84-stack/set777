@@ -54,6 +54,7 @@ export interface MeshMessage {
   text: string;
   timestamp: string;
   isOwn: boolean;
+  topicId?: string;
   mediaUrl?: string;
   mediaType?: "image" | "video" | "audio";
   mediaName?: string;
@@ -71,8 +72,8 @@ interface MeshContextValue {
   rooms: MeshRoom[];
   messageVersion: number;
   getMessages: (roomId: string) => MeshMessage[];
-  sendMessage: (roomId: string, text: string) => Promise<void>;
-  sendMedia: (roomId: string, file: File) => Promise<void>;
+  sendMessage: (roomId: string, text: string, topicId?: string | null) => Promise<void>;
+  sendMedia: (roomId: string, file: File, topicId?: string | null) => Promise<void>;
   deleteMessage: (roomId: string, eventId: string) => Promise<void>;
   createDm: (userId: string) => Promise<string>;
   createGroup: (name: string, userIds: string[]) => Promise<string>;
@@ -206,6 +207,9 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
     text = "";
   }
 
+  // Read topic ID from custom field
+  const topicId = (content as Record<string, unknown>)["org.meshlink.topic_id"] as string | undefined;
+
   return {
     id: evt.getId()!,
     senderId,
@@ -213,6 +217,7 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
     text,
     timestamp: formatTime(evt.getTs()),
     isOwn: senderId === client.getUserId(),
+    topicId,
     mediaUrl,
     mediaType,
     mediaName,
@@ -360,13 +365,22 @@ export function MeshProvider({ session, children }: Props) {
     [],
   );
 
-  const sendMessage = useCallback(async (roomId: string, text: string) => {
+  const sendMessage = useCallback(async (roomId: string, text: string, topicId?: string | null) => {
     const c = clientRef.current;
     if (!c) return;
-    await c.sendTextMessage(roomId, text);
+    if (topicId) {
+      // Send with topic metadata
+      await c.sendMessage(roomId, {
+        msgtype: "m.text",
+        body: text,
+        "org.meshlink.topic_id": topicId,
+      });
+    } else {
+      await c.sendTextMessage(roomId, text);
+    }
   }, []);
 
-  const sendMedia = useCallback(async (roomId: string, file: File) => {
+  const sendMedia = useCallback(async (roomId: string, file: File, topicId?: string | null) => {
     const c = clientRef.current;
     if (!c) return;
     const mxcUri = await uploadMedia(session.accessToken, file);
@@ -374,12 +388,16 @@ export function MeshProvider({ session, children }: Props) {
     if (file.type.startsWith("image/")) msgtype = "m.image";
     else if (file.type.startsWith("video/")) msgtype = "m.video";
     else if (file.type.startsWith("audio/")) msgtype = "m.audio";
-    await c.sendMessage(roomId, {
+    const content: Record<string, unknown> = {
       msgtype,
       body: file.name,
       url: mxcUri,
       info: { mimetype: file.type, size: file.size },
-    });
+    };
+    if (topicId) {
+      content["org.meshlink.topic_id"] = topicId;
+    }
+    await c.sendMessage(roomId, content);
   }, [session.accessToken]);
 
   const deleteMessage = useCallback(async (roomId: string, eventId: string) => {

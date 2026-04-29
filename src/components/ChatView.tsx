@@ -369,40 +369,37 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
   const hasMedia = message.media && message.media.length > 0;
   const mesh = useMesh();
 
-  const [likes, setLikes] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [dislikes, setDislikes] = useState(0);
-  const [disliked, setDisliked] = useState(false);
+  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
 
-  const handleLike = () => {
+  const sendReaction = (key: string) => {
     if (!mesh.client || !roomId) return;
-    if (liked) return;
-    setLiked(true);
-    setLikes((l) => l + 1);
-    // Send reaction via Matrix
     mesh.client.sendEvent(roomId, "m.reaction" as Parameters<typeof mesh.client.sendEvent>[1], {
       "m.relates_to": {
         rel_type: "m.annotation",
         event_id: message.id,
-        key: "\u2764\ufe0f",
+        key,
       },
     }).catch(() => {});
   };
 
+  const handleLike = () => {
+    if (reaction === "like") {
+      setReaction(null);
+    } else {
+      setReaction("like");
+      sendReaction("\u2764\ufe0f");
+    }
+  };
+
   const handleDislike = () => {
-    if (!mesh.client || !roomId) return;
-    if (disliked) return;
-    setDisliked(true);
-    setDislikes((d) => d + 1);
-    mesh.client.sendEvent(roomId, "m.reaction" as Parameters<typeof mesh.client.sendEvent>[1], {
-      "m.relates_to": {
-        rel_type: "m.annotation",
-        event_id: message.id,
-        key: "\ud83d\udc4e",
-      },
-    }).catch(() => {});
+    if (reaction === "dislike") {
+      setReaction(null);
+    } else {
+      setReaction("dislike");
+      sendReaction("\ud83d\udc4e");
+    }
   };
 
   const handleReply = () => {
@@ -467,28 +464,28 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/20">
             <button
               onClick={handleLike}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-all ${
-                liked ? "bg-red-500/20 text-red-400" : "hover:bg-surface-hover text-muted-foreground"
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] transition-all ${
+                reaction === "like" ? "bg-red-500/20 text-red-400" : "hover:bg-surface-hover text-muted-foreground"
               }`}
             >
-              <Heart className={`h-3 w-3 ${liked ? "fill-red-400" : ""}`} />
-              {likes > 0 && <span>{likes}</span>}
+              <Heart className={`h-3 w-3 ${reaction === "like" ? "fill-red-400" : ""}`} />
+              <span>{reaction === "like" ? "Liked" : "Like"}</span>
             </button>
             <button
               onClick={() => setShowReply((v) => !v)}
-              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
             >
               <MessageCircle className="h-3 w-3" />
               <span>Reply</span>
             </button>
             <button
               onClick={handleDislike}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-all ${
-                disliked ? "bg-blue-500/20 text-blue-400" : "hover:bg-surface-hover text-muted-foreground"
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] transition-all ${
+                reaction === "dislike" ? "bg-blue-500/20 text-blue-400" : "hover:bg-surface-hover text-muted-foreground"
               }`}
             >
-              <ThumbsDown className={`h-3 w-3 ${disliked ? "fill-blue-400" : ""}`} />
-              {dislikes > 0 && <span>{dislikes}</span>}
+              <ThumbsDown className={`h-3 w-3 ${reaction === "dislike" ? "fill-blue-400" : ""}`} />
+              <span>{reaction === "dislike" ? "Disliked" : "Dislike"}</span>
             </button>
           </div>
         )}
