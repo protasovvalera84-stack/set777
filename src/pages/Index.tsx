@@ -98,7 +98,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         text: m.text,
         timestamp: m.timestamp,
         read: true,
-        topicId: msgTopicMap[m.id] || undefined,
+        topicId: m.topicId || msgTopicMap[m.id] || undefined,
         media: m.mediaUrl ? [{
           id: m.id + "-media",
           type: m.mediaType || "image" as const,
@@ -137,7 +137,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           const resp = await fetch(attachment.url);
           const blob = await resp.blob();
           const file = new File([blob], attachment.name, { type: attachment.mimeType });
-          await mesh.sendMedia(chatId, file);
+          await mesh.sendMedia(chatId, file, topicId);
         } catch (err) {
           console.error("Failed to send media:", err);
         }
@@ -145,31 +145,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     }
     // Send text if any
     if (text.trim()) {
-      await mesh.sendMessage(chatId, text.trim());
-    }
-
-    // Save topic mapping for sent messages (after a short delay to get the event ID)
-    if (topicId) {
-      setTimeout(() => {
-        const client = mesh.client;
-        if (!client) return;
-        const room = client.getRoom(chatId);
-        if (!room) return;
-        const events = room.getLiveTimeline().getEvents();
-        // Map the last few events from this user to the topic
-        const myUserId = client.getUserId();
-        const recentMine = events.filter((e) => e.getSender() === myUserId).slice(-3);
-        setMsgTopicMap((prev) => {
-          const updated = { ...prev };
-          for (const e of recentMine) {
-            const eid = e.getId();
-            if (eid && !updated[eid]) {
-              updated[eid] = topicId;
-            }
-          }
-          return updated;
-        });
-      }, 1000);
+      await mesh.sendMessage(chatId, text.trim(), topicId);
     }
   }, [mesh]);
 
