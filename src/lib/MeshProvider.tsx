@@ -368,16 +368,14 @@ export function MeshProvider({ session, children }: Props) {
   const sendMessage = useCallback(async (roomId: string, text: string, topicId?: string | null) => {
     const c = clientRef.current;
     if (!c) return;
+    const content: Record<string, unknown> = {
+      msgtype: "m.text",
+      body: text,
+    };
     if (topicId) {
-      // Send with topic metadata
-      await c.sendMessage(roomId, {
-        msgtype: "m.text",
-        body: text,
-        "org.meshlink.topic_id": topicId,
-      });
-    } else {
-      await c.sendTextMessage(roomId, text);
+      content["org.meshlink.topic_id"] = topicId;
     }
+    await c.sendEvent(roomId, "m.room.message" as Parameters<typeof c.sendEvent>[1], content);
   }, []);
 
   const sendMedia = useCallback(async (roomId: string, file: File, topicId?: string | null) => {
@@ -397,7 +395,7 @@ export function MeshProvider({ session, children }: Props) {
     if (topicId) {
       content["org.meshlink.topic_id"] = topicId;
     }
-    await c.sendMessage(roomId, content);
+    await c.sendEvent(roomId, "m.room.message" as Parameters<typeof c.sendEvent>[1], content);
   }, [session.accessToken]);
 
   const deleteMessage = useCallback(async (roomId: string, eventId: string) => {
