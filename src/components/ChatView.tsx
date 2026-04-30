@@ -315,6 +315,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Search in chat button */}
+          <button
+            onClick={() => setChatSearchOpen(true)}
+            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            title="Search in chat (Ctrl+F)"
+          >
+            <SearchIcon className="h-4 w-4 text-muted-foreground" />
+          </button>
           {/* Media gallery button */}
           <button
             onClick={() => setGalleryOpen(true)}
@@ -458,9 +466,31 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;
             return filtered.length > 0 ? (
-              filtered.map((msg, i) => (
-                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
-              ))
+              filtered.map((msg, i) => {
+                // Date separator
+                const showDate = i === 0 || (i > 0 && msg.timestamp?.split(" ")[0] !== filtered[i - 1]?.timestamp?.split(" ")[0]);
+                // Unread separator (first unread message that's not ours)
+                const showUnread = i > 0 && msg.senderId !== "me" && !msg.read && (i === 0 || filtered[i - 1]?.read || filtered[i - 1]?.senderId === "me");
+                return (
+                  <div key={msg.id}>
+                    {showDate && msg.timestamp && (
+                      <div className="flex items-center gap-3 my-3">
+                        <div className="flex-1 h-px bg-border/40" />
+                        <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{msg.timestamp.split(" ")[0] || "Today"}</span>
+                        <div className="flex-1 h-px bg-border/40" />
+                      </div>
+                    )}
+                    {showUnread && (
+                      <div className="flex items-center gap-3 my-2">
+                        <div className="flex-1 h-px bg-primary/50" />
+                        <span className="text-[9px] font-mono text-primary uppercase">New messages</span>
+                        <div className="flex-1 h-px bg-primary/50" />
+                      </div>
+                    )}
+                    <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
+                  </div>
+                );
+              })
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Hash className="h-8 w-8 text-muted-foreground/30 mb-3" />
