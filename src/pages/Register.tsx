@@ -189,14 +189,16 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
   const handleInstall = () => {
     if (!platform) return;
 
-    if (platform === "android" || platform === "ios") {
-      // Mobile: no download needed, just go to profile
+    if (platform === "ios") {
+      // iOS: no download needed, just go to profile (PWA)
       setStep("profile");
       return;
     }
 
     setDownloading(true);
-    if (platform === "linux") {
+    if (platform === "android") {
+      forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
+    } else if (platform === "linux") {
       forceDownload("/installers/meshlink-install.sh", "meshlink-install.sh");
     } else {
       forceDownload("/installers/Meshlink-Install.bat", "Meshlink-Install.bat");
@@ -455,11 +457,11 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
 
                 {platform === "android" && (
                   <div className="space-y-2 text-[12px] text-muted-foreground">
-                    <p>This app works directly in your browser. To add it to your home screen:</p>
+                    <p>The Meshlink APK will be downloaded automatically after registration.</p>
                     <div className="space-y-1.5 pl-1">
-                      <p>1. After registration, tap <b className="text-foreground">menu ⋮</b> in Chrome</p>
-                      <p>2. Tap <b className="text-foreground">"Install app"</b> or <b className="text-foreground">"Add to Home screen"</b></p>
-                      <p>3. The app icon will appear on your home screen</p>
+                      <p>1. Open the downloaded <b className="text-foreground">Meshlink.apk</b> file</p>
+                      <p>2. Tap <b className="text-foreground">Install</b> (allow unknown sources if prompted)</p>
+                      <p>3. Open the app and log in with your new account</p>
                     </div>
                   </div>
                 )}
@@ -511,8 +513,10 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
             >
               {downloading ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Downloading...</>
-              ) : (platform === "android" || platform === "ios") ? (
+              ) : platform === "ios" ? (
                 <>Continue <ChevronRight className="h-4 w-4" /></>
+              ) : platform === "android" ? (
+                <><Download className="h-4 w-4" /> Download APK</>
               ) : (
                 <><Download className="h-4 w-4" /> Download & Install</>
               )}
