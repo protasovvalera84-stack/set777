@@ -3,6 +3,7 @@ import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, 
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
+import { ContactsPage } from "@/components/ContactsPage";
 
 export interface SearchResult {
   type: "user" | "room";
@@ -464,6 +465,14 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           </div>
         </div>
 
+        {/* Contacts button */}
+        <button onClick={() => setContactsOpen(true)} className="relative border-t border-border/40 px-4 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">👥</span>
+            <span className="text-xs text-muted-foreground">Contacts</span>
+          </div>
+        </button>
+
         {/* Footer */}
         <button onClick={onOpenSettings} className="relative border-t border-border/40 px-4 py-3 glass w-full text-left hover:bg-surface-hover transition-all">
           <div className="flex items-center gap-3">
@@ -488,6 +497,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       </div>
 
       <CreateChatDialog open={createOpen} type={createType} onClose={() => setCreateOpen(false)} onCreate={onCreateChat} />
+      <ContactsPage open={contactsOpen} onClose={() => setContactsOpen(false)} onStartDm={onStartDm} />
     </>
   );
 }
