@@ -9,6 +9,7 @@ import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
 import { useMesh } from "@/lib/MeshProvider";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { GifPicker } from "@/components/GifPicker";
 
 interface ChatViewProps {
   chat: Chat;
@@ -51,6 +52,12 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [forwardingMsg, setForwardingMsg] = useState<Message | null>(null);
   const [contextMsg, setContextMsg] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
+  const [pinnedMsg, setPinnedMsg] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`meshlink-pin-${chat.id}`) || null;
+    } catch { return null; }
+  });
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -339,6 +346,17 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         <Sparkles className="h-3 w-3 text-accent" />
       </div>
 
+      {/* Pinned message banner */}
+      {pinnedMsg && (
+        <div className="relative z-10 flex items-center gap-2 px-4 py-1.5 bg-primary/5 border-b border-border/30">
+          <div className="w-0.5 h-4 rounded-full bg-primary" />
+          <p className="flex-1 text-[11px] text-foreground truncate">{pinnedMsg}</p>
+          <button onClick={() => { setPinnedMsg(null); localStorage.removeItem(`meshlink-pin-${chat.id}`); }} className="text-muted-foreground hover:text-foreground">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       {/* Topics bar for groups -- always show so users can create first topic */}
       {(chat.type === "group" || chat.type === "channel") && onCreateTopic && (
         <TopicsBar
@@ -360,7 +378,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               : chat.messages;
             return filtered.length > 0 ? (
               filtered.map((msg, i) => (
-                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} />
+                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} />
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -424,6 +442,26 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         />
       </div>
 
+      {/* GIF Picker */}
+      <div className="relative">
+        <GifPicker
+          open={gifOpen}
+          onClose={() => setGifOpen(false)}
+          onSelect={(gifUrl) => {
+            // Send GIF as image message
+            if (mesh.client) {
+              mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+                msgtype: "m.image",
+                body: "GIF",
+                url: gifUrl,
+                info: { mimetype: "image/gif" },
+              }).catch(() => {});
+            }
+            setGifOpen(false);
+          }}
+        />
+      </div>
+
       {/* Input */}
       <div className="relative z-10 border-t border-border/40 px-4 md:px-6 py-3 md:py-4 glass-strong">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
@@ -455,6 +493,9 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               title="Send photo"
             >
               <Image className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="GIF">
+              <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
             </button>
             <button onClick={() => setEmojiOpen((v) => !v)} className="hidden sm:flex hover:text-primary transition-colors">
               <Smile className="h-4 w-4 text-muted-foreground" />
@@ -563,7 +604,7 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
   return null;
 }
 
-function MessageBubble({ message, index, chatType, roomId, onForward }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void }) {
+function MessageBubble({ message, index, chatType, roomId, onForward, onPin }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void; onPin?: (text: string) => void }) {
   const isOwn = message.senderId === "me";
   const isSystem = message.senderId === "system";
   const isGroup = chatType === "group" || chatType === "channel";
@@ -660,14 +701,20 @@ function MessageBubble({ message, index, chatType, roomId, onForward }: { messag
           )}
         </p>
 
-        {/* Forward button */}
-        {onForward && message.text && (
-          <button
-            onClick={() => onForward(message)}
-            className={`mt-1 flex items-center gap-1 text-[9px] ${isOwn ? "text-white/50 hover:text-white/80" : "text-muted-foreground/50 hover:text-muted-foreground"} transition-colors`}
-          >
-            <Forward className="h-2.5 w-2.5" /> Forward
-          </button>
+        {/* Forward & Pin buttons */}
+        {message.text && (
+          <div className={`mt-1 flex items-center gap-2 text-[9px] ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
+            {onForward && (
+              <button onClick={() => onForward(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
+                <Forward className="h-2.5 w-2.5" /> Forward
+              </button>
+            )}
+            {onPin && (
+              <button onClick={() => onPin(message.text)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
+                <Copy className="h-2.5 w-2.5" /> Pin
+              </button>
+            )}
+          </div>
         )}
 
         {/* Reactions bar for media in groups/channels */}
