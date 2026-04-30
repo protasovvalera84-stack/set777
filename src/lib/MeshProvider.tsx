@@ -71,10 +71,12 @@ interface MeshContextValue {
   userId: string;
   rooms: MeshRoom[];
   messageVersion: number;
+  typingUsers: Record<string, string[]>;
   getMessages: (roomId: string) => MeshMessage[];
   sendMessage: (roomId: string, text: string, topicId?: string | null) => Promise<void>;
   sendMedia: (roomId: string, file: File, topicId?: string | null) => Promise<void>;
   deleteMessage: (roomId: string, eventId: string) => Promise<void>;
+  sendTyping: (roomId: string, isTyping: boolean) => void;
   createDm: (userId: string) => Promise<string>;
   createGroup: (name: string, userIds: string[]) => Promise<string>;
   createChannel: (name: string) => Promise<string>;
@@ -251,6 +253,7 @@ export function MeshProvider({ session, children }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<MeshRoom[]>([]);
   const [messageVersion, setMessageVersion] = useState(0);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({});
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshRooms = useCallback(() => {
@@ -324,6 +327,26 @@ export function MeshProvider({ session, children }: Props) {
       client.on(sdk.RoomEvent.Name, onEvent);
       client.on(sdk.RoomEvent.MyMembership, onMyMembership);
       client.on(sdk.RoomMemberEvent.Membership, onEvent);
+
+      // Typing indicator: listen for typing events
+      client.on(sdk.RoomMemberEvent.Typing, (_event: MeshEvent, member: { userId: string; typing: boolean; roomId?: string }) => {
+        if (member.userId === session.userId) return;
+        // Get the room from the member's events
+        const rooms = client.getRooms();
+        for (const room of rooms) {
+          const typingMembers = room.getMembers().filter((m) => m.typing && m.userId !== session.userId);
+          const names = typingMembers.map((m) => m.name || m.userId.split(":")[0].replace("@", ""));
+          setTypingUsers((prev) => {
+            const updated = { ...prev };
+            if (names.length > 0) {
+              updated[room.roomId] = names;
+            } else {
+              delete updated[room.roomId];
+            }
+            return updated;
+          });
+        }
+      });
 
       await startClient(client);
       if (!cancelled) {
@@ -402,6 +425,12 @@ export function MeshProvider({ session, children }: Props) {
     const c = clientRef.current;
     if (!c) return;
     await c.redactEvent(roomId, eventId);
+  }, []);
+
+  const sendTypingIndicator = useCallback((roomId: string, isTyping: boolean) => {
+    const c = clientRef.current;
+    if (!c) return;
+    c.sendTyping(roomId, isTyping, 30000).catch(() => {});
   }, []);
 
   const createDm = useCallback(async (targetUserId: string): Promise<string> => {
@@ -576,10 +605,12 @@ export function MeshProvider({ session, children }: Props) {
     userId: session.userId,
     rooms,
     messageVersion,
+    typingUsers,
     getMessages,
     sendMessage,
     sendMedia,
     deleteMessage,
+    sendTyping: sendTypingIndicator,
     createDm,
     createGroup,
     createChannel,

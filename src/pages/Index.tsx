@@ -313,7 +313,6 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     // Search users on the server
     const users = await mesh.searchUsers(query);
     for (const u of users) {
-      // Don't show yourself in search results
       if (u.userId === mesh.userId) continue;
       results.push({
         type: "user",
@@ -323,22 +322,50 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       });
     }
 
+    // Search in local messages (find chats containing the query)
+    if (query.length >= 2 && mesh.client) {
+      const rooms = mesh.client.getRooms();
+      for (const room of rooms) {
+        if (room.getMyMembership() !== "join") continue;
+        const events = room.getLiveTimeline().getEvents();
+        const match = events.find((e) => {
+          if (e.getType() !== "m.room.message") return false;
+          const body = e.getContent()?.body;
+          return typeof body === "string" && body.toLowerCase().includes(query.toLowerCase());
+        });
+        if (match) {
+          const existingRoom = results.find((r) => r.id === room.roomId);
+          if (!existingRoom) {
+            results.push({
+              type: "room",
+              id: room.roomId,
+              name: room.name || "Chat",
+              avatar: (room.name || "??").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+              members: room.getJoinedMemberCount(),
+            });
+          }
+        }
+      }
+    }
+
     // Also search public rooms
     try {
       const rooms = await mesh.getPublicRooms();
       for (const r of rooms) {
         if (r.name.toLowerCase().includes(query.toLowerCase())) {
-          results.push({
-            type: "room",
-            id: r.id,
-            name: r.name,
-            avatar: r.avatar,
-            members: r.members,
-          });
+          if (!results.find((x) => x.id === r.id)) {
+            results.push({
+              type: "room",
+              id: r.id,
+              name: r.name,
+              avatar: r.avatar,
+              members: r.members,
+            });
+          }
         }
       }
     } catch {
-      // Public rooms search is optional, don't fail the whole search
+      // optional
     }
 
     return results;
