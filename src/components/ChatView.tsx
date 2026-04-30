@@ -13,6 +13,7 @@ import { GifPicker } from "@/components/GifPicker";
 import { CreatePollDialog } from "@/components/Poll";
 import { StickerPicker } from "@/components/StickerPicker";
 import { MediaGallery } from "@/components/MediaGallery";
+import { FileManager } from "@/components/FileManager";
 
 interface ChatViewProps {
   chat: Chat;
@@ -68,6 +69,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [stickerOpen, setStickerOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -337,6 +339,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             title="Search in chat (Ctrl+F)"
           >
             <SearchIcon className="h-4 w-4 text-muted-foreground" />
+          </button>
+          {/* File manager button */}
+          <button
+            onClick={() => setFileManagerOpen(true)}
+            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            title="Shared files"
+          >
+            <Paperclip className="h-4 w-4 text-muted-foreground" />
           </button>
           {/* Media gallery button */}
           <button
@@ -743,6 +753,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             "org.meshlink.poll": { question, options },
           }).catch(() => {});
         }}
+      />
+
+      {/* File Manager */}
+      <FileManager
+        open={fileManagerOpen}
+        onClose={() => setFileManagerOpen(false)}
+        messages={chat.messages}
+        chatName={chat.name}
       />
 
       {/* Media Gallery */}
