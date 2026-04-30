@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
-  Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsDown,
-  Timer, Forward, Copy, Check, Clock, Bookmark, Search as SearchIcon,
+  Image, Film, Music, X, Download, MessageCircle,
+  Timer, Forward, Copy, Check, Clock, Search as SearchIcon,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -56,7 +56,6 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     } catch { return null; }
   });
   const [forwardingMsg, setForwardingMsg] = useState<Message | null>(null);
-  const [contextMsg, setContextMsg] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
   const [pinnedMsg, setPinnedMsg] = useState<string | null>(() => {
@@ -671,7 +670,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             >
               <Image className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="GIF">
+            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); setStickerOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="GIF">
               <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
             </button>
             <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors">

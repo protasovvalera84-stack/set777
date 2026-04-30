@@ -33,6 +33,7 @@ export function GifPicker({ open, onClose, onSelect }: GifPickerProps) {
     fetch(`${TENOR_BASE}/featured?key=${TENOR_KEY}&limit=20&media_filter=tinygif,gif`)
       .then((r) => r.json())
       .then((data) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const results = (data.results || []).map((item: any) => ({
           id: item.id,
           url: item.media_formats?.gif?.url || item.media_formats?.tinygif?.url || "",
@@ -60,6 +61,7 @@ export function GifPicker({ open, onClose, onSelect }: GifPickerProps) {
       fetch(`${TENOR_BASE}/search?key=${TENOR_KEY}&q=${encodeURIComponent(search)}&limit=20&media_filter=tinygif,gif`)
         .then((r) => r.json())
         .then((data) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const results = (data.results || []).map((item: any) => ({
             id: item.id,
             url: item.media_formats?.gif?.url || item.media_formats?.tinygif?.url || "",

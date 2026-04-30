@@ -180,7 +180,8 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     if (isScreenSharing) {
       // Stop screen share - revert to camera
       const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: any) => s.track?.kind === "video");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: RTCRtpSender) => s.track?.kind === "video");
       if (sender && camStream.getVideoTracks()[0]) {
         sender.replaceTrack(camStream.getVideoTracks()[0]);
       }
@@ -189,7 +190,8 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-        const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: any) => s.track?.kind === "video");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: RTCRtpSender) => s.track?.kind === "video");
         if (sender) {
           sender.replaceTrack(screenTrack);
         }

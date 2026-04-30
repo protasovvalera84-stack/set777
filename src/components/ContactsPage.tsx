@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Search, UserPlus, MessageCircle, Phone, Trash2 } from "lucide-react";
+import { X, Search, UserPlus, MessageCircle } from "lucide-react";
 import { useMesh } from "@/lib/MeshProvider";
 
 interface Contact {
