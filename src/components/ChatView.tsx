@@ -3,7 +3,7 @@ import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
   Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsDown,
-  Timer, Forward, Copy, Check, Clock, Bookmark,
+  Timer, Forward, Copy, Check, Clock, Bookmark, Search as SearchIcon,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -68,6 +68,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [stickerOpen, setStickerOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -83,6 +85,22 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat.messages]);
+
+  // Ctrl+F to open in-chat search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setChatSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setChatSearchOpen(false);
+        setChatSearch("");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Send typing indicator when user types + save draft
   const handleInputChange = (value: string) => {
@@ -387,6 +405,27 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         </span>
         <Sparkles className="h-3 w-3 text-accent" />
       </div>
+
+      {/* In-chat search bar */}
+      {chatSearchOpen && (
+        <div className="relative z-10 flex items-center gap-2 px-4 py-2 bg-surface-hover/50 border-b border-border/30">
+          <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={chatSearch}
+            onChange={(e) => setChatSearch(e.target.value)}
+            placeholder="Search in chat..."
+            autoFocus
+            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+          />
+          <span className="text-[9px] text-muted-foreground">
+            {chatSearch ? `${chat.messages.filter((m) => m.text?.toLowerCase().includes(chatSearch.toLowerCase())).length} found` : ""}
+          </span>
+          <button onClick={() => { setChatSearchOpen(false); setChatSearch(""); }} className="p-1 hover:bg-surface-hover rounded-lg">
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
 
       {/* Pinned message banner */}
       {pinnedMsg && (
@@ -864,7 +903,12 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         <p className={`mt-1 text-[10px] ${isOwn ? "text-white/70" : "text-muted-foreground"} text-right font-mono`}>
           {message.timestamp}
           {isOwn && (
-            <span className="ml-1">{message.read ? "\u2713\u2713" : "\u2713"}</span>
+            <span className="ml-1" title={message.read ? "Read" : "Sent"}>
+              {message.read ? "\u2713\u2713" : "\u2713"}
+            </span>
+          )}
+          {isOwn && message.read && isGroup && (
+            <span className="ml-1 text-[8px] text-primary/70">seen</span>
           )}
         </p>
 
