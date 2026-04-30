@@ -11,6 +11,7 @@ import { useMesh } from "@/lib/MeshProvider";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { GifPicker } from "@/components/GifPicker";
 import { CreatePollDialog } from "@/components/Poll";
+import { StickerPicker } from "@/components/StickerPicker";
 
 interface ChatViewProps {
   chat: Chat;
@@ -40,7 +41,9 @@ function downloadMedia(attachment: MediaAttachment) {
 
 export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, onDeleteTopic, onSettingsClick, onDmSettingsClick }: ChatViewProps) {
   const mesh = useMesh();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => {
+    try { return localStorage.getItem(`meshlink-draft-${chat.id}`) || ""; } catch { return ""; }
+  });
   const [pendingMedia, setPendingMedia] = useState<MediaAttachment[]>([]);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
@@ -61,6 +64,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   });
   const [pollOpen, setPollOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -77,9 +81,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat.messages]);
 
-  // Send typing indicator when user types
+  // Send typing indicator when user types + save draft
   const handleInputChange = (value: string) => {
     setInput(value);
+    // Save draft
+    if (value.trim()) {
+      localStorage.setItem(`meshlink-draft-${chat.id}`, value);
+    } else {
+      localStorage.removeItem(`meshlink-draft-${chat.id}`);
+    }
     if (value.trim()) {
       mesh.sendTyping(chat.id, true);
       // Stop typing after 3 seconds of inactivity
@@ -112,6 +122,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
 
     onSendMessage(chat.id, input.trim(), pendingMedia.length > 0 ? pendingMedia : undefined, activeTopic);
     setInput("");
+    localStorage.removeItem(`meshlink-draft-${chat.id}`);
     setPendingMedia([]);
     setReplyTo(null);
     mesh.sendTyping(chat.id, false);
@@ -482,6 +493,24 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         />
       </div>
 
+      {/* Sticker Picker */}
+      <div className="relative">
+        <StickerPicker
+          open={stickerOpen}
+          onClose={() => setStickerOpen(false)}
+          onSelect={(sticker) => {
+            if (mesh.client) {
+              mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+                msgtype: "m.text",
+                body: sticker,
+                "org.meshlink.sticker": true,
+              }).catch(() => {});
+            }
+            setStickerOpen(false);
+          }}
+        />
+      </div>
+
       {/* Reply banner */}
       {replyTo && (
         <div className="relative z-10 flex items-center gap-2 px-4 md:px-6 py-2 border-t border-border/30 bg-primary/5">
@@ -540,8 +569,11 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="GIF">
               <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
             </button>
-            <button onClick={() => setEmojiOpen((v) => !v)} className="hidden sm:flex hover:text-primary transition-colors">
+            <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors">
               <Smile className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button onClick={() => { setStickerOpen((v) => !v); setEmojiOpen(false); setGifOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="Stickers">
+              <span className="text-sm">🎭</span>
             </button>
             <button
               onClick={isRecording ? stopRecording : startRecording}

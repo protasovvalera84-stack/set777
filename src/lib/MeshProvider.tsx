@@ -308,6 +308,23 @@ export function MeshProvider({ session, children }: Props) {
         if (!cancelled) {
           debouncedRefresh();
           setMessageVersion((v) => v + 1);
+
+          // Browser push notification when tab is not focused
+          if (document.hidden && Notification.permission === "granted") {
+            const rooms = client.getRooms();
+            for (const room of rooms) {
+              const timeline = room.getLiveTimeline().getEvents();
+              const lastEvt = timeline[timeline.length - 1];
+              if (lastEvt && lastEvt.getSender() !== session.userId && lastEvt.getType() === "m.room.message") {
+                const body = lastEvt.getContent()?.body;
+                if (typeof body === "string") {
+                  const senderName = lastEvt.getSender()?.split(":")[0].replace("@", "") || "Someone";
+                  new Notification(`${senderName} - Meshlink`, { body, icon: "/icons/icon-256.png", tag: room.roomId });
+                  break;
+                }
+              }
+            }
+          }
         }
       };
 
