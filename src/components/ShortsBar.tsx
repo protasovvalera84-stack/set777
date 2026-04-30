@@ -210,10 +210,23 @@ function ShortViewer({ short, index, isMine, onClose, onNext, onPrev, onDelete }
 
         {/* Caption */}
         {item.caption && (
-          <div className="absolute bottom-4 left-4 right-4 z-20">
+          <div className="absolute bottom-16 left-4 right-4 z-20">
             <p className="text-sm text-white bg-black/50 rounded-xl px-3 py-2 backdrop-blur-sm">{item.caption}</p>
           </div>
         )}
+
+        {/* Reactions bar */}
+        <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-center gap-2">
+          {["❤️", "🔥", "😂", "😮", "👏", "😢"].map((emoji) => (
+            <button
+              key={emoji}
+              onClick={(e) => { e.stopPropagation(); }}
+              className="text-xl hover:scale-150 transition-transform p-1"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
 
         {/* Nav arrows */}
         {index > 0 && (

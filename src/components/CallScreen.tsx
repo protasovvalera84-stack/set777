@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Phone, PhoneOff, Video, VideoOff, Mic, MicOff,
   Volume2, X, Maximize2, Minimize2,
-  Lock,
+  Lock, Monitor, MonitorOff,
 } from "lucide-react";
 import type { MatrixCall } from "matrix-js-sdk/lib/webrtc/call";
 import { CallState, CallEvent } from "matrix-js-sdk/lib/webrtc/call";
@@ -25,6 +25,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(type === "video");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   // Reactive stream tracking -- forces re-render when streams change
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -174,6 +175,36 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
     setIsVideoOn(newVideoOn);
   };
 
+  const toggleScreenShare = async () => {
+    if (!matrixCall) return;
+    if (isScreenSharing) {
+      // Stop screen share - revert to camera
+      const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: any) => s.track?.kind === "video");
+      if (sender && camStream.getVideoTracks()[0]) {
+        sender.replaceTrack(camStream.getVideoTracks()[0]);
+      }
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        const sender = (matrixCall as any).peerConn?.getSenders()?.find((s: any) => s.track?.kind === "video");
+        if (sender) {
+          sender.replaceTrack(screenTrack);
+        }
+        screenTrack.onended = () => {
+          setIsScreenSharing(false);
+          toggleVideo();
+        };
+        setIsScreenSharing(true);
+        setIsVideoOn(true);
+      } catch {
+        // User cancelled screen share picker
+      }
+    }
+  };
+
   const hasRemoteVideo = remoteStream ? remoteStream.getVideoTracks().length > 0 : false;
   const hasLocalVideo = localStream ? localStream.getVideoTracks().length > 0 : false;
   const isVideoCall = type === "video" || hasRemoteVideo || hasLocalVideo;
@@ -311,6 +342,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
             <button onClick={handleEnd} className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-105 transition-all">
               <PhoneOff className="h-6 w-6" />
             </button>
+            <CallButton icon={isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />} label={isScreenSharing ? "Stop Share" : "Share Screen"} active={isScreenSharing} onClick={toggleScreenShare} />
             <CallButton icon={<Volume2 className="h-5 w-5" />} label="Speaker" active={false} onClick={() => {}} />
           </div>
         </div>
