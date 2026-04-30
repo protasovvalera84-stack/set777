@@ -334,6 +334,30 @@ export function MeshProvider({ session, children }: Props) {
                 if (typeof body === "string") {
                   const senderName = lastEvt.getSender()?.split(":")[0].replace("@", "") || "Someone";
                   new Notification(`${senderName} - Meshlink`, { body, icon: "/icons/icon-256.png", tag: room.roomId });
+
+                  // Auto-reply bot
+                  try {
+                    const arSettings = JSON.parse(localStorage.getItem("meshlink-autoreply") || "{}");
+                    if (arSettings.enabled && arSettings.message) {
+                      let shouldReply = true;
+                      if (arSettings.schedule === "outside_hours") {
+                        const hour = new Date().getHours();
+                        if (hour >= (arSettings.startHour || 9) && hour < (arSettings.endHour || 18)) shouldReply = false;
+                      }
+                      const repliedTo: string[] = arSettings.repliedTo || [];
+                      const sender = lastEvt.getSender() || "";
+                      if (arSettings.replyOnce && repliedTo.includes(sender)) shouldReply = false;
+                      if (shouldReply) {
+                        client.sendEvent(room.roomId, "m.room.message" as any, {
+                          msgtype: "m.text",
+                          body: arSettings.message,
+                        }).catch(() => {});
+                        repliedTo.push(sender);
+                        localStorage.setItem("meshlink-autoreply", JSON.stringify({ ...arSettings, repliedTo }));
+                      }
+                    }
+                  } catch { /* ignore */ }
+
                   break;
                 }
               }
