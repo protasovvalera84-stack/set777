@@ -798,7 +798,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         )}
         {message.text && !isEditing && (
           <p className={`text-sm whitespace-pre-line leading-relaxed ${isOwn ? "text-white" : "text-foreground"}`}>
-            {message.text}
+            <LinkifiedText text={message.text} isOwn={isOwn} />
           </p>
         )}
         {isEditing && (
@@ -853,6 +853,9 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
                 </button>
               </>
             )}
+            <button onClick={() => navigator.clipboard?.writeText(message.text).catch(() => {})} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
+              📋 Copy
+            </button>
           </div>
         )}
 
@@ -906,5 +909,34 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         )}
       </div>
     </div>
+  );
+}
+
+/* ===== Linkified Text (detects URLs and makes them clickable) ===== */
+function LinkifiedText({ text, isOwn }: { text: string; isOwn: boolean }) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (urlRegex.test(part)) {
+          // Reset regex lastIndex
+          urlRegex.lastIndex = 0;
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`underline break-all ${isOwn ? "text-white/90 hover:text-white" : "text-primary hover:text-primary/80"}`}
+            >
+              {part.length > 50 ? part.slice(0, 50) + "..." : part}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
   );
 }

@@ -45,6 +45,7 @@ export interface MeshRoom {
   lastMessageTime: string;
   unread: number;
   members: number;
+  online: boolean;
 }
 
 export interface MeshMessage {
@@ -163,6 +164,18 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
     if (mxcAvatar) avatarUrl = mxcAvatar;
   } catch { /* no avatar */ }
 
+  // Check online status for DMs
+  let online = false;
+  if (roomType === "dm") {
+    const other = members.find((m) => m.userId !== myUserId);
+    if (other) {
+      try {
+        const user = (room as any).client?.getUser(other.userId);
+        online = user?.presence === "online" || user?.currentlyActive === true;
+      } catch { /* ignore */ }
+    }
+  }
+
   return {
     id: room.roomId,
     name,
@@ -173,6 +186,7 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
     lastMessageTime,
     unread: room.getUnreadNotificationCount("total") || 0,
     members: members.length,
+    online,
   };
 }
 

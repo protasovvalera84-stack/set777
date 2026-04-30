@@ -75,7 +75,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     avatar: room.avatar,
     avatarUrl: room.avatarUrl,
     type: room.type,
-    online: false,
+    online: room.online,
     lastMessage: room.lastMessage,
     lastMessageTime: room.lastMessageTime,
     unread: room.unread,
