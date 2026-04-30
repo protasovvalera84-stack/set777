@@ -3,7 +3,7 @@ import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
   Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsDown,
-  Timer, Forward, Copy, Check,
+  Timer, Forward, Copy, Check, Clock, Bookmark,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -65,6 +65,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [pollOpen, setPollOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [stickerOpen, setStickerOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -583,16 +584,53 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
             </button>
           </div>
-          <button
-            onClick={handleSend}
-            className={`rounded-2xl p-2.5 md:p-3 transition-all hover:scale-105 ${
-              input.trim() || pendingMedia.length > 0
-                ? "gradient-primary text-primary-foreground shadow-glow"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            <Send className="h-4 w-4" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleSend}
+              onContextMenu={(e) => { e.preventDefault(); if (input.trim()) setScheduleOpen(true); }}
+              className={`rounded-2xl p-2.5 md:p-3 transition-all hover:scale-105 ${
+                input.trim() || pendingMedia.length > 0
+                  ? "gradient-primary text-primary-foreground shadow-glow"
+                  : "bg-secondary text-muted-foreground"
+              }`}
+            >
+              <Send className="h-4 w-4" />
+            </button>
+            {/* Schedule menu (right-click on send) */}
+            {scheduleOpen && (
+              <div className="absolute bottom-full right-0 mb-2 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 w-44 animate-fade-in-up">
+                <p className="text-[9px] font-mono uppercase text-muted-foreground px-2 py-1 mb-1">Schedule send</p>
+                {[
+                  { label: "In 1 minute", ms: 60000 },
+                  { label: "In 5 minutes", ms: 300000 },
+                  { label: "In 30 minutes", ms: 1800000 },
+                  { label: "In 1 hour", ms: 3600000 },
+                  { label: "In 3 hours", ms: 10800000 },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => {
+                      const text = input.trim();
+                      if (!text) return;
+                      setScheduleOpen(false);
+                      setInput("");
+                      localStorage.removeItem(`meshlink-draft-${chat.id}`);
+                      setTimeout(() => {
+                        onSendMessage(chat.id, text, undefined, activeTopic);
+                      }, opt.ms);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover transition-all"
+                  >
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    {opt.label}
+                  </button>
+                ))}
+                <button onClick={() => setScheduleOpen(false)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-muted-foreground hover:bg-surface-hover mt-1">
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -855,6 +893,15 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             )}
             <button onClick={() => navigator.clipboard?.writeText(message.text).catch(() => {})} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
               📋 Copy
+            </button>
+            <button onClick={() => {
+              try {
+                const saved = JSON.parse(localStorage.getItem("meshlink-bookmarks") || "[]");
+                saved.unshift({ text: message.text, timestamp: message.timestamp, id: message.id });
+                localStorage.setItem("meshlink-bookmarks", JSON.stringify(saved.slice(0, 100)));
+              } catch { /* ignore */ }
+            }} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
+              🔖 Save
             </button>
           </div>
         )}
