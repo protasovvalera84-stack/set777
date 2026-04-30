@@ -759,11 +759,14 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
   const hasMedia = message.media && message.media.length > 0;
   const mesh = useMesh();
 
-  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
+  const [reactions, setReactions] = useState<string[]>([]);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+
+  const QUICK_REACTIONS = ["❤️", "👍", "😂", "😮", "😢", "🔥", "👏", "🎉"];
 
   const sendReaction = (key: string) => {
     if (!mesh.client || !roomId) return;
@@ -774,24 +777,8 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         key,
       },
     }).catch(() => {});
-  };
-
-  const handleLike = () => {
-    if (reaction === "like") {
-      setReaction(null);
-    } else {
-      setReaction("like");
-      sendReaction("\u2764\ufe0f");
-    }
-  };
-
-  const handleDislike = () => {
-    if (reaction === "dislike") {
-      setReaction(null);
-    } else {
-      setReaction("dislike");
-      sendReaction("\ud83d\udc4e");
-    }
+    setReactions((prev) => prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]);
+    setShowReactionPicker(false);
   };
 
   const handleEdit = () => {
@@ -924,33 +911,49 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
           </div>
         )}
 
-        {/* Reactions bar for media in groups/channels */}
+        {/* Reactions display */}
+        {reactions.length > 0 && (
+          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+            {reactions.map((r, i) => (
+              <span key={i} className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-xs">
+                {r}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Reaction picker */}
+        <div className="relative mt-1">
+          <button
+            onClick={() => setShowReactionPicker((v) => !v)}
+            className={`text-[9px] ${isOwn ? "text-white/40 hover:text-white/70" : "text-muted-foreground/40 hover:text-muted-foreground"} transition-colors`}
+          >
+            + React
+          </button>
+          {showReactionPicker && (
+            <div className={`absolute ${isOwn ? "right-0" : "left-0"} bottom-full mb-1 z-30 flex items-center gap-0.5 rounded-full glass-strong border border-border/60 shadow-elegant px-2 py-1 animate-fade-in-up`}>
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => sendReaction(emoji)}
+                  className={`text-sm hover:scale-125 transition-transform p-0.5 rounded ${reactions.includes(emoji) ? "bg-primary/20" : ""}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reply in thread (groups) */}
         {isGroup && hasMedia && (
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/20">
-            <button
-              onClick={handleLike}
-              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] transition-all ${
-                reaction === "like" ? "bg-red-500/20 text-red-400" : "hover:bg-surface-hover text-muted-foreground"
-              }`}
-            >
-              <Heart className={`h-3 w-3 ${reaction === "like" ? "fill-red-400" : ""}`} />
-              <span>{reaction === "like" ? "Liked" : "Like"}</span>
-            </button>
             <button
               onClick={() => setShowReply((v) => !v)}
               className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] text-muted-foreground hover:bg-surface-hover transition-all"
             >
               <MessageCircle className="h-3 w-3" />
               <span>Reply</span>
-            </button>
-            <button
-              onClick={handleDislike}
-              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] transition-all ${
-                reaction === "dislike" ? "bg-blue-500/20 text-blue-400" : "hover:bg-surface-hover text-muted-foreground"
-              }`}
-            >
-              <ThumbsDown className={`h-3 w-3 ${reaction === "dislike" ? "fill-blue-400" : ""}`} />
-              <span>{reaction === "dislike" ? "Disliked" : "Dislike"}</span>
             </button>
           </div>
         )}
