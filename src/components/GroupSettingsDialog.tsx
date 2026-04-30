@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   X, ArrowLeft, Camera, Users, UserPlus, UserMinus, Shield, Hash,
-  Bell, BellOff, Lock, Trash2, LogOut, ChevronRight, Search, Check, Plus, Star,
+  Bell, BellOff, Lock, Trash2, LogOut, ChevronRight, Search, Check, Plus, Star, Link2, Copy, QrCode,
 } from "lucide-react";
 import { Chat, Contact, Topic, ChatFolder } from "@/data/mockData";
 import { useMesh } from "@/lib/MeshProvider";
@@ -18,7 +18,7 @@ interface GroupSettingsDialogProps {
   onFoldersChange: (folders: ChatFolder[]) => void;
 }
 
-type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites";
+type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites" | "invite";
 
 function resizeImg(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -150,6 +150,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
              page === "members" ? "Members" :
              page === "addMembers" ? "Add Members" :
              page === "privacy" ? "Privacy" :
+             page === "invite" ? "Invite Link" :
              page === "favorites" ? "Add to Favorites" : "Topics"}
           </h2>
           {page === "main" && (
@@ -199,6 +200,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
               <div className="space-y-1">
                 <MenuItem icon={<Star className={`h-4 w-4 ${isInAnyFolder ? "text-primary" : ""}`} />} label={isInAnyFolder ? "In Favorites" : "Add to Favorites"} sub="Save to a folder" onClick={() => setPage("favorites")} />
                 <MenuItem icon={<Users className="h-4 w-4" />} label="Members" sub={`${(draft.memberIds || []).length} members`} onClick={() => setPage("members")} />
+                <MenuItem icon={<Link2 className="h-4 w-4" />} label="Invite Link" sub="Share or QR code" onClick={() => setPage("invite")} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy" sub="Permissions & access" onClick={() => setPage("privacy")} />
                 <MenuItem icon={muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />} label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((m) => !m)} />
               </div>
@@ -279,6 +281,44 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 mt-4">
                 <Lock className="h-4 w-4 text-primary flex-shrink-0" />
                 <p className="text-[11px] text-muted-foreground">All messages are end-to-end encrypted</p>
+              </div>
+            </div>
+          )}
+
+          {/* ===== INVITE LINK ===== */}
+          {page === "invite" && (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">Share this link to invite people to the {isChannel ? "channel" : "group"}.</p>
+              <div className="rounded-2xl glass border border-border/40 p-4">
+                <p className="text-[9px] font-mono uppercase text-muted-foreground mb-2">Invite Link</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs text-foreground bg-secondary/50 rounded-xl px-3 py-2 truncate">
+                    https://meshlink.app/join/{chat.id.slice(1, 12)}
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard?.writeText(`https://meshlink.app/join/${chat.id.slice(1, 12)}`)}
+                    className="p-2 rounded-xl hover:bg-surface-hover"
+                    title="Copy link"
+                  >
+                    <Copy className="h-4 w-4 text-primary" />
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-2xl glass border border-border/40 p-4 flex flex-col items-center">
+                <p className="text-[9px] font-mono uppercase text-muted-foreground mb-3">QR Code</p>
+                <div className="w-40 h-40 rounded-2xl bg-white flex items-center justify-center border border-border/30">
+                  {/* Simple QR-like pattern using CSS grid */}
+                  <div className="grid grid-cols-7 gap-0.5 p-3">
+                    {Array.from({ length: 49 }).map((_, i) => {
+                      const isCorner = (i < 3 || (i > 3 && i < 7)) && (Math.floor(i / 7) < 3);
+                      const rand = Math.random() > 0.5;
+                      return (
+                        <div key={i} className={`w-3.5 h-3.5 rounded-sm ${isCorner || rand ? "bg-black" : "bg-white"}`} />
+                      );
+                    })}
+                  </div>
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-2">Scan to join</p>
               </div>
             </div>
           )}
