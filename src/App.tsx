@@ -36,6 +36,13 @@ const App = () => {
   const [session, setSession] = useState<MeshlinkSession | null>(loadSession);
   const [validating, setValidating] = useState(true);
 
+  // Request notification permission
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Validate session on load -- check if token is still valid
   useEffect(() => {
     const sess = loadSession();
