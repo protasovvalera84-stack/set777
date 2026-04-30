@@ -706,6 +706,8 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
 
   const sendReaction = (key: string) => {
     if (!mesh.client || !roomId) return;
@@ -734,6 +736,22 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
       setReaction("dislike");
       sendReaction("\ud83d\udc4e");
     }
+  };
+
+  const handleEdit = () => {
+    if (!editText.trim() || !mesh.client || !roomId) return;
+    mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+      msgtype: "m.text",
+      body: `* ${editText.trim()}`,
+      "m.new_content": { msgtype: "m.text", body: editText.trim() },
+      "m.relates_to": { rel_type: "m.replace", event_id: message.id },
+    }).catch(() => {});
+    setIsEditing(false);
+  };
+
+  const handleDeleteForEveryone = () => {
+    if (!mesh.client || !roomId) return;
+    mesh.client.redactEvent(roomId, message.id).catch(() => {});
   };
 
   const handleReply = () => {
@@ -778,10 +796,24 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             {message.senderId.charAt(0).toUpperCase() + message.senderId.slice(1)}
           </p>
         )}
-        {message.text && (
+        {message.text && !isEditing && (
           <p className={`text-sm whitespace-pre-line leading-relaxed ${isOwn ? "text-white" : "text-foreground"}`}>
             {message.text}
           </p>
+        )}
+        {isEditing && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <input
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+              autoFocus
+              className="flex-1 rounded-xl bg-background/50 border border-border/40 px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+            />
+            <button onClick={handleEdit} className="text-[9px] text-primary font-medium">Save</button>
+            <button onClick={() => setIsEditing(false)} className="text-[9px] text-muted-foreground">Cancel</button>
+          </div>
         )}
         {message.media && message.media.map((m) => (
           <MediaDisplay key={m.id} attachment={m} />
@@ -795,7 +827,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
         {/* Forward, Pin & Reply buttons */}
         {message.text && (
-          <div className={`mt-1 flex items-center gap-2 text-[9px] ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
+          <div className={`mt-1 flex items-center gap-2 text-[9px] flex-wrap ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
             {onReply && (
               <button onClick={() => onReply(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
                 ↩ Reply
@@ -810,6 +842,16 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
               <button onClick={() => onPin(message.text)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
                 <Copy className="h-2.5 w-2.5" /> Pin
               </button>
+            )}
+            {isOwn && (
+              <>
+                <button onClick={() => setIsEditing(true)} className="hover:text-white/80 transition-colors">
+                  ✏️ Edit
+                </button>
+                <button onClick={handleDeleteForEveryone} className="hover:text-destructive transition-colors">
+                  🗑️ Delete
+                </button>
+              </>
             )}
           </div>
         )}
