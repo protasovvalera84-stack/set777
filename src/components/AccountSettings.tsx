@@ -206,6 +206,9 @@ function MainPage({
         </div>
       </div>
 
+      {/* Status message */}
+      <StatusSelector />
+
       {/* Menu items */}
       <div className="space-y-1">
         <MenuItem icon={<User className="h-4 w-4" />} label="Edit Profile" sub="Name, username, bio, photo" onClick={() => setPage("editProfile")} />
@@ -467,6 +470,76 @@ function AppearanceSection() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ===== Status Selector ===== */
+function StatusSelector() {
+  const [status, setStatus] = useState(() => localStorage.getItem("meshlink-status") || "");
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customText, setCustomText] = useState(status);
+
+  const PRESETS = [
+    { emoji: "🟢", label: "Available" },
+    { emoji: "🔴", label: "Busy" },
+    { emoji: "🌙", label: "Do not disturb" },
+    { emoji: "💼", label: "At work" },
+    { emoji: "🏠", label: "Working from home" },
+    { emoji: "🎮", label: "Gaming" },
+    { emoji: "📵", label: "Offline" },
+  ];
+
+  const saveStatus = (s: string) => {
+    setStatus(s);
+    localStorage.setItem("meshlink-status", s);
+    setCustomOpen(false);
+  };
+
+  return (
+    <div className="rounded-2xl glass border border-border/40 p-3">
+      <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-2">Status</p>
+      {status && !customOpen && (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-foreground">{status}</span>
+          <button onClick={() => saveStatus("")} className="text-[9px] text-muted-foreground hover:text-destructive">Clear</button>
+        </div>
+      )}
+      {customOpen ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={customText}
+            onChange={(e) => setCustomText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveStatus(customText.trim())}
+            placeholder="Custom status..."
+            autoFocus
+            className="flex-1 rounded-xl glass border border-border/50 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent"
+          />
+          <button onClick={() => saveStatus(customText.trim())} className="text-xs text-primary">Set</button>
+          <button onClick={() => setCustomOpen(false)} className="text-xs text-muted-foreground">✕</button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => saveStatus(`${p.emoji} ${p.label}`)}
+              className={`rounded-full px-2.5 py-1 text-[10px] border transition-all ${
+                status === `${p.emoji} ${p.label}` ? "border-primary/50 bg-primary/10 text-primary" : "border-border/40 text-muted-foreground hover:bg-surface-hover"
+              }`}
+            >
+              {p.emoji} {p.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setCustomOpen(true)}
+            className="rounded-full px-2.5 py-1 text-[10px] border border-border/40 text-muted-foreground hover:bg-surface-hover"
+          >
+            ✏️ Custom
+          </button>
+        </div>
+      )}
     </div>
   );
 }

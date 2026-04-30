@@ -315,6 +315,21 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Export chat button */}
+          <button
+            onClick={() => {
+              const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
+              const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = `${chat.name}-export.txt`; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            title="Export chat"
+          >
+            <Download className="h-4 w-4 text-muted-foreground" />
+          </button>
           {/* Search in chat button */}
           <button
             onClick={() => setChatSearchOpen(true)}
