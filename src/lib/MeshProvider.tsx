@@ -104,7 +104,7 @@ export function useMesh(): MeshContextValue {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>, homeserverUrl: string): MeshRoom {
+function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>, homeserverUrl: string, client?: MeshClient): MeshRoom {
   const members = room.getJoinedMembers();
 
   // Determine room type using multiple signals:
@@ -166,11 +166,11 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // Check online status for DMs
   let online = false;
-  if (roomType === "dm") {
+  if (roomType === "dm" && client) {
     const other = members.find((m) => m.userId !== myUserId);
     if (other) {
       try {
-        const user = (room as any).client?.getUser(other.userId);
+        const user = client.getUser(other.userId);
         online = user?.presence === "online" || user?.currentlyActive === true;
       } catch { /* ignore */ }
     }
@@ -293,7 +293,7 @@ export function MeshProvider({ session, children }: Props) {
     const allRooms = c.getRooms();
     const meshRooms = allRooms
       .filter((r) => r.getMyMembership() === "join")
-      .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl))
+      .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl, c))
       .sort((a, b) => {
         if (!a.lastMessageTime && b.lastMessageTime) return 1;
         if (a.lastMessageTime && !b.lastMessageTime) return -1;
