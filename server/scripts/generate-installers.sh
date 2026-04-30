@@ -135,6 +135,10 @@ LINEOF
 sed -i "s|__BASE_URL__|${BASE_URL}|g" "$OUT_DIR/meshlink-install.sh"
 chmod +x "$OUT_DIR/meshlink-install.sh"
 
+# --- Build Android APK if possible ---
+echo "Attempting Android APK build..."
+bash "$SCRIPT_DIR/build-android.sh" 2>/dev/null || echo "APK build skipped (run build-android.sh manually on server)"
+
 # --- Android install page ---
 cat > "$OUT_DIR/Meshlink-Android.html" <<EOF
 <!DOCTYPE html>
@@ -156,10 +160,10 @@ cat > "$OUT_DIR/Meshlink-Android.html" <<EOF
     .num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0}
     .step p{color:#ccc;font-size:0.9rem;line-height:1.5}
     .step b{color:#fff}
-    .btn{display:block;width:100%;padding:1rem;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;text-decoration:none;border-radius:16px;font-weight:600;font-size:1rem;border:none;cursor:pointer;box-shadow:0 0 30px rgba(168,85,247,0.3);transition:transform 0.2s;text-align:center}
+    .btn{display:block;width:100%;padding:1rem;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;text-decoration:none;border-radius:16px;font-weight:600;font-size:1rem;border:none;cursor:pointer;box-shadow:0 0 30px rgba(168,85,247,0.3);transition:transform 0.2s;text-align:center;margin-bottom:0.75rem}
     .btn:hover{transform:scale(1.02)}
+    .btn-secondary{background:rgba(255,255,255,0.1);box-shadow:none;border:1px solid rgba(255,255,255,0.2)}
     .note{margin-top:1.5rem;color:#555;font-size:0.75rem}
-    .url{display:block;margin-top:1rem;padding:0.8rem;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.1);color:#a855f7;font-family:monospace;font-size:0.85rem;word-break:break-all;text-decoration:none}
   </style>
 </head>
 <body>
@@ -168,14 +172,14 @@ cat > "$OUT_DIR/Meshlink-Android.html" <<EOF
     <h1>Meshlink</h1>
     <p class="sub">Decentralized Encrypted Messenger</p>
     <div class="steps">
-      <div class="step"><div class="num">1</div><p>Open this link in <b>Chrome</b> on your Android device:</p></div>
-      <div class="step"><div class="num">2</div><p>Tap the <b>menu &#8942;</b> (three dots in top right)</p></div>
-      <div class="step"><div class="num">3</div><p>Select <b>"Install app"</b> or <b>"Add to Home screen"</b></p></div>
-      <div class="step"><div class="num">4</div><p>Tap <b>Install</b> — the app icon appears on your home screen</p></div>
+      <div class="step"><div class="num">1</div><p>Download the <b>APK file</b> below</p></div>
+      <div class="step"><div class="num">2</div><p>Open the downloaded file and tap <b>Install</b></p></div>
+      <div class="step"><div class="num">3</div><p>If prompted, allow <b>"Install from unknown sources"</b></p></div>
+      <div class="step"><div class="num">4</div><p>Open Meshlink and <b>register</b> your account</p></div>
     </div>
-    <a class="url" href="${BASE_URL}" target="_blank">${BASE_URL}</a>
-    <a class="btn" href="${BASE_URL}" target="_blank" style="margin-top:1rem">Open in Browser</a>
-    <p class="note">The app works offline after installation. No app store needed.</p>
+    <a class="btn" href="${BASE_URL}/installers/Meshlink.apk" download>⬇ Download APK</a>
+    <a class="btn btn-secondary" href="${BASE_URL}" target="_blank">Open in Browser (PWA)</a>
+    <p class="note">v1.0 · End-to-end encrypted · No tracking · Open source</p>
   </div>
 </body>
 </html>
