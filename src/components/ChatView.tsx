@@ -8,6 +8,7 @@ import {
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
 import { useMesh } from "@/lib/MeshProvider";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 interface ChatViewProps {
   chat: Chat;
@@ -49,6 +50,12 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   });
   const [forwardingMsg, setForwardingMsg] = useState<Message | null>(null);
   const [contextMsg, setContextMsg] = useState<string | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +129,38 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     }
     setForwardingMsg(null);
   }, [forwardingMsg, mesh.client]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordingChunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
+        await mesh.sendMedia(chat.id, file, activeTopic);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        setRecordingDuration(0);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => setRecordingDuration((d) => d + 1), 1000);
+    } catch {
+      console.error("Microphone access denied");
+    }
+  }, [mesh, chat.id, activeTopic]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -376,6 +415,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         </div>
       )}
 
+      {/* Emoji Picker */}
+      <div className="relative">
+        <EmojiPicker
+          open={emojiOpen}
+          onClose={() => setEmojiOpen(false)}
+          onSelect={(emoji) => { handleInputChange(input + emoji); setEmojiOpen(false); }}
+        />
+      </div>
+
       {/* Input */}
       <div className="relative z-10 border-t border-border/40 px-4 md:px-6 py-3 md:py-4 glass-strong">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
@@ -408,11 +456,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             >
               <Image className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button className="hidden sm:flex hover:text-primary transition-colors">
+            <button onClick={() => setEmojiOpen((v) => !v)} className="hidden sm:flex hover:text-primary transition-colors">
               <Smile className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button className="hidden sm:flex hover:text-primary transition-colors">
-              <Mic className="h-4 w-4 text-muted-foreground" />
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`hidden sm:flex hover:text-primary transition-colors ${isRecording ? "text-destructive animate-pulse" : ""}`}
+              title={isRecording ? `Recording ${recordingDuration}s - click to stop` : "Voice message"}
+            >
+              <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
             </button>
           </div>
           <button
