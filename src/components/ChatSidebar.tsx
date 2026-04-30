@@ -5,6 +5,8 @@ import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
 import { ContactsPage } from "@/components/ContactsPage";
 import { SchedulerPage } from "@/components/SchedulerPage";
+import { AutoReplyPage } from "@/components/AutoReplyPage";
+import { WalletPage } from "@/components/WalletPage";
 
 export interface SearchResult {
   type: "user" | "room";
@@ -54,6 +56,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   });
   const [contactsOpen, setContactsOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [autoReplyOpen, setAutoReplyOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
   // Shorts state (persisted in localStorage)
@@ -467,6 +471,22 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           </div>
         </div>
 
+        {/* Auto-Reply button */}
+        <button onClick={() => setAutoReplyOpen(true)} className="relative border-t border-border/40 px-4 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🤖</span>
+            <span className="text-xs text-muted-foreground">Auto-Reply</span>
+          </div>
+        </button>
+
+        {/* Wallet button */}
+        <button onClick={() => setWalletOpen(true)} className="relative border-t border-border/40 px-4 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">👛</span>
+            <span className="text-xs text-muted-foreground">Wallet</span>
+          </div>
+        </button>
+
         {/* Scheduler button */}
         <button onClick={() => setSchedulerOpen(true)} className="relative border-t border-border/40 px-4 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
           <div className="flex items-center gap-2">
@@ -509,6 +529,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       <CreateChatDialog open={createOpen} type={createType} onClose={() => setCreateOpen(false)} onCreate={onCreateChat} />
       <ContactsPage open={contactsOpen} onClose={() => setContactsOpen(false)} onStartDm={onStartDm} />
       <SchedulerPage open={schedulerOpen} onClose={() => setSchedulerOpen(false)} />
+      <AutoReplyPage open={autoReplyOpen} onClose={() => setAutoReplyOpen(false)} />
+      <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />
     </>
   );
 }
