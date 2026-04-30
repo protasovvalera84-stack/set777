@@ -223,7 +223,15 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                 <div key={m.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-xs font-bold text-foreground border border-border">{m.avatar}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{m.name}{m.id === "me" ? " (you)" : ""}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-foreground">{m.name}{m.id === "me" ? " (you)" : ""}</p>
+                      {m.id === "me" && (
+                        <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">Admin</span>
+                      )}
+                      {m.id !== "me" && memberList.indexOf(m) === 1 && (
+                        <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">Mod</span>
+                      )}
+                    </div>
                     {m.online && <span className="text-[10px] text-online">online</span>}
                   </div>
                   {m.id !== "me" && (
