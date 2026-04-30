@@ -316,8 +316,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {/* Export chat button */}
+        <div className="flex items-center gap-0.5 md:gap-1">
+          {/* Export chat button - desktop only */}
           <button
             onClick={() => {
               const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
@@ -327,7 +327,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               a.href = url; a.download = `${chat.name}-export.txt`; a.click();
               URL.revokeObjectURL(url);
             }}
-            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            className="hidden md:flex rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Export chat"
           >
             <Download className="h-4 w-4 text-muted-foreground" />
@@ -335,15 +335,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           {/* Search in chat button */}
           <button
             onClick={() => setChatSearchOpen(true)}
-            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            className="rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Search in chat (Ctrl+F)"
           >
             <SearchIcon className="h-4 w-4 text-muted-foreground" />
           </button>
-          {/* File manager button */}
+          {/* File manager button - desktop only */}
           <button
             onClick={() => setFileManagerOpen(true)}
-            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            className="hidden md:flex rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Shared files"
           >
             <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -351,13 +351,13 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           {/* Media gallery button */}
           <button
             onClick={() => setGalleryOpen(true)}
-            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            className="rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Media gallery"
           >
             <Image className="h-4 w-4 text-muted-foreground" />
           </button>
-          {/* Disappearing messages timer */}
-          <div className="relative">
+          {/* Disappearing messages timer - desktop only */}
+          <div className="relative hidden md:block">
             <button
               onClick={() => setShowTimerMenu((v) => !v)}
               className={`rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 ${disappearTimer ? "text-primary" : ""}`}
