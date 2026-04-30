@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
   Image, Film, Music, X, Download, Heart, MessageCircle, ThumbsDown,
+  Timer, Forward, Copy, Check,
 } from "lucide-react";
 import { Chat, Message, MediaAttachment, Topic } from "@/data/mockData";
 import { TopicsBar } from "@/components/TopicsBar";
@@ -39,6 +40,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [input, setInput] = useState("");
   const [pendingMedia, setPendingMedia] = useState<MediaAttachment[]>([]);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
+  const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const [disappearTimer, setDisappearTimer] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem(`meshlink-timer-${chat.id}`);
+      return saved ? parseInt(saved) : null;
+    } catch { return null; }
+  });
+  const [forwardingMsg, setForwardingMsg] = useState<Message | null>(null);
+  const [contextMsg, setContextMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,7 +82,46 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     setPendingMedia([]);
     mesh.sendTyping(chat.id, false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Schedule message deletion if disappearing timer is set
+    if (disappearTimer && mesh.client) {
+      setTimeout(() => {
+        const room = mesh.client?.getRoom(chat.id);
+        if (!room) return;
+        const events = room.getLiveTimeline().getEvents();
+        const lastMsg = events[events.length - 1];
+        if (lastMsg && lastMsg.getSender() === mesh.client?.getUserId()) {
+          mesh.client?.redactEvent(chat.id, lastMsg.getId()!).catch(() => {});
+        }
+      }, disappearTimer * 1000);
+    }
   };
+
+  const handleSetTimer = (seconds: number | null) => {
+    setDisappearTimer(seconds);
+    setShowTimerMenu(false);
+    if (seconds) {
+      localStorage.setItem(`meshlink-timer-${chat.id}`, String(seconds));
+    } else {
+      localStorage.removeItem(`meshlink-timer-${chat.id}`);
+    }
+  };
+
+  const handleForward = useCallback((msg: Message) => {
+    setForwardingMsg(msg);
+  }, []);
+
+  const handleForwardTo = useCallback((roomId: string) => {
+    if (!forwardingMsg || !mesh.client) return;
+    const text = forwardingMsg.text ? `↪ ${forwardingMsg.text}` : "";
+    if (text) {
+      mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+        msgtype: "m.text",
+        body: text,
+      }).catch(() => {});
+    }
+    setForwardingMsg(null);
+  }, [forwardingMsg, mesh.client]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -168,6 +217,41 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Disappearing messages timer */}
+          <div className="relative">
+            <button
+              onClick={() => setShowTimerMenu((v) => !v)}
+              className={`rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 ${disappearTimer ? "text-primary" : ""}`}
+              title="Disappearing messages"
+            >
+              <Timer className={`h-4 w-4 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
+            </button>
+            {showTimerMenu && (
+              <div className="absolute right-0 top-full mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 w-48 animate-fade-in-up">
+                <p className="text-[9px] font-mono uppercase text-muted-foreground px-2 py-1 mb-1">Auto-delete messages</p>
+                {[
+                  { label: "Off", value: null },
+                  { label: "5 seconds", value: 5 },
+                  { label: "30 seconds", value: 30 },
+                  { label: "5 minutes", value: 300 },
+                  { label: "1 hour", value: 3600 },
+                  { label: "24 hours", value: 86400 },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => handleSetTimer(opt.value)}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-all ${
+                      disappearTimer === opt.value ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-hover"
+                    }`}
+                  >
+                    {opt.label}
+                    {disappearTimer === opt.value && <Check className="h-3 w-3" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {(chat.type === "dm" || chat.type === "group") && onCall && (
             <>
               <button
@@ -237,7 +321,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               : chat.messages;
             return filtered.length > 0 ? (
               filtered.map((msg, i) => (
-                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} />
+                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} />
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -343,6 +427,38 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </button>
         </div>
       </div>
+
+      {/* Forward message dialog */}
+      {forwardingMsg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setForwardingMsg(null)}>
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
+          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm rounded-3xl glass-strong border border-border/60 shadow-elegant p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-serif italic gradient-text">Forward to</h3>
+              <button onClick={() => setForwardingMsg(null)} className="rounded-lg p-1.5 hover:bg-surface-hover">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="text-xs text-muted-foreground mb-3 px-2 py-1.5 rounded-xl bg-secondary/50 truncate">
+              ↪ {forwardingMsg.text || "[media]"}
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {mesh.rooms.filter((r) => r.id !== chat.id).map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => handleForwardTo(room.id)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-surface-hover transition-all"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary-glow/5 text-xs font-bold text-primary border border-primary/20">
+                    {room.avatar}
+                  </div>
+                  <span className="text-sm text-foreground truncate">{room.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -395,7 +511,7 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
   return null;
 }
 
-function MessageBubble({ message, index, chatType, roomId }: { message: Message; index: number; chatType?: string; roomId?: string }) {
+function MessageBubble({ message, index, chatType, roomId, onForward }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void }) {
   const isOwn = message.senderId === "me";
   const isSystem = message.senderId === "system";
   const isGroup = chatType === "group" || chatType === "channel";
@@ -491,6 +607,16 @@ function MessageBubble({ message, index, chatType, roomId }: { message: Message;
             <span className="ml-1">{message.read ? "\u2713\u2713" : "\u2713"}</span>
           )}
         </p>
+
+        {/* Forward button */}
+        {onForward && message.text && (
+          <button
+            onClick={() => onForward(message)}
+            className={`mt-1 flex items-center gap-1 text-[9px] ${isOwn ? "text-white/50 hover:text-white/80" : "text-muted-foreground/50 hover:text-muted-foreground"} transition-colors`}
+          >
+            <Forward className="h-2.5 w-2.5" /> Forward
+          </button>
+        )}
 
         {/* Reactions bar for media in groups/channels */}
         {isGroup && hasMedia && (
