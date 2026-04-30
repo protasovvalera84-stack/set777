@@ -12,6 +12,7 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { GifPicker } from "@/components/GifPicker";
 import { CreatePollDialog } from "@/components/Poll";
 import { StickerPicker } from "@/components/StickerPicker";
+import { MediaGallery } from "@/components/MediaGallery";
 
 interface ChatViewProps {
   chat: Chat;
@@ -66,6 +67,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -295,6 +297,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Media gallery button */}
+          <button
+            onClick={() => setGalleryOpen(true)}
+            className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
+            title="Media gallery"
+          >
+            <Image className="h-4 w-4 text-muted-foreground" />
+          </button>
           {/* Disappearing messages timer */}
           <div className="relative">
             <button
@@ -651,6 +661,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         }}
       />
 
+      {/* Media Gallery */}
+      <MediaGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        messages={chat.messages}
+        chatName={chat.name}
+      />
+
       {/* Forward message dialog */}
       {forwardingMsg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setForwardingMsg(null)}>
@@ -961,29 +979,38 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
 /* ===== Linkified Text (detects URLs and makes them clickable) ===== */
 function LinkifiedText({ text, isOwn }: { text: string; isOwn: boolean }) {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
+  // Apply markdown: **bold**, *italic*, `code`, and URLs
+  const formatText = (input: string): React.ReactNode[] => {
+    const nodes: React.ReactNode[] = [];
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|(https?:\/\/[^\s]+))/g;
+    let lastIndex = 0;
+    let match;
 
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (urlRegex.test(part)) {
-          // Reset regex lastIndex
-          urlRegex.lastIndex = 0;
-          return (
-            <a
-              key={i}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`underline break-all ${isOwn ? "text-white/90 hover:text-white" : "text-primary hover:text-primary/80"}`}
-            >
-              {part.length > 50 ? part.slice(0, 50) + "..." : part}
-            </a>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </>
-  );
+    while ((match = regex.exec(input)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(<span key={`t${lastIndex}`}>{input.slice(lastIndex, match.index)}</span>);
+      }
+      if (match[2]) {
+        nodes.push(<strong key={`b${match.index}`}>{match[2]}</strong>);
+      } else if (match[3]) {
+        nodes.push(<em key={`i${match.index}`}>{match[3]}</em>);
+      } else if (match[4]) {
+        nodes.push(<code key={`c${match.index}`} className="px-1 py-0.5 rounded bg-black/20 text-[11px] font-mono">{match[4]}</code>);
+      } else if (match[5]) {
+        nodes.push(
+          <a key={`u${match.index}`} href={match[5]} target="_blank" rel="noopener noreferrer"
+            className={`underline break-all ${isOwn ? "text-white/90 hover:text-white" : "text-primary hover:text-primary/80"}`}>
+            {match[5].length > 50 ? match[5].slice(0, 50) + "..." : match[5]}
+          </a>
+        );
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < input.length) {
+      nodes.push(<span key={`t${lastIndex}`}>{input.slice(lastIndex)}</span>);
+    }
+    return nodes.length > 0 ? nodes : [<span key="raw">{input}</span>];
+  };
+
+  return <>{formatText(text)}</>;
 }
