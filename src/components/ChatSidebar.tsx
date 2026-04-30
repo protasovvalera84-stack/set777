@@ -44,6 +44,13 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [logoMenuOpen, setLogoMenuOpen] = useState(false);
+  const [mutedChats, setMutedChats] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("meshlink-muted");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [contactsOpen, setContactsOpen] = useState(false);
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
   // Shorts state (persisted in localStorage)
@@ -76,6 +83,15 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       const filtered = s.items.filter((i) => i.id !== itemId);
       return filtered.length > 0 ? { ...s, items: filtered } : s;
     }).filter((s) => s.items.length > 0));
+  };
+
+  const toggleMute = (chatId: string) => {
+    setMutedChats((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId); else next.add(chatId);
+      localStorage.setItem("meshlink-muted", JSON.stringify([...next]));
+      return next;
+    });
   };
 
   // Close logo menu on click outside
@@ -404,7 +420,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                 <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent ml-2" />
               </div>
               {pinned.map((chat, i) => (
-                <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} />
+                <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} />
               ))}
             </div>
           )}
@@ -443,7 +459,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               </div>
             )}
             {unpinned.map((chat, i) => (
-              <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} />
+              <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} />
             ))}
           </div>
         </div>
@@ -476,10 +492,11 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   );
 }
 
-function ChatItem({ chat, selected, onSelect, index, isFavorite }: { chat: Chat; selected: boolean; onSelect: (id: string) => void; index: number; isFavorite?: boolean }) {
+function ChatItem({ chat, selected, onSelect, index, isFavorite, isMuted, onMute }: { chat: Chat; selected: boolean; onSelect: (id: string) => void; index: number; isFavorite?: boolean; isMuted?: boolean; onMute?: () => void }) {
   return (
     <button
       onClick={() => onSelect(chat.id)}
+      onContextMenu={(e) => { e.preventDefault(); onMute?.(); }}
       style={{ animationDelay: `${index * 30}ms` }}
       className={`group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all animate-fade-in-up ${
         selected ? "bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/30 shadow-glow" : "hover:bg-surface-hover border border-transparent"
@@ -513,8 +530,11 @@ function ChatItem({ chat, selected, onSelect, index, isFavorite }: { chat: Chat;
         </div>
         <div className="flex items-center justify-between mt-0.5">
           <p className="text-xs text-muted-foreground truncate pr-2">{chat.lastMessage}</p>
-          {chat.unread > 0 && (
+          {chat.unread > 0 && !isMuted && (
             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full gradient-primary px-1.5 text-[10px] font-bold text-primary-foreground flex-shrink-0 shadow-glow">{chat.unread}</span>
+          )}
+          {isMuted && (
+            <span className="text-[9px] text-muted-foreground/50">🔇</span>
           )}
         </div>
       </div>
