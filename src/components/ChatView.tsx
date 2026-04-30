@@ -35,21 +35,43 @@ function downloadMedia(attachment: MediaAttachment) {
 }
 
 export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, onDeleteTopic, onSettingsClick, onDmSettingsClick }: ChatViewProps) {
+  const mesh = useMesh();
   const [input, setInput] = useState("");
   const [pendingMedia, setPendingMedia] = useState<MediaAttachment[]>([]);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Get typing users for this chat
+  const typingNames = mesh.typingUsers[chat.id] || [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat.messages]);
+
+  // Send typing indicator when user types
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    if (value.trim()) {
+      mesh.sendTyping(chat.id, true);
+      // Stop typing after 3 seconds of inactivity
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        mesh.sendTyping(chat.id, false);
+      }, 3000);
+    } else {
+      mesh.sendTyping(chat.id, false);
+    }
+  };
 
   const handleSend = () => {
     if (!input.trim() && pendingMedia.length === 0) return;
     onSendMessage(chat.id, input.trim(), pendingMedia.length > 0 ? pendingMedia : undefined, activeTopic);
     setInput("");
     setPendingMedia([]);
+    mesh.sendTyping(chat.id, false);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,6 +281,17 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         </div>
       )}
 
+      {/* Typing indicator */}
+      {typingNames.length > 0 && (
+        <div className="relative z-10 px-4 md:px-6 py-1">
+          <p className="text-[11px] text-primary animate-pulse">
+            {typingNames.length === 1
+              ? `${typingNames[0]} печатает...`
+              : `${typingNames.join(", ")} печатают...`}
+          </p>
+        </div>
+      )}
+
       {/* Input */}
       <div className="relative z-10 border-t border-border/40 px-4 md:px-6 py-3 md:py-4 glass-strong">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
@@ -273,7 +306,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               type="text"
               placeholder="Type a secure message..."
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
