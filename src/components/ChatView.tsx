@@ -10,6 +10,7 @@ import { TopicsBar } from "@/components/TopicsBar";
 import { useMesh } from "@/lib/MeshProvider";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { GifPicker } from "@/components/GifPicker";
+import { CreatePollDialog } from "@/components/Poll";
 
 interface ChatViewProps {
   chat: Chat;
@@ -58,6 +59,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       return localStorage.getItem(`meshlink-pin-${chat.id}`) || null;
     } catch { return null; }
   });
+  const [pollOpen, setPollOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -91,9 +94,26 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
 
   const handleSend = () => {
     if (!input.trim() && pendingMedia.length === 0) return;
+
+    // If replying, send with reply context
+    if (replyTo && input.trim() && mesh.client) {
+      mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+        msgtype: "m.text",
+        body: `> ${replyTo.text}\n\n${input.trim()}`,
+        "m.relates_to": { "m.in_reply_to": { event_id: replyTo.id } },
+        ...(activeTopic ? { "org.meshlink.topic_id": activeTopic } : {}),
+      }).catch(() => {});
+      setInput("");
+      setReplyTo(null);
+      mesh.sendTyping(chat.id, false);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      return;
+    }
+
     onSendMessage(chat.id, input.trim(), pendingMedia.length > 0 ? pendingMedia : undefined, activeTopic);
     setInput("");
     setPendingMedia([]);
+    setReplyTo(null);
     mesh.sendTyping(chat.id, false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
@@ -378,7 +398,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               : chat.messages;
             return filtered.length > 0 ? (
               filtered.map((msg, i) => (
-                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} />
+                <MessageBubble key={msg.id} message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -462,6 +482,20 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         />
       </div>
 
+      {/* Reply banner */}
+      {replyTo && (
+        <div className="relative z-10 flex items-center gap-2 px-4 md:px-6 py-2 border-t border-border/30 bg-primary/5">
+          <div className="w-0.5 h-6 rounded-full bg-primary" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-primary font-medium">Reply to {replyTo.senderId === "me" ? "yourself" : replyTo.senderId}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{replyTo.text || "[media]"}</p>
+          </div>
+          <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-surface-hover rounded-lg">
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="relative z-10 border-t border-border/40 px-4 md:px-6 py-3 md:py-4 glass-strong">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
@@ -471,6 +505,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           >
             <Paperclip className="h-4 w-4 text-muted-foreground" />
           </button>
+          {(chat.type === "group" || chat.type === "channel") && (
+            <button
+              onClick={() => setPollOpen(true)}
+              className="rounded-2xl p-2.5 md:p-3 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
+              title="Create poll"
+            >
+              <span className="text-[10px] font-bold text-muted-foreground">📊</span>
+            </button>
+          )}
           <div className="group flex flex-1 items-center gap-2 rounded-2xl glass border border-border/50 px-3 md:px-4 py-2.5 md:py-3 transition-all focus-within:border-primary/50 focus-within:shadow-glow">
             <input
               type="text"
@@ -520,6 +563,23 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           </button>
         </div>
       </div>
+
+      {/* Create Poll dialog */}
+      <CreatePollDialog
+        open={pollOpen}
+        onClose={() => setPollOpen(false)}
+        onCreate={(question, options) => {
+          if (!mesh.client) return;
+          const pollMsg = `📊 **${question}**\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\n_Reply with the option number to vote_`;
+          mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+            msgtype: "m.text",
+            body: pollMsg,
+            format: "org.matrix.custom.html",
+            formatted_body: `<b>📊 ${question}</b><br/>${options.map((o, i) => `${i + 1}. ${o}`).join("<br/>")}`,
+            "org.meshlink.poll": { question, options },
+          }).catch(() => {});
+        }}
+      />
 
       {/* Forward message dialog */}
       {forwardingMsg && (
@@ -604,7 +664,7 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
   return null;
 }
 
-function MessageBubble({ message, index, chatType, roomId, onForward, onPin }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void; onPin?: (text: string) => void }) {
+function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onReply }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void; onPin?: (text: string) => void; onReply?: (msg: Message) => void }) {
   const isOwn = message.senderId === "me";
   const isSystem = message.senderId === "system";
   const isGroup = chatType === "group" || chatType === "channel";
@@ -701,9 +761,14 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin }: {
           )}
         </p>
 
-        {/* Forward & Pin buttons */}
+        {/* Forward, Pin & Reply buttons */}
         {message.text && (
           <div className={`mt-1 flex items-center gap-2 text-[9px] ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
+            {onReply && (
+              <button onClick={() => onReply(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
+                ↩ Reply
+              </button>
+            )}
             {onForward && (
               <button onClick={() => onForward(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
                 <Forward className="h-2.5 w-2.5" /> Forward
