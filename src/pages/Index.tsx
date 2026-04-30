@@ -442,7 +442,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-[100dvh] w-full overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>
         <ChatSidebar
           chats={chatList}

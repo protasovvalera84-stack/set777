@@ -139,6 +139,7 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     background-image: var(--gradient-mesh);
     background-attachment: fixed;
     transition: background-color 0.3s ease, color 0.3s ease;
