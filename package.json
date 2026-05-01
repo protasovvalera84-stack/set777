@@ -18,12 +18,15 @@
     "android:sync": "vite build && npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "vite build && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "ios:sync": "vite build && npx cap sync ios",
+    "ios:open": "npx cap open ios",
     "electron:build:all": "vite build && electron-builder --win --linux --x64"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",

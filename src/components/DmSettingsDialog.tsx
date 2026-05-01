@@ -5,6 +5,7 @@ import {
   Phone, MessageSquare, Forward,
 } from "lucide-react";
 import { Chat, ChatFolder } from "@/data/mockData";
+import { KeyVerification } from "@/components/KeyVerification";
 
 interface DmSettingsDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function DmSettingsDialog({ open, chat, folders, onClose, onUpdateChat, o
   const [muted, setMuted] = useState(false);
   const [selectedBg, setSelectedBg] = useState(chat.description || "");
   const [blocked, setBlocked] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Privacy states
@@ -138,6 +140,7 @@ export function DmSettingsDialog({ open, chat, folders, onClose, onUpdateChat, o
                 <MenuItem icon={<Star className={`h-4 w-4 ${isInAnyFolder ? "text-primary" : ""}`} />} label={isInAnyFolder ? "In Favorites" : "Add to Favorites"} sub="Save to a folder" onClick={() => setPage("favorites")} />
                 <MenuItem icon={<Paintbrush className="h-4 w-4" />} label="Chat Background" sub="Custom wallpaper" onClick={() => setPage("background")} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy" sub="Calls, last seen, read receipts" onClick={() => setPage("privacy")} />
+                <MenuItem icon={<Lock className="h-4 w-4 text-primary" />} label="Verify Encryption" sub="Compare emoji keys" onClick={() => setVerifyOpen(true)} />
                 <MenuItem icon={muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />} label={muted ? "Unmute" : "Mute Notifications"} onClick={() => setMuted((m) => !m)} />
               </div>
 
@@ -248,6 +251,7 @@ export function DmSettingsDialog({ open, chat, folders, onClose, onUpdateChat, o
           )}
         </div>
       </div>
+      <KeyVerification open={verifyOpen} onClose={() => setVerifyOpen(false)} userId={chat.id} userName={chat.name} />
     </div>
   );
 }

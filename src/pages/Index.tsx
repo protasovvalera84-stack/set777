@@ -443,7 +443,10 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   }
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden">
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
+      {/* Connection status bar */}
+      <ConnectionStatus />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>
         <ErrorBoundary fallbackTitle="Sidebar error">
         <ChatSidebar
@@ -540,8 +543,31 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           onReject={handleRejectIncoming}
         />
       )}
+      </div>
     </div>
   );
 };
+
+/** Connection status indicator */
+function ConnectionStatus() {
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
+  }, []);
+
+  if (online) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-2 py-1.5 bg-destructive/20 border-b border-destructive/30 text-destructive text-xs font-medium animate-fade-in-up">
+      <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+      No internet connection — waiting to reconnect...
+    </div>
+  );
+}
 
 export default Index;
