@@ -955,6 +955,9 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
   const [replyText, setReplyText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const [swipeX, setSwipeX] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
   const QUICK_REACTIONS = ["❤️", "👍", "😂", "😮", "😢", "🔥", "👏", "🎉"];
 
@@ -1013,8 +1016,37 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   return (
     <div
+      ref={bubbleRef}
       className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-fade-in-up`}
-      style={{ animationDelay: `${index * 30}ms` }}
+      style={{ animationDelay: `${index * 30}ms`, transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.2s" : "none" }}
+      onTouchStart={(e) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+      }}
+      onTouchMove={(e) => {
+        if (!touchStartRef.current) return;
+        const dx = e.touches[0].clientX - touchStartRef.current.x;
+        const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y);
+        // Only horizontal swipe (not scroll)
+        if (dy > 30) { touchStartRef.current = null; setSwipeX(0); return; }
+        if (!isOwn && dx > 0) setSwipeX(Math.min(dx * 0.5, 60));
+        if (isOwn && dx < 0) setSwipeX(Math.max(dx * 0.5, -60));
+      }}
+      onTouchEnd={() => {
+        // Swipe to reply threshold
+        if (Math.abs(swipeX) > 40 && onReply) {
+          onReply(message);
+        }
+        // Double-tap to react
+        if (touchStartRef.current && Date.now() - touchStartRef.current.time < 300) {
+          const now = Date.now();
+          if ((bubbleRef.current as any)?.__lastTap && now - (bubbleRef.current as any).__lastTap < 400) {
+            sendReaction("❤️");
+          }
+          if (bubbleRef.current) (bubbleRef.current as any).__lastTap = now;
+        }
+        setSwipeX(0);
+        touchStartRef.current = null;
+      }}
     >
       <div
         className={`max-w-[85%] md:max-w-[75%] rounded-3xl px-4 py-2.5 ${
