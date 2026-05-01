@@ -274,7 +274,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between border-b border-border/40 px-4 md:px-6 py-3.5 glass-strong">
+      <div className="chat-header relative z-10 flex items-center justify-between border-b border-border/40 px-3 md:px-6 py-2 md:py-3.5 glass-strong">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="md:hidden rounded-xl p-2 hover:bg-surface-hover transition-all">
             <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -315,8 +315,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 md:gap-1">
-          {/* Export chat button - desktop only */}
+        <div className="flex items-center gap-0.5 md:gap-1 overflow-x-auto flex-shrink-0">
+          {/* Export chat button */}
           <button
             onClick={() => {
               const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
@@ -326,7 +326,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               a.href = url; a.download = `${chat.name}-export.txt`; a.click();
               URL.revokeObjectURL(url);
             }}
-            className="hidden md:flex rounded-xl p-2 hover:bg-surface-hover transition-all"
+            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Export chat"
           >
             <Download className="h-4 w-4 text-muted-foreground" />
@@ -334,15 +334,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           {/* Search in chat button */}
           <button
             onClick={() => setChatSearchOpen(true)}
-            className="rounded-xl p-2 hover:bg-surface-hover transition-all"
+            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Search in chat (Ctrl+F)"
           >
             <SearchIcon className="h-4 w-4 text-muted-foreground" />
           </button>
-          {/* File manager button - desktop only */}
+          {/* File manager button */}
           <button
             onClick={() => setFileManagerOpen(true)}
-            className="hidden md:flex rounded-xl p-2 hover:bg-surface-hover transition-all"
+            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Shared files"
           >
             <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -350,13 +350,13 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           {/* Media gallery button */}
           <button
             onClick={() => setGalleryOpen(true)}
-            className="rounded-xl p-2 hover:bg-surface-hover transition-all"
+            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
             title="Media gallery"
           >
             <Image className="h-4 w-4 text-muted-foreground" />
           </button>
-          {/* Disappearing messages timer - desktop only */}
-          <div className="relative hidden md:block">
+          {/* Disappearing messages timer */}
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setShowTimerMenu((v) => !v)}
               className={`rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 ${disappearTimer ? "text-primary" : ""}`}
@@ -430,7 +430,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       </div>
 
       {/* E2EE banner */}
-      <div className="relative z-10 flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border-b border-border/30">
+      <div className="e2ee-banner relative z-10 flex items-center justify-center gap-2 py-1.5 md:py-2 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border-b border-border/30">
         <Lock className="h-3 w-3 text-primary" />
         <span className="text-[10px] font-mono uppercase tracking-[0.15em] gradient-text font-semibold">
           end-to-end encrypted - Matrix protocol
@@ -630,7 +630,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       )}
 
       {/* Input */}
-      <div className="relative z-10 border-t border-border/40 px-4 md:px-6 py-3 md:py-4 glass-strong">
+      <div className="chat-input relative z-10 border-t border-border/40 px-3 md:px-6 py-2 md:py-4 glass-strong">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <button
             onClick={() => fileInputRef.current?.click()}
