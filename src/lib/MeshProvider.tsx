@@ -334,6 +334,13 @@ export function MeshProvider({ session, children }: Props) {
                 if (typeof body === "string") {
                   const senderName = lastEvt.getSender()?.split(":")[0].replace("@", "") || "Someone";
                   new Notification(`${senderName} - Meshlink`, { body, icon: "/icons/icon-256.png", tag: room.roomId });
+                  // Play notification sound + vibrate
+                  try {
+                    const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeYl5KLgXVpXVRQUFdhaHB4f4WJi4uJhYB5cWlhWlVTVFleZW1ze4GGiYuLiYWAeXFpYVpVU1RZXmVtc3uBhomLi4mFgHlxaWFaVVNUWV5lbXN7gYaJi4uJhYB5cWlhWlVTVFleZW1ze4GGiYuLiYWAeXFpYVpVU1RZXmVtc3uBhomLi4mFgHlxaQ==");
+                    audio.volume = 0.3;
+                    audio.play().catch(() => {});
+                  } catch { /* ignore */ }
+                  if (navigator.vibrate) navigator.vibrate(200);
 
                   // Auto-reply bot
                   try {
