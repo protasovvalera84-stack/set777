@@ -258,3 +258,70 @@
     animation: fade-in-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
+
+/* ===== DEVICE-ADAPTIVE RESPONSIVE RULES ===== */
+
+/* Mobile landscape: compact everything to fit 320px height */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce chat header */
+  .chat-header { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+  .chat-header img, .chat-header .avatar-circle { width: 2rem !important; height: 2rem !important; }
+  .chat-header h2 { font-size: 0.8rem !important; }
+  .chat-header p { font-size: 0.6rem !important; }
+  .chat-header button { padding: 0.25rem !important; }
+
+  /* Compact E2EE banner */
+  .e2ee-banner { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
+  .e2ee-banner span { font-size: 7px !important; }
+
+  /* Compact input area */
+  .chat-input { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
+  .chat-input input { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8rem !important; }
+  .chat-input button { padding: 0.375rem !important; }
+
+  /* Smaller message bubbles */
+  .message-bubble { padding: 0.375rem 0.625rem !important; }
+  .message-bubble p { font-size: 0.8rem !important; }
+
+  /* Sidebar compact */
+  .sidebar-footer { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+}
+
+/* Small phones (< 375px width) */
+@media (max-width: 374px) {
+  body { font-size: 13px; }
+  .chat-header button { padding: 0.25rem !important; }
+}
+
+/* Tablets (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  body { font-size: 15px; }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets on touch devices */
+  button { min-height: 36px; min-width: 36px; }
+  input, textarea, select { font-size: 16px !important; } /* Prevents iOS zoom on focus */
+
+  /* Disable hover effects that cause sticky states on mobile */
+  .hover\:scale-105:active { transform: scale(1.02); }
+  .hover\:bg-surface-hover:active { background: var(--surface-hover); }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+}
+
+/* Prevent content shift when scrollbar appears/disappears */
+html { scrollbar-gutter: stable; }
+
+/* Smooth scrolling for all scrollable areas */
+* { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+
+/* Custom scrollbar for webkit (thin, subtle) */
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 4px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.5); }
