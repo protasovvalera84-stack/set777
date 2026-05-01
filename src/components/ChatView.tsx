@@ -76,6 +76,9 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [groupCallOpen, setGroupCallOpen] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const virtuosoRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -107,6 +110,35 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Paste image from clipboard
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) mesh.sendMedia(chat.id, file, activeTopic);
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [mesh, chat.id, activeTopic]);
+
+  // Drag & drop file upload handlers
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = () => setIsDragOver(false);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    for (const file of Array.from(files)) {
+      mesh.sendMedia(chat.id, file, activeTopic);
+    }
+  };
 
   // Send typing indicator when user types + save draft
   const handleInputChange = (value: string) => {
@@ -263,7 +295,21 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   };
 
   return (
-    <div className="relative flex h-full flex-1 flex-col bg-background overflow-hidden">
+    <div
+      className="relative flex h-full flex-1 flex-col bg-background overflow-hidden"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary/50 rounded-2xl m-2">
+          <div className="text-center">
+            <Download className="h-12 w-12 text-primary mx-auto mb-2" />
+            <p className="text-sm font-medium text-primary">Drop files to send</p>
+          </div>
+        </div>
+      )}
       {/* Background glows */}
       <div className="pointer-events-none absolute top-1/4 right-1/4 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-1/4 left-1/3 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
@@ -505,8 +551,10 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               : chat.messages;
             return filtered.length > 0 ? (
               <Virtuoso
+                ref={virtuosoRef}
                 data={filtered}
                 followOutput="smooth"
+                atBottomStateChange={(atBottom) => setShowScrollBtn(!atBottom)}
                 className="h-full px-4 md:px-6 scrollbar-thin"
                 itemContent={(i, msg) => {
                   const showDate = i === 0 || (i > 0 && msg.timestamp?.split(" ")[0] !== filtered[i - 1]?.timestamp?.split(" ")[0]);
@@ -543,6 +591,17 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             );
           })()}
         </div>
+
+        {/* Scroll to bottom FAB */}
+        {showScrollBtn && (
+          <button
+            onClick={() => virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "smooth" })}
+            className="absolute bottom-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full gradient-primary text-primary-foreground shadow-glow hover:scale-110 transition-all animate-fade-in-up"
+            title="Scroll to bottom"
+          >
+            <ArrowLeft className="h-4 w-4 rotate-[-90deg]" />
+          </button>
+        )}
       </div>
 
       {/* Pending media preview */}

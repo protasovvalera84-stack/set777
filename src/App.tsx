@@ -43,6 +43,12 @@ const App = () => {
     }
   }, []);
 
+  // Load saved font size
+  useEffect(() => {
+    const saved = localStorage.getItem("meshlink-fontsize");
+    if (saved) document.documentElement.style.fontSize = `${saved}px`;
+  }, []);
+
   // Validate session on load -- check if token is still valid
   useEffect(() => {
     const sess = loadSession();
