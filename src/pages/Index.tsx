@@ -8,6 +8,7 @@ import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import { DmSettingsDialog } from "@/components/DmSettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { PwaInstallBanner } from "@/components/PwaInstallBanner";
 import {
   contacts as defaultContacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic, ChatFolder,
@@ -455,6 +456,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       {/* Connection status bar */}
       <ConnectionStatus />
       <KeyboardShortcuts />
+      <PwaInstallBanner />
       <div className="flex flex-1 min-h-0 overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>
         <ErrorBoundary fallbackTitle="Sidebar error">

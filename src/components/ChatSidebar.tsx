@@ -58,6 +58,13 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
+  const [archivedChats, setArchivedChats] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("meshlink-archived");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showArchived, setShowArchived] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoReplyOpen, setAutoReplyOpen] = useState(false);
@@ -105,6 +112,15 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     });
   };
 
+  const toggleArchive = (chatId: string) => {
+    setArchivedChats((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId); else next.add(chatId);
+      localStorage.setItem("meshlink-archived", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   // Close logo menu on click outside
   useEffect(() => {
     if (!logoMenuOpen) return;
@@ -145,6 +161,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   }, [search, onSearch]);
 
   const filtered = chats.filter((c) => {
+    // Hide archived chats unless showing archived
+    if (!showArchived && archivedChats.has(c.id)) return false;
+    if (showArchived) return archivedChats.has(c.id);
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter === "favorites") {
       if (activeFolder) {
