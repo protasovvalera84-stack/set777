@@ -470,6 +470,41 @@ function AppearanceSection() {
           );
         })}
       </div>
+
+      {/* Font size */}
+      <FontSizeSetting />
+    </div>
+  );
+}
+
+/* ===== Font Size Setting ===== */
+function FontSizeSetting() {
+  const [size, setSize] = useState(() => {
+    return parseInt(localStorage.getItem("meshlink-fontsize") || "16");
+  });
+
+  const applySize = (s: number) => {
+    setSize(s);
+    localStorage.setItem("meshlink-fontsize", String(s));
+    document.documentElement.style.fontSize = `${s}px`;
+  };
+
+  return (
+    <div className="mt-3">
+      <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-2">Font Size</p>
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] text-muted-foreground">A</span>
+        <input
+          type="range"
+          min={12}
+          max={20}
+          value={size}
+          onChange={(e) => applySize(parseInt(e.target.value))}
+          className="flex-1 accent-primary h-1"
+        />
+        <span className="text-base text-muted-foreground">A</span>
+        <span className="text-[10px] text-muted-foreground font-mono w-8">{size}px</span>
+      </div>
     </div>
   );
 }
