@@ -7,6 +7,7 @@ import { CallScreen, IncomingCallBanner, CallType } from "@/components/CallScree
 import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import { DmSettingsDialog } from "@/components/DmSettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import {
   contacts as defaultContacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic, ChatFolder,
@@ -27,6 +28,13 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const mesh = useMesh();
 
   const [stories, setStories] = useState<Story[]>([]);
+
+  // Update tab title with unread count
+  useEffect(() => {
+    const totalUnread = mesh.rooms.reduce((sum, r) => sum + (r.unread || 0), 0);
+    document.title = totalUnread > 0 ? `(${totalUnread}) Meshlink` : "Meshlink";
+  }, [mesh.rooms]);
+
   const [profile, setProfile] = useState<UserProfile>(initialProfile || defaultProfile);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -446,6 +454,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
     <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
       {/* Connection status bar */}
       <ConnectionStatus />
+      <KeyboardShortcuts />
       <div className="flex flex-1 min-h-0 overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>
         <ErrorBoundary fallbackTitle="Sidebar error">
