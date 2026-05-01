@@ -591,16 +591,47 @@ fi
 if command -v certbot &>/dev/null; then
     # Stop nginx briefly to use standalone mode (more reliable than webroot)
     docker compose stop nginx 2>/dev/null || true
-    sleep 2
+    sleep 3
 
+    # Open firewall ports if ufw is active
+    if command -v ufw &>/dev/null; then
+        ufw allow 80/tcp 2>/dev/null || true
+        ufw allow 443/tcp 2>/dev/null || true
+    fi
+
+    # Try up to 3 times with different strategies
+    SSL_OK=false
+
+    # Attempt 1: standalone with nip.io
+    log "SSL attempt 1: standalone mode..."
     certbot certonly --standalone \
         --non-interactive --agree-tos \
         --register-unsafely-without-email \
         -d "$NIP_DOMAIN" \
         --preferred-challenges http \
-        2>&1 | tail -5
+        2>&1 | tail -3 || true
 
     if [ -f "/etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem" ]; then
+        SSL_OK=true
+    fi
+
+    # Attempt 2: if failed, try with --break-my-certs (force)
+    if [ "$SSL_OK" = "false" ]; then
+        log "SSL attempt 2: force renewal..."
+        certbot certonly --standalone \
+            --non-interactive --agree-tos \
+            --register-unsafely-without-email \
+            -d "$NIP_DOMAIN" \
+            --preferred-challenges http \
+            --force-renewal \
+            2>&1 | tail -3 || true
+
+        if [ -f "/etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem" ]; then
+            SSL_OK=true
+        fi
+    fi
+
+    if [ "$SSL_OK" = "true" ]; then
         # Copy Let's Encrypt certs to nginx ssl dir
         cp "/etc/letsencrypt/live/${NIP_DOMAIN}/fullchain.pem" "$SSL_DIR/meshlink.crt"
         cp "/etc/letsencrypt/live/${NIP_DOMAIN}/privkey.pem" "$SSL_DIR/meshlink.key"
@@ -615,15 +646,36 @@ if command -v certbot &>/dev/null; then
             log "Certificate auto-renewal cron installed."
         fi
     else
-        warn "Let's Encrypt failed. Using self-signed certificate."
-        warn "Browser will show security warning -- click Advanced -> Proceed."
+        warn "Let's Encrypt failed for $NIP_DOMAIN."
+        warn ""
+        warn "TO FIX THIS (choose one):"
+        warn "  Option 1: Run fix-ssl script:"
+        warn "    sudo $SERVER_DIR/scripts/fix-ssl.sh"
+        warn ""
+        warn "  Option 2: Use your own domain:"
+        warn "    sudo $SERVER_DIR/scripts/fix-ssl.sh your-domain.com"
+        warn ""
+        warn "  Option 3: Open firewall ports and retry:"
+        warn "    ufw allow 80/tcp && ufw allow 443/tcp"
+        warn "    sudo $SERVER_DIR/scripts/fix-ssl.sh"
+        warn ""
+        warn "Using self-signed certificate for now."
+        warn "Browsers will show warning -- click Advanced -> Proceed."
+
+        # Generate a longer-lived self-signed cert (365 days)
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$SSL_DIR/meshlink.key" \
+            -out "$SSL_DIR/meshlink.crt" \
+            -subj "/CN=${NIP_DOMAIN}/O=Meshlink/C=US" 2>/dev/null
+        chmod 600 "$SSL_DIR/meshlink.key"
+        chmod 644 "$SSL_DIR/meshlink.crt"
     fi
 
     # Restart nginx with new cert
     docker compose start nginx 2>/dev/null || docker compose up -d --no-deps nginx
 else
     warn "certbot not available. Using self-signed certificate."
-    warn "Browser will show security warning -- click Advanced -> Proceed."
+    warn "To fix: sudo apt install certbot && sudo $SERVER_DIR/scripts/fix-ssl.sh"
 fi
 
 # =============================================================================
