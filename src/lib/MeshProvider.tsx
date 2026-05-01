@@ -408,6 +408,27 @@ export function MeshProvider({ session, children }: Props) {
         setReady(true);
         refreshRooms();
       }
+
+      // Reconnect on connection loss
+      const handleOnline = () => {
+        console.log("[Meshlink] Network restored, resyncing...");
+        refreshRooms();
+      };
+      const handleVisibility = () => {
+        if (!document.hidden && clientRef.current) {
+          refreshRooms();
+        }
+      };
+      window.addEventListener("online", handleOnline);
+      document.addEventListener("visibilitychange", handleVisibility);
+
+      // Cleanup listeners on unmount
+      const cleanupListeners = () => {
+        window.removeEventListener("online", handleOnline);
+        document.removeEventListener("visibilitychange", handleVisibility);
+      };
+      // Store cleanup for later
+      (client as any).__meshCleanup = cleanupListeners;
     }
 
     init().catch((err) => {
@@ -420,6 +441,8 @@ export function MeshProvider({ session, children }: Props) {
       cancelled = true;
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       if (clientRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (clientRef.current as any).__meshCleanup?.();
         clientRef.current.removeAllListeners();
         stopClient(clientRef.current);
         clientRef.current = null;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
@@ -12,8 +12,10 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { GifPicker } from "@/components/GifPicker";
 import { CreatePollDialog } from "@/components/Poll";
 import { StickerPicker } from "@/components/StickerPicker";
-import { MediaGallery } from "@/components/MediaGallery";
-import { FileManager } from "@/components/FileManager";
+
+// Lazy load heavy overlay components
+const MediaGallery = lazy(() => import("@/components/MediaGallery").then(m => ({ default: m.MediaGallery })));
+const FileManager = lazy(() => import("@/components/FileManager").then(m => ({ default: m.FileManager })));
 
 interface ChatViewProps {
   chat: Chat;
@@ -754,21 +756,25 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         }}
       />
 
-      {/* File Manager */}
-      <FileManager
-        open={fileManagerOpen}
-        onClose={() => setFileManagerOpen(false)}
-        messages={chat.messages}
-        chatName={chat.name}
-      />
-
-      {/* Media Gallery */}
-      <MediaGallery
-        open={galleryOpen}
-        onClose={() => setGalleryOpen(false)}
-        messages={chat.messages}
-        chatName={chat.name}
-      />
+      {/* File Manager & Media Gallery (lazy loaded) */}
+      <Suspense fallback={null}>
+        {fileManagerOpen && (
+          <FileManager
+            open={fileManagerOpen}
+            onClose={() => setFileManagerOpen(false)}
+            messages={chat.messages}
+            chatName={chat.name}
+          />
+        )}
+        {galleryOpen && (
+          <MediaGallery
+            open={galleryOpen}
+            onClose={() => setGalleryOpen(false)}
+            messages={chat.messages}
+            chatName={chat.name}
+          />
+        )}
+      </Suspense>
 
       {/* Forward message dialog */}
       {forwardingMsg && (

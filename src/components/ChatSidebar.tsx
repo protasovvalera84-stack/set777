@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
-import { ContactsPage } from "@/components/ContactsPage";
-import { SchedulerPage } from "@/components/SchedulerPage";
-import { AutoReplyPage } from "@/components/AutoReplyPage";
-import { WalletPage } from "@/components/WalletPage";
+
+// Lazy load heavy dialog pages
+const ContactsPage = lazy(() => import("@/components/ContactsPage").then(m => ({ default: m.ContactsPage })));
+const SchedulerPage = lazy(() => import("@/components/SchedulerPage").then(m => ({ default: m.SchedulerPage })));
+const AutoReplyPage = lazy(() => import("@/components/AutoReplyPage").then(m => ({ default: m.AutoReplyPage })));
+const WalletPage = lazy(() => import("@/components/WalletPage").then(m => ({ default: m.WalletPage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -517,10 +519,12 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
       </div>
 
       <CreateChatDialog open={createOpen} type={createType} onClose={() => setCreateOpen(false)} onCreate={onCreateChat} />
-      <ContactsPage open={contactsOpen} onClose={() => setContactsOpen(false)} onStartDm={onStartDm} />
-      <SchedulerPage open={schedulerOpen} onClose={() => setSchedulerOpen(false)} />
-      <AutoReplyPage open={autoReplyOpen} onClose={() => setAutoReplyOpen(false)} />
-      <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />
+      <Suspense fallback={null}>
+        {contactsOpen && <ContactsPage open={contactsOpen} onClose={() => setContactsOpen(false)} onStartDm={onStartDm} />}
+        {schedulerOpen && <SchedulerPage open={schedulerOpen} onClose={() => setSchedulerOpen(false)} />}
+        {autoReplyOpen && <AutoReplyPage open={autoReplyOpen} onClose={() => setAutoReplyOpen(false)} />}
+        {walletOpen && <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />}
+      </Suspense>
     </>
   );
 }
