@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
 import {
   Phone, Video, MoreVertical, Paperclip, Smile, Send,
   Lock, Hash, Users, Sparkles, Mic, ArrowLeft,
@@ -12,6 +12,8 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 import { GifPicker } from "@/components/GifPicker";
 import { CreatePollDialog } from "@/components/Poll";
 import { StickerPicker } from "@/components/StickerPicker";
+import { Virtuoso } from "react-virtuoso";
+import { GroupCallScreen } from "@/components/GroupCallScreen";
 
 // Lazy load heavy overlay components
 const MediaGallery = lazy(() => import("@/components/MediaGallery").then(m => ({ default: m.MediaGallery })));
@@ -73,6 +75,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [groupCallOpen, setGroupCallOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -408,6 +411,15 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               >
                 <Video className="h-4 w-4 text-muted-foreground" />
               </button>
+              {chat.type === "group" && (
+                <button
+                  onClick={() => setGroupCallOpen(true)}
+                  className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
+                  title="Group call"
+                >
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </>
           )}
           {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
@@ -484,48 +496,52 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       )}
 
       {/* Messages */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 md:px-6 py-6 scrollbar-thin">
-        <div className="mx-auto max-w-3xl space-y-4">
+      <div className="relative z-10 flex-1 overflow-hidden">
+        <div className="h-full">
           {(() => {
             const hasTopics = (chat.type === "group" || chat.type === "channel") && chat.topics && chat.topics.length > 0;
             const filtered = hasTopics && activeTopic !== null
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;
             return filtered.length > 0 ? (
-              filtered.map((msg, i) => {
-                // Date separator
-                const showDate = i === 0 || (i > 0 && msg.timestamp?.split(" ")[0] !== filtered[i - 1]?.timestamp?.split(" ")[0]);
-                // Unread separator (first unread message that's not ours)
-                const showUnread = i > 0 && msg.senderId !== "me" && !msg.read && (i === 0 || filtered[i - 1]?.read || filtered[i - 1]?.senderId === "me");
-                return (
-                  <div key={msg.id}>
-                    {showDate && msg.timestamp && (
-                      <div className="flex items-center gap-3 my-3">
-                        <div className="flex-1 h-px bg-border/40" />
-                        <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{msg.timestamp.split(" ")[0] || "Today"}</span>
-                        <div className="flex-1 h-px bg-border/40" />
+              <Virtuoso
+                data={filtered}
+                followOutput="smooth"
+                className="h-full px-4 md:px-6 scrollbar-thin"
+                itemContent={(i, msg) => {
+                  const showDate = i === 0 || (i > 0 && msg.timestamp?.split(" ")[0] !== filtered[i - 1]?.timestamp?.split(" ")[0]);
+                  const showUnread = i > 0 && msg.senderId !== "me" && !msg.read && (i === 0 || filtered[i - 1]?.read || filtered[i - 1]?.senderId === "me");
+                  return (
+                    <div className="max-w-3xl mx-auto">
+                      {showDate && msg.timestamp && (
+                        <div className="flex items-center gap-3 my-3">
+                          <div className="flex-1 h-px bg-border/40" />
+                          <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{msg.timestamp.split(" ")[0] || "Today"}</span>
+                          <div className="flex-1 h-px bg-border/40" />
+                        </div>
+                      )}
+                      {showUnread && (
+                        <div className="flex items-center gap-3 my-2">
+                          <div className="flex-1 h-px bg-primary/50" />
+                          <span className="text-[9px] font-mono text-primary uppercase">New messages</span>
+                          <div className="flex-1 h-px bg-primary/50" />
+                        </div>
+                      )}
+                      <div className="py-1">
+                        <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
                       </div>
-                    )}
-                    {showUnread && (
-                      <div className="flex items-center gap-3 my-2">
-                        <div className="flex-1 h-px bg-primary/50" />
-                        <span className="text-[9px] font-mono text-primary uppercase">New messages</span>
-                        <div className="flex-1 h-px bg-primary/50" />
-                      </div>
-                    )}
-                    <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
-                  </div>
-                );
-              })
+                    </div>
+                  );
+                }}
+              />
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex flex-col items-center justify-center py-16 text-center h-full">
                 <Hash className="h-8 w-8 text-muted-foreground/30 mb-3" />
                 <p className="text-sm text-muted-foreground">No messages in this topic yet</p>
                 <p className="text-[11px] text-muted-foreground/60 mt-1">Be the first to write something</p>
               </div>
             );
           })()}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
@@ -775,6 +791,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           />
         )}
       </Suspense>
+
+      {/* Group Call Screen */}
+      <GroupCallScreen
+        open={groupCallOpen}
+        chatName={chat.name}
+        participants={chat.memberIds || []}
+        onEnd={() => setGroupCallOpen(false)}
+      />
 
       {/* Forward message dialog */}
       {forwardingMsg && (
