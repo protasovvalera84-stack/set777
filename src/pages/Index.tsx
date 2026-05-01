@@ -6,6 +6,7 @@ import { AccountSettings } from "@/components/AccountSettings";
 import { CallScreen, IncomingCallBanner, CallType } from "@/components/CallScreen";
 import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import { DmSettingsDialog } from "@/components/DmSettingsDialog";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   contacts as defaultContacts, defaultProfile,
   Chat, Message, MediaAttachment, Story, StoryItem, UserProfile, Topic, ChatFolder,
@@ -444,6 +445,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden">
       <div className={`${sidebarOpen ? "flex" : "hidden"} md:flex w-full md:w-auto flex-shrink-0`}>
+        <ErrorBoundary fallbackTitle="Sidebar error">
         <ChatSidebar
           chats={chatList}
           stories={stories}
@@ -459,8 +461,10 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           onStartDm={handleStartDm}
           onJoinRoom={handleJoinRoom}
         />
+        </ErrorBoundary>
       </div>
       <div className={`${!sidebarOpen ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
+        <ErrorBoundary fallbackTitle="Chat error">
         {selectedChat ? (
           <ChatView
             chat={selectedChat}
@@ -481,6 +485,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         ) : (
           <EmptyChat />
         )}
+        </ErrorBoundary>
       </div>
 
       {selectedChat && (selectedChat.type === "group" || selectedChat.type === "channel") && (
