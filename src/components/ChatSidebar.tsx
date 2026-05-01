@@ -3,6 +3,7 @@ import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, 
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
+import { useMesh } from "@/lib/MeshProvider";
 
 // Lazy load heavy dialog pages
 const ContactsPage = lazy(() => import("@/components/ContactsPage").then(m => ({ default: m.ContactsPage })));
@@ -43,6 +44,7 @@ const TypeIcon = ({ type }: { type: Chat["type"] }) => {
 };
 
 export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, onSelectChat, onCreateChat, onAddStory, onOpenSettings, onFoldersChange, onSearch, onStartDm, onJoinRoom }: ChatSidebarProps) {
+  const mesh = useMesh();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -429,7 +431,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                 <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent ml-2" />
               </div>
               {pinned.map((chat, i) => (
-                <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} />
+                <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} typingNames={mesh.typingUsers[chat.id]} />
               ))}
             </div>
           )}
@@ -468,7 +470,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               </div>
             )}
             {unpinned.map((chat, i) => (
-              <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} />
+              <ChatItem key={chat.id} chat={chat} selected={chat.id === selectedChatId} onSelect={onSelectChat} index={i} isFavorite={allFavIds.has(chat.id)} isMuted={mutedChats.has(chat.id)} onMute={() => toggleMute(chat.id)} typingNames={mesh.typingUsers[chat.id]} />
             ))}
           </div>
         </div>
@@ -529,7 +531,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   );
 }
 
-function ChatItem({ chat, selected, onSelect, index, isFavorite, isMuted, onMute }: { chat: Chat; selected: boolean; onSelect: (id: string) => void; index: number; isFavorite?: boolean; isMuted?: boolean; onMute?: () => void }) {
+function ChatItem({ chat, selected, onSelect, index, isFavorite, isMuted, onMute, typingNames }: { chat: Chat; selected: boolean; onSelect: (id: string) => void; index: number; isFavorite?: boolean; isMuted?: boolean; onMute?: () => void; typingNames?: string[] }) {
   return (
     <button
       onClick={() => onSelect(chat.id)}
@@ -566,7 +568,11 @@ function ChatItem({ chat, selected, onSelect, index, isFavorite, isMuted, onMute
           <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">{chat.lastMessageTime}</span>
         </div>
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs text-muted-foreground truncate pr-2">{chat.lastMessage}</p>
+          <p className="text-xs text-muted-foreground truncate pr-2">
+            {typingNames && typingNames.length > 0 ? (
+              <span className="text-primary animate-pulse italic">{typingNames[0]} typing...</span>
+            ) : chat.lastMessage}
+          </p>
           {chat.unread > 0 && !isMuted && (
             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full gradient-primary px-1.5 text-[10px] font-bold text-primary-foreground flex-shrink-0 shadow-glow">{chat.unread}</span>
           )}
