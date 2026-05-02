@@ -69,6 +69,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoReplyOpen, setAutoReplyOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
   // Shorts state (persisted in localStorage)
@@ -241,11 +242,11 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           {/* Dropdown menu */}
           {logoMenuOpen && (
             <div className="absolute top-full left-3 right-3 mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 animate-fade-in-up">
-              <LogoMenuItem icon={<Zap className="h-4 w-4 text-amber-400" />} label="Ультимейт" sub="Скоро" />
-              <LogoMenuItem icon={<Briefcase className="h-4 w-4 text-blue-400" />} label="Для бизнеса" sub="Скоро" />
+              <LogoMenuItem icon={<Zap className="h-4 w-4 text-amber-400" />} label="Ультимейт" sub="v2.0" />
+              <LogoMenuItem icon={<Briefcase className="h-4 w-4 text-blue-400" />} label="Для бизнеса" sub="v2.0" />
               <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="" onClick={() => { setLogoMenuOpen(false); setSchedulerOpen(true); }} />
               <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="" onClick={() => { setLogoMenuOpen(false); setWalletOpen(true); }} />
-              <LogoMenuItem icon={<Globe className="h-4 w-4 text-cyan-400" />} label="Экосистема Meshlink" sub="Скоро" />
+              <LogoMenuItem icon={<Globe className="h-4 w-4 text-cyan-400" />} label="Экосистема Meshlink" sub="v2.0" />
             </div>
           )}
         </div>
