@@ -78,6 +78,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [groupCallOpen, setGroupCallOpen] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const virtuosoRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -366,128 +367,106 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 md:gap-1 overflow-x-auto flex-shrink-0">
-          {/* Export chat button */}
-          <button
-            onClick={() => {
-              const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
-              const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url; a.download = `${chat.name}-export.txt`; a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
-            title="Export chat"
-          >
-            <Download className="h-4 w-4 text-muted-foreground" />
-          </button>
-          {/* Search in chat button */}
-          <button
-            onClick={() => setChatSearchOpen(true)}
-            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
-            title="Search in chat (Ctrl+F)"
-          >
+        <div className="flex items-center gap-0.5">
+          {/* Search — always visible */}
+          <button onClick={() => setChatSearchOpen(true)} className="rounded-xl p-2 hover:bg-surface-hover" title="Search (Ctrl+F)">
             <SearchIcon className="h-4 w-4 text-muted-foreground" />
           </button>
-          {/* File manager button */}
-          <button
-            onClick={() => setFileManagerOpen(true)}
-            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
-            title="Shared files"
-          >
-            <Paperclip className="h-4 w-4 text-muted-foreground" />
-          </button>
-          {/* Media gallery button */}
-          <button
-            onClick={() => setGalleryOpen(true)}
-            className="flex-shrink-0 rounded-xl p-2 hover:bg-surface-hover transition-all"
-            title="Media gallery"
-          >
-            <Image className="h-4 w-4 text-muted-foreground" />
-          </button>
-          {/* Disappearing messages timer */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setShowTimerMenu((v) => !v)}
-              className={`rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 ${disappearTimer ? "text-primary" : ""}`}
-              title="Disappearing messages"
-            >
-              <Timer className={`h-4 w-4 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
+
+          {/* Call buttons */}
+          {(chat.type === "dm" || chat.type === "group") && onCall && (
+            <>
+              <button onClick={() => onCall("audio")} className="rounded-xl p-2 hover:bg-surface-hover" title="Audio call">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button onClick={() => onCall("video")} className="hidden sm:flex rounded-xl p-2 hover:bg-surface-hover" title="Video call">
+                <Video className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </>
+          )}
+
+          {/* More menu (⋮) — contains Export, Files, Gallery, Timer, Group Call, Settings */}
+          <div className="relative">
+            <button onClick={() => setHeaderMenuOpen((v) => !v)} className="rounded-xl p-2 hover:bg-surface-hover">
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
-            {showTimerMenu && (
-              <div className="absolute right-0 top-full mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 w-48 animate-fade-in-up">
-                <p className="text-[9px] font-mono uppercase text-muted-foreground px-2 py-1 mb-1">Auto-delete messages</p>
-                {[
-                  { label: "Off", value: null },
-                  { label: "5 seconds", value: 5 },
-                  { label: "30 seconds", value: 30 },
-                  { label: "5 minutes", value: 300 },
-                  { label: "1 hour", value: 3600 },
-                  { label: "24 hours", value: 86400 },
-                ].map((opt) => (
-                  <button
-                    key={opt.label}
-                    onClick={() => handleSetTimer(opt.value)}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-all ${
-                      disappearTimer === opt.value ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-hover"
-                    }`}
-                  >
-                    {opt.label}
-                    {disappearTimer === opt.value && <Check className="h-3 w-3" />}
+            {headerMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-1.5 w-48 animate-fade-in-up">
+                <button onClick={() => { setChatSearchOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover sm:hidden">
+                  <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" /> Search in Chat
+                </button>
+                {onCall && (
+                  <button onClick={() => { onCall("video"); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover sm:hidden">
+                    <Video className="h-3.5 w-3.5 text-muted-foreground" /> Video Call
                   </button>
-                ))}
+                )}
+                {chat.type === "group" && onCall && (
+                  <button onClick={() => { setGroupCallOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" /> Group Call
+                  </button>
+                )}
+                <button onClick={() => { setGalleryOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                  <Image className="h-3.5 w-3.5 text-muted-foreground" /> Media Gallery
+                </button>
+                <button onClick={() => { setFileManagerOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground" /> Shared Files
+                </button>
+                <button onClick={() => {
+                  const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
+                  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `${chat.name}-export.txt`; a.click();
+                  URL.revokeObjectURL(url);
+                  setHeaderMenuOpen(false);
+                }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                  <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export Chat
+                </button>
+                <button onClick={() => { setShowTimerMenu(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                  <Timer className={`h-3.5 w-3.5 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
+                  {disappearTimer ? "Timer Active" : "Disappearing Messages"}
+                </button>
+                {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
+                  <button onClick={() => { onSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                    <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /> Group Settings
+                  </button>
+                )}
+                {chat.type === "dm" && onDmSettingsClick && (
+                  <button onClick={() => { onDmSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                    <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /> Chat Settings
+                  </button>
+                )}
               </div>
             )}
           </div>
-
-          {(chat.type === "dm" || chat.type === "group") && onCall && (
-            <>
-              <button
-                onClick={() => onCall("audio")}
-                className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-                title="Audio call"
-              >
-                <Phone className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button
-                onClick={() => onCall("video")}
-                className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-                title="Video call"
-              >
-                <Video className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {chat.type === "group" && (
-                <button
-                  onClick={() => setGroupCallOpen(true)}
-                  className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-                  title="Group call"
-                >
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-            </>
-          )}
-          {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
-            <button
-              onClick={onSettingsClick}
-              className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
-              title="Settings"
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
-          {chat.type === "dm" && (
-            <button
-              onClick={onDmSettingsClick}
-              className="rounded-xl p-2.5 hover:bg-surface-hover transition-all hover:scale-105"
-              title="Chat settings"
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Timer menu (shown from header menu) */}
+      {showTimerMenu && (
+        <div className="absolute right-4 top-16 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 w-48 animate-fade-in-up">
+          <p className="text-[9px] font-mono uppercase text-muted-foreground px-2 py-1 mb-1">Auto-delete messages</p>
+          {[
+            { label: "Off", value: null },
+            { label: "5 seconds", value: 5 },
+            { label: "30 seconds", value: 30 },
+            { label: "5 minutes", value: 300 },
+            { label: "1 hour", value: 3600 },
+            { label: "24 hours", value: 86400 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => handleSetTimer(opt.value)}
+              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-all ${
+                disappearTimer === opt.value ? "bg-primary/10 text-primary" : "text-foreground hover:bg-surface-hover"
+              }`}
+            >
+              {opt.label}
+              {disappearTimer === opt.value && <Check className="h-3 w-3" />}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* E2EE banner */}
       <div className="e2ee-banner relative z-10 flex items-center justify-center gap-2 py-1.5 md:py-2 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border-b border-border/30">
