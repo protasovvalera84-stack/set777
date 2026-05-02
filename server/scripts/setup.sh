@@ -698,6 +698,25 @@ fi
 chmod +x "$SCRIPT_DIR/ddos-monitor.sh" 2>/dev/null || true
 log "DDoS protection enabled."
 
+# Setup health monitoring cron
+if [ -f "$SCRIPT_DIR/health-monitor.sh" ]; then
+    chmod +x "$SCRIPT_DIR/health-monitor.sh"
+    bash "$SCRIPT_DIR/health-monitor.sh" install 2>/dev/null || true
+fi
+
+# Setup log rotation
+if [ -f "$SERVER_DIR/logrotate/meshlink" ]; then
+    cp "$SERVER_DIR/logrotate/meshlink" /etc/logrotate.d/meshlink 2>/dev/null || true
+    log "Log rotation configured."
+fi
+
+# Setup daily backup cron
+BACKUP_CRON="0 3 * * * $SCRIPT_DIR/backup.sh >> /var/log/meshlink-backup.log 2>&1"
+if ! crontab -l 2>/dev/null | grep -q "backup.sh"; then
+    (crontab -l 2>/dev/null; echo "$BACKUP_CRON") | crontab -
+    log "Daily backup cron installed (3:00 AM)."
+fi
+
 # =============================================================================
 # Step 9c: Verify external accessibility
 # =============================================================================
