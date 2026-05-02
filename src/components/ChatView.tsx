@@ -711,6 +711,22 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               <span className="text-[10px] font-bold text-muted-foreground">📊</span>
             </button>
           )}
+          {/* Location sharing */}
+          <button
+            onClick={() => {
+              if (!navigator.geolocation) return;
+              navigator.geolocation.getCurrentPosition((pos) => {
+                const { latitude, longitude } = pos.coords;
+                const mapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`;
+                const text = `📍 My location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapUrl}`;
+                onSendMessage(chat.id, text, undefined, activeTopic);
+              }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+            }}
+            className="rounded-2xl p-2.5 md:p-3 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
+            title="Share location"
+          >
+            <span className="text-[10px] font-bold text-muted-foreground">📍</span>
+          </button>
           <div className="group flex flex-1 items-center gap-2 rounded-2xl glass border border-border/50 px-3 md:px-4 py-2.5 md:py-3 transition-all focus-within:border-primary/50 focus-within:shadow-glow">
             <input
               type="text"
@@ -921,7 +937,22 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
             <Download className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
-        <audio src={attachment.url} controls className="w-full h-8" />
+        <div className="flex items-center gap-2">
+          <audio src={attachment.url} controls className="flex-1 h-8" />
+          <select
+            onChange={(e) => {
+              const audio = e.target.closest("div")?.querySelector("audio");
+              if (audio) audio.playbackRate = parseFloat(e.target.value);
+            }}
+            defaultValue="1"
+            className="rounded-lg bg-secondary border border-border/40 text-[9px] text-muted-foreground px-1 py-0.5 outline-none"
+          >
+            <option value="0.5">0.5x</option>
+            <option value="1">1x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+        </div>
       </div>
     );
   }
@@ -1006,6 +1037,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
       ref={bubbleRef}
       className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-fade-in-up`}
       style={{ animationDelay: `${index * 30}ms`, transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.2s" : "none" }}
+      onDoubleClick={() => { if (isOwn && message.text) setIsEditing(true); }}
       onTouchStart={(e) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
       }}
