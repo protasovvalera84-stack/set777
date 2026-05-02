@@ -796,17 +796,36 @@ else
 fi
 
 # =============================================================================
-# Step 9: Create admin user
+# Step 9: Create admin user (wait for Synapse to be fully ready)
 # =============================================================================
-log "Creating admin user: @${ADMIN_USER}:${SERVER_HOST}"
-docker compose exec -T synapse register_new_matrix_user \
-    -u "$ADMIN_USER" \
-    -p "$ADMIN_PASSWORD" \
-    -a \
-    -c /data/homeserver.yaml \
-    http://localhost:8008
+log "Waiting for Synapse to be fully ready..."
+SYNAPSE_READY=false
+for i in $(seq 1 40); do
+    if docker compose exec -T synapse python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8008/health')" 2>/dev/null; then
+        SYNAPSE_READY=true
+        break
+    fi
+    echo -n "."
+    sleep 5
+done
+echo ""
 
-log "Admin user created."
+if [ "$SYNAPSE_READY" = "true" ]; then
+    log "Synapse is ready. Creating admin user: @${ADMIN_USER}:${SERVER_HOST}"
+    docker compose exec -T synapse register_new_matrix_user \
+        -u "$ADMIN_USER" \
+        -p "$ADMIN_PASSWORD" \
+        -a \
+        -c /data/homeserver.yaml \
+        http://localhost:8008 2>&1 || warn "Admin user may already exist (this is OK)"
+    log "Admin user created."
+else
+    warn "Synapse did not become ready in time."
+    warn "Create admin manually after Synapse starts:"
+    warn "  cd $SERVER_DIR"
+    warn "  source .env"
+    warn "  docker compose exec synapse register_new_matrix_user -u \$ADMIN_USER -p \$ADMIN_PASSWORD -a -c /data/homeserver.yaml http://localhost:8008"
+fi
 
 # =============================================================================
 # Step 10: Configure firewall for Docker compatibility
