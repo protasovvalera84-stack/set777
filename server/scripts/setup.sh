@@ -679,7 +679,27 @@ else
 fi
 
 # =============================================================================
-# Step 9b: Verify external accessibility
+# Step 9b: Enable firewall & DDoS protection
+# =============================================================================
+log "Setting up DDoS protection..."
+
+# Apply iptables firewall rules
+if [ -f "$SCRIPT_DIR/firewall.sh" ]; then
+    chmod +x "$SCRIPT_DIR/firewall.sh"
+    bash "$SCRIPT_DIR/firewall.sh" enable 2>/dev/null || warn "Firewall setup failed (non-critical)"
+fi
+
+# Install fail2ban
+if [ -f "$SCRIPT_DIR/setup-fail2ban.sh" ]; then
+    chmod +x "$SCRIPT_DIR/setup-fail2ban.sh"
+    bash "$SCRIPT_DIR/setup-fail2ban.sh" 2>/dev/null || warn "fail2ban setup failed (non-critical)"
+fi
+
+chmod +x "$SCRIPT_DIR/ddos-monitor.sh" 2>/dev/null || true
+log "DDoS protection enabled."
+
+# =============================================================================
+# Step 9c: Verify external accessibility
 # =============================================================================
 log "Verifying server is accessible..."
 
