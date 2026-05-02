@@ -585,30 +585,36 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
 
       {/* Pending media preview */}
       {pendingMedia.length > 0 && (
-        <div className="relative z-10 border-t border-border/30 px-4 md:px-6 py-3 glass">
-          <div className="mx-auto max-w-3xl flex gap-2 overflow-x-auto scrollbar-thin pb-1">
-            {pendingMedia.map((m) => (
-              <div key={m.id} className="relative flex-shrink-0 group">
-                {m.type === "image" ? (
-                  <img src={m.url} alt={m.name} className="h-16 w-16 rounded-xl object-cover border border-border/40" />
-                ) : m.type === "video" ? (
-                  <div className="h-16 w-16 rounded-xl bg-secondary border border-border/40 flex items-center justify-center">
-                    <Film className="h-6 w-6 text-primary" />
-                  </div>
-                ) : (
-                  <div className="h-16 w-16 rounded-xl bg-secondary border border-border/40 flex items-center justify-center">
-                    <Music className="h-6 w-6 text-accent" />
-                  </div>
-                )}
-                <button
-                  onClick={() => removePendingMedia(m.id)}
-                  className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                <p className="text-[9px] text-muted-foreground truncate w-16 mt-0.5">{m.name}</p>
-              </div>
-            ))}
+        <div className="relative z-10 border-t border-border/30 px-3 md:px-6 py-2 glass">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-[9px] font-mono uppercase text-muted-foreground mb-1.5">{pendingMedia.length} file{pendingMedia.length > 1 ? "s" : ""} ready to send</p>
+            <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
+              {pendingMedia.map((m) => (
+                <div key={m.id} className="relative flex-shrink-0 group">
+                  {m.type === "image" ? (
+                    <img src={m.url} alt={m.name} className="h-20 w-20 rounded-xl object-cover border border-border/40" />
+                  ) : m.type === "video" ? (
+                    <div className="h-20 w-20 rounded-xl bg-secondary border border-border/40 flex flex-col items-center justify-center gap-1">
+                      <Film className="h-6 w-6 text-primary" />
+                      <span className="text-[8px] text-muted-foreground">Video</span>
+                    </div>
+                  ) : (
+                    <div className="h-20 w-20 rounded-xl bg-secondary border border-border/40 flex flex-col items-center justify-center gap-1">
+                      <Music className="h-6 w-6 text-accent" />
+                      <span className="text-[8px] text-muted-foreground">Audio</span>
+                    </div>
+                  )}
+                  <p className="text-[8px] text-muted-foreground truncate w-20 mt-0.5">{m.name}</p>
+                  {m.size && <p className="text-[7px] text-muted-foreground/60">{(m.size / 1024).toFixed(0)} KB</p>}
+                  <button
+                    onClick={() => removePendingMedia(m.id)}
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
