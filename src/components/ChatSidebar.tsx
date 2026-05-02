@@ -496,35 +496,31 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         </div>
 
         {/* Quick access toolbar */}
-        <div className="border-t border-border/40 px-3 py-2 glass">
+        <div className="border-t border-border/40 px-2 py-1 glass">
           <div className="flex items-center justify-around">
-            <button onClick={() => setAutoReplyOpen(true)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-xl hover:bg-surface-hover transition-all" title="Auto-Reply">
-              <span className="text-sm">🤖</span>
-              <span className="text-[8px] text-muted-foreground hidden sm:block">Bot</span>
+            <button onClick={() => setAutoReplyOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Auto-Reply">
+              <span className="text-base">🤖</span>
             </button>
-            <button onClick={() => setWalletOpen(true)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-xl hover:bg-surface-hover transition-all" title="Wallet">
-              <span className="text-sm">👛</span>
-              <span className="text-[8px] text-muted-foreground hidden sm:block">Wallet</span>
+            <button onClick={() => setWalletOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Wallet">
+              <span className="text-base">👛</span>
             </button>
-            <button onClick={() => setSchedulerOpen(true)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-xl hover:bg-surface-hover transition-all" title="Scheduler">
-              <span className="text-sm">📅</span>
-              <span className="text-[8px] text-muted-foreground hidden sm:block">Plan</span>
+            <button onClick={() => setSchedulerOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Scheduler">
+              <span className="text-base">📅</span>
             </button>
-            <button onClick={() => setContactsOpen(true)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-xl hover:bg-surface-hover transition-all" title="Contacts">
-              <span className="text-sm">👥</span>
-              <span className="text-[8px] text-muted-foreground hidden sm:block">People</span>
+            <button onClick={() => setContactsOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Contacts">
+              <span className="text-base">👥</span>
             </button>
           </div>
         </div>
 
-        {/* Footer */}
-        <button onClick={onOpenSettings} className="relative border-t border-border/40 px-4 py-3 glass w-full text-left hover:bg-surface-hover transition-all">
-          <div className="flex items-center gap-3">
+        {/* Footer — compact */}
+        <button onClick={onOpenSettings} className="relative border-t border-border/40 px-3 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
+          <div className="flex items-center gap-2">
             <div className="relative">
               {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt="" className="h-10 w-10 rounded-2xl object-cover border border-primary/30 shadow-glow" />
+                <img src={profile.avatarUrl} alt="" className="h-8 w-8 rounded-xl object-cover border border-primary/30" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl gradient-primary text-xs font-bold text-primary-foreground shadow-glow">{profile.avatarInitials}</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary text-[10px] font-bold text-primary-foreground">{profile.avatarInitials}</div>
               )}
               {profile.privacy.onlineStatus && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-online shadow-lg shadow-online/50" />}
             </div>
