@@ -1056,9 +1056,17 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             {message.senderId.charAt(0).toUpperCase() + message.senderId.slice(1)}
           </p>
         )}
+        {/* Quote (replied-to message) */}
+        {message.text?.startsWith("> ") && (
+          <div className={`rounded-lg px-2 py-1 mb-1 border-l-2 ${isOwn ? "border-white/40 bg-white/10" : "border-primary/40 bg-primary/5"}`}>
+            <p className={`text-[10px] truncate ${isOwn ? "text-white/60" : "text-muted-foreground"}`}>
+              {message.text.split("\n")[0].replace(/^> /, "")}
+            </p>
+          </div>
+        )}
         {message.text && !isEditing && (
           <p className={`text-sm whitespace-pre-line leading-relaxed ${isOwn ? "text-white" : "text-foreground"}`}>
-            <LinkifiedText text={message.text} isOwn={isOwn} />
+            <LinkifiedText text={message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text} isOwn={isOwn} />
           </p>
         )}
         {isEditing && (
@@ -1106,6 +1114,12 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             <button onClick={() => {
               try { const saved = JSON.parse(localStorage.getItem("meshlink-bookmarks") || "[]"); saved.unshift({ text: message.text, timestamp: message.timestamp, id: message.id }); localStorage.setItem("meshlink-bookmarks", JSON.stringify(saved.slice(0, 100))); } catch {}
             }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Save">🔖</button>
+            <button onClick={() => {
+              const text = message.text;
+              const lang = navigator.language.startsWith("ru") ? "ru" : "en";
+              const target = lang === "ru" ? "en" : "ru";
+              window.open(`https://translate.google.com/?sl=auto&tl=${target}&text=${encodeURIComponent(text)}`, "_blank");
+            }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Translate">🌐</button>
             {isOwn && (
               <>
                 <button onClick={() => setIsEditing(true)} className="px-1.5 py-0.5 rounded hover:text-white/80 hover:bg-white/10" title="Edit">✏️</button>
@@ -1186,10 +1200,10 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
 /* ===== Linkified Text (detects URLs and makes them clickable) ===== */
 function LinkifiedText({ text, isOwn }: { text: string; isOwn: boolean }) {
-  // Apply markdown: **bold**, *italic*, `code`, and URLs
+  // Apply markdown: **bold**, *italic*, `code`, @mentions, and URLs
   const formatText = (input: string): React.ReactNode[] => {
     const nodes: React.ReactNode[] = [];
-    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|(https?:\/\/[^\s]+))/g;
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|(@[\w.-]+)|(https?:\/\/[^\s]+))/g;
     let lastIndex = 0;
     let match;
 
@@ -1204,11 +1218,26 @@ function LinkifiedText({ text, isOwn }: { text: string; isOwn: boolean }) {
       } else if (match[4]) {
         nodes.push(<code key={`c${match.index}`} className="px-1 py-0.5 rounded bg-black/20 text-[11px] font-mono">{match[4]}</code>);
       } else if (match[5]) {
+        // @mention
         nodes.push(
-          <a key={`u${match.index}`} href={match[5]} target="_blank" rel="noopener noreferrer"
-            className={`underline break-all ${isOwn ? "text-white/90 hover:text-white" : "text-primary hover:text-primary/80"}`}>
-            {match[5].length > 50 ? match[5].slice(0, 50) + "..." : match[5]}
-          </a>
+          <span key={`m${match.index}`} className={`font-semibold ${isOwn ? "text-white" : "text-primary"}`}>
+            {match[5]}
+          </span>
+        );
+      } else if (match[6]) {
+        // URL with mini preview
+        const url = match[6];
+        const domain = url.replace(/https?:\/\//, "").split("/")[0];
+        nodes.push(
+          <span key={`u${match.index}`} className="inline-block">
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className={`underline break-all ${isOwn ? "text-white/90 hover:text-white" : "text-primary hover:text-primary/80"}`}>
+              {url.length > 45 ? url.slice(0, 45) + "..." : url}
+            </a>
+            <span className={`block text-[9px] mt-0.5 ${isOwn ? "text-white/50" : "text-muted-foreground/60"}`}>
+              🔗 {domain}
+            </span>
+          </span>
         );
       }
       lastIndex = match.index + match[0].length;

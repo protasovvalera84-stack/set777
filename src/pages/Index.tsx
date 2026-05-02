@@ -414,11 +414,25 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   // Show loading while connecting
   if (!mesh.ready) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl gradient-primary animate-pulse" />
-          <p className="text-sm text-muted-foreground">Connecting to Meshlink...</p>
-          <p className="text-[10px] text-muted-foreground/60">Syncing with server, please wait</p>
+      <div className="flex h-[100dvh] w-full items-center justify-center bg-background overflow-hidden">
+        <div className="pointer-events-none absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary/20 blur-3xl animate-pulse" />
+        <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-accent/20 blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="flex flex-col items-center gap-5 animate-fade-in-up">
+          <div className="relative">
+            <div className="absolute inset-0 gradient-primary blur-2xl opacity-50 animate-pulse rounded-3xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl gradient-primary shadow-elegant">
+              <span className="text-3xl font-bold text-primary-foreground">M</span>
+            </div>
+          </div>
+          <div className="text-center">
+            <h1 className="font-serif italic text-2xl gradient-text mb-1">Meshlink</h1>
+            <p className="text-xs text-muted-foreground">Connecting securely...</p>
+          </div>
+          <div className="flex gap-1">
+            {[0,1,2].map((i) => (
+              <div key={i} className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+            ))}
+          </div>
         </div>
       </div>
     );
