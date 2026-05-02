@@ -721,23 +721,23 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                   fileInputRef.current.accept = "image/*,video/*,audio/*";
                 }
               }}
-              className="hidden sm:flex hover:text-primary transition-colors"
+              className="flex hover:text-primary transition-colors"
               title="Send photo"
             >
               <Image className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); setStickerOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="GIF">
+            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); setStickerOpen(false); }} className="flex hover:text-primary transition-colors" title="GIF">
               <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
             </button>
-            <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors">
+            <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="flex hover:text-primary transition-colors">
               <Smile className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button onClick={() => { setStickerOpen((v) => !v); setEmojiOpen(false); setGifOpen(false); }} className="hidden sm:flex hover:text-primary transition-colors" title="Stickers">
+            <button onClick={() => { setStickerOpen((v) => !v); setEmojiOpen(false); setGifOpen(false); }} className="flex hover:text-primary transition-colors" title="Stickers">
               <span className="text-sm">🎭</span>
             </button>
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              className={`hidden sm:flex hover:text-primary transition-colors ${isRecording ? "text-destructive animate-pulse" : ""}`}
+              className={`flex hover:text-primary transition-colors ${isRecording ? "text-destructive animate-pulse" : ""}`}
               title={isRecording ? `Recording ${recordingDuration}s - click to stop` : "Voice message"}
             >
               <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
@@ -1076,7 +1076,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
         {/* Forward, Pin & Reply buttons */}
         {message.text && (
-          <div className={`mt-1 flex items-center gap-2 text-[9px] flex-wrap ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
+          <div className={`message-actions mt-1 flex items-center gap-2 text-[9px] flex-wrap ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
             {onReply && (
               <button onClick={() => onReply(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
                 ↩ Reply

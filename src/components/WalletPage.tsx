@@ -18,6 +18,7 @@ interface WalletPageProps {
 export function WalletPage({ open, onClose }: WalletPageProps) {
   const [balance] = useState("0.00");
   const [showSend, setShowSend] = useState(false);
+  const [showReceive, setShowReceive] = useState(false);
   const [sendTo, setSendTo] = useState("");
   const [sendAmount, setSendAmount] = useState("");
   const [transactions] = useState<Transaction[]>([]);
@@ -57,13 +58,13 @@ export function WalletPage({ open, onClose }: WalletPageProps) {
               </div>
               <span className="text-[10px] text-muted-foreground">Send</span>
             </button>
-            <button className="flex flex-col items-center gap-1">
+            <button onClick={() => setShowReceive(true)} className="flex flex-col items-center gap-1">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary border border-border/40">
                 <ArrowDownLeft className="h-5 w-5 text-foreground" />
               </div>
               <span className="text-[10px] text-muted-foreground">Receive</span>
             </button>
-            <button className="flex flex-col items-center gap-1">
+            <button onClick={() => navigator.clipboard?.writeText(walletAddress)} className="flex flex-col items-center gap-1">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary border border-border/40">
                 <RefreshCw className="h-5 w-5 text-foreground" />
               </div>
@@ -173,6 +174,36 @@ export function WalletPage({ open, onClose }: WalletPageProps) {
                 <Send className="h-4 w-4" /> Send Tokens
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receive dialog */}
+      {showReceive && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setShowReceive(false)}>
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
+          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm rounded-3xl glass-strong border border-border/60 shadow-elegant p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-serif italic gradient-text">Receive MLK</h3>
+              <button onClick={() => setShowReceive(false)} className="rounded-lg p-1.5 hover:bg-surface-hover">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">Share your wallet address to receive tokens:</p>
+            <div className="flex items-center gap-2 mb-4">
+              <code className="flex-1 text-xs text-foreground bg-secondary/50 rounded-xl px-3 py-2.5 truncate font-mono">{walletAddress}</code>
+              <button onClick={() => navigator.clipboard?.writeText(walletAddress)} className="p-2 rounded-xl hover:bg-surface-hover">
+                <Copy className="h-4 w-4 text-primary" />
+              </button>
+            </div>
+            <div className="rounded-2xl bg-white p-4 flex items-center justify-center">
+              <div className="grid grid-cols-7 gap-0.5">
+                {Array.from({ length: 49 }).map((_, i) => (
+                  <div key={i} className={`w-3 h-3 rounded-sm ${Math.random() > 0.5 ? "bg-black" : "bg-white"}`} />
+                ))}
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground text-center mt-2">Scan QR code to send tokens</p>
           </div>
         </div>
       )}

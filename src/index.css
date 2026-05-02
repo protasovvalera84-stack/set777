@@ -304,6 +304,12 @@
   button { min-height: 36px; min-width: 36px; }
   input, textarea, select { font-size: 16px !important; } /* Prevents iOS zoom on focus */
 
+  /* Message action buttons bigger on touch */
+  .message-actions button { min-height: 28px; min-width: 28px; font-size: 11px !important; padding: 4px 8px !important; }
+
+  /* Reaction picker bigger on touch */
+  .reaction-picker button { min-height: 32px; min-width: 32px; font-size: 18px !important; }
+
   /* Disable hover effects that cause sticky states on mobile */
   .hover\:scale-105:active { transform: scale(1.02); }
   .hover\:bg-surface-hover:active { background: var(--surface-hover); }
