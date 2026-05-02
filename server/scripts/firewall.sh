@@ -44,14 +44,14 @@ fi
 log "Applying Meshlink Anti-DDoS firewall rules..."
 
 # ===== FLUSH EXISTING RULES =====
-iptables -F
-iptables -X
+# Only flush INPUT chain — preserve FORWARD/DOCKER chains for container networking
+iptables -F INPUT
 iptables -t mangle -F
 iptables -t mangle -X
 
 # ===== DEFAULT POLICIES =====
 iptables -P INPUT DROP
-iptables -P FORWARD DROP
+iptables -P FORWARD ACCEPT  # MUST be ACCEPT for Docker container networking
 iptables -P OUTPUT ACCEPT
 
 # ===== LOOPBACK =====

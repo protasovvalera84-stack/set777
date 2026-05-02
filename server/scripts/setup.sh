@@ -245,6 +245,8 @@ server {
 
 server {
     listen 0.0.0.0:443 ssl default_server;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver_timeout 5s;
     server_name _;
 
     # Try Let's Encrypt cert first, fall back to self-signed
@@ -263,11 +265,13 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
-    location /element/ { proxy_pass http://element:80/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; }
+    location /element/ { set $up_element element:80;
+        proxy_pass http://$up_element/; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme; }
     location = /element { return 301 /element/; }
 
     location /_matrix {
-        proxy_pass http://synapse:8008;
+        set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -280,30 +284,38 @@ server {
     }
 
     location /_matrix/media {
-        proxy_pass http://synapse:8008;
+        set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse;
         proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_buffering off; proxy_read_timeout 300s; client_max_body_size 50m;
     }
 
-    location /.well-known/matrix/ { proxy_pass http://synapse:8008; proxy_set_header Host \$host; }
-    location /_synapse { proxy_pass http://synapse:8008; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; }
-    location /admin/ { proxy_pass http://synapse-admin:80/; proxy_set_header Host \$host; }
+    location /.well-known/matrix/ { set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse; proxy_set_header Host \$host; }
+    location /_synapse { set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; }
+    location /admin/ { set $up_admin synapse-admin:80;
+        proxy_pass http://$up_admin/; proxy_set_header Host \$host; }
     location = /admin { return 301 /admin/; }
 
     location /_matrix/client/v3/login {
         limit_req zone=synapse_login burst=10 nodelay;
-        proxy_pass http://synapse:8008;
+        set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse;
         proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme;
     }
     location /_matrix/client/v3/register {
         limit_req zone=synapse_register burst=10 nodelay;
-        proxy_pass http://synapse:8008;
+        set $up_synapse synapse:8008;
+        proxy_pass http://$up_synapse;
         proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location = /config { proxy_pass http://admin-api:9090/; proxy_set_header Host \$host; }
-    location /api/ { proxy_pass http://admin-api:9090; proxy_set_header Host \$host; }
+    location = /config { set $up_api admin-api:9090;
+        proxy_pass http://$up_api/; proxy_set_header Host \$host; }
+    location /api/ { set $up_api admin-api:9090;
+        proxy_pass http://$up_api; proxy_set_header Host \$host; }
     location /installers/ {
         alias /usr/share/nginx/www/installers/;
         autoindex off;
@@ -553,7 +565,39 @@ echo "$BASE_URL" > "$SERVER_DIR/nginx/www/installers/meshlink.conf"
 # =============================================================================
 log "Starting Meshlink server stack..."
 cd "$SERVER_DIR"
+
+# CRITICAL: Remove old volumes if password changed (prevents auth mismatch)
+# This ensures PostgreSQL starts with the password from current .env
+if docker volume ls -q | grep -q "server_postgres_data"; then
+    log "Cleaning old database volume to sync passwords..."
+    docker compose down -v 2>/dev/null || true
+    docker volume rm server_postgres_data server_synapse_data 2>/dev/null || true
+fi
+
 docker compose pull
+
+# Start PostgreSQL first and wait for it
+log "Starting PostgreSQL..."
+docker compose up -d postgres
+sleep 10
+
+# Verify PostgreSQL is healthy
+PG_HEALTHY=false
+for i in $(seq 1 20); do
+    if docker compose exec -T postgres pg_isready -U synapse 2>/dev/null; then
+        PG_HEALTHY=true
+        break
+    fi
+    sleep 2
+done
+
+if [ "$PG_HEALTHY" = "false" ]; then
+    warn "PostgreSQL failed to start. Checking logs..."
+    docker compose logs postgres --tail 10
+fi
+
+# Now start everything else
+log "Starting all services..."
 docker compose up -d
 
 log "Waiting for server to become healthy (this may take up to 2 minutes)..."
