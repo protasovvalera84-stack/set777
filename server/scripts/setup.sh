@@ -600,6 +600,15 @@ fi
 log "Starting all services..."
 docker compose up -d
 
+# CRITICAL: Fix synapse_data volume permissions AFTER volume is created
+# Synapse runs as UID 991 inside container — volume must be owned by 991
+log "Fixing Synapse data permissions..."
+docker run --rm -v server_synapse_data:/data alpine sh -c "chown -R 991:991 /data && mkdir -p /data/media_store && chown 991:991 /data/media_store" 2>/dev/null || true
+
+# Restart Synapse after permission fix
+docker compose restart synapse 2>/dev/null || true
+sleep 5
+
 log "Waiting for server to become healthy (this may take up to 2 minutes)..."
 RETRIES=60
 HEALTHY=false
