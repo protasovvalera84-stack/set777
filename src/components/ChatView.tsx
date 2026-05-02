@@ -686,87 +686,63 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       )}
 
       {/* Input */}
-      <div className="chat-input relative z-10 border-t border-border/40 px-3 md:px-6 py-2 md:py-4 glass-strong">
-        {/* Formatting toolbar */}
-        {input.length > 0 && (
-          <div className="flex items-center gap-1 mb-1.5 mx-auto max-w-3xl pl-12">
-            <button onClick={() => handleInputChange(input + "****")} className="rounded-lg px-2 py-0.5 text-[10px] font-bold text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Bold **text**">B</button>
-            <button onClick={() => handleInputChange(input + "**")} className="rounded-lg px-2 py-0.5 text-[10px] italic text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Italic *text*">I</button>
-            <button onClick={() => handleInputChange(input + "``")} className="rounded-lg px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Code `text`">&lt;/&gt;</button>
-          </div>
-        )}
-        <div className="mx-auto flex max-w-3xl items-end gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-2xl p-2.5 md:p-3 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-          >
+      <div className="chat-input relative z-10 border-t border-border/40 px-2 md:px-6 py-1.5 md:py-3 glass-strong">
+        {/* Media buttons row (scrollable on mobile) */}
+        <div className="flex items-center gap-1 mb-1 mx-auto max-w-3xl overflow-x-auto scrollbar-thin pb-0.5">
+          <button onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Attach file">
             <Paperclip className="h-4 w-4 text-muted-foreground" />
           </button>
+          <button onClick={() => {
+            if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); fileInputRef.current.accept = "image/*,video/*,audio/*"; }
+          }} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Photo">
+            <Image className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Emoji">
+            <Smile className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); setStickerOpen(false); }} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="GIF">
+            <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
+          </button>
+          <button onClick={() => { setStickerOpen((v) => !v); setEmojiOpen(false); setGifOpen(false); }} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Stickers">
+            <span className="text-xs">🎭</span>
+          </button>
+          <button onClick={isRecording ? stopRecording : startRecording} className={`flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover ${isRecording ? "text-destructive animate-pulse" : ""}`} title={isRecording ? `${recordingDuration}s` : "Voice"}>
+            <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
+          </button>
+          <button onClick={() => {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition((pos) => {
+              const { latitude, longitude } = pos.coords;
+              const mapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`;
+              onSendMessage(chat.id, `📍 ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapUrl}`, undefined, activeTopic);
+            }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+          }} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Location">
+            <span className="text-xs">📍</span>
+          </button>
           {(chat.type === "group" || chat.type === "channel") && (
-            <button
-              onClick={() => setPollOpen(true)}
-              className="rounded-2xl p-2.5 md:p-3 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-              title="Create poll"
-            >
-              <span className="text-[10px] font-bold text-muted-foreground">📊</span>
+            <button onClick={() => setPollOpen(true)} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Poll">
+              <span className="text-xs">📊</span>
             </button>
           )}
-          {/* Location sharing */}
-          <button
-            onClick={() => {
-              if (!navigator.geolocation) return;
-              navigator.geolocation.getCurrentPosition((pos) => {
-                const { latitude, longitude } = pos.coords;
-                const mapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`;
-                const text = `📍 My location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapUrl}`;
-                onSendMessage(chat.id, text, undefined, activeTopic);
-              }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
-            }}
-            className="rounded-2xl p-2.5 md:p-3 hover:bg-surface-hover transition-all hover:scale-105 hover:text-primary"
-            title="Share location"
-          >
-            <span className="text-[10px] font-bold text-muted-foreground">📍</span>
-          </button>
-          <div className="group flex flex-1 items-center gap-2 rounded-2xl glass border border-border/50 px-3 md:px-4 py-2.5 md:py-3 transition-all focus-within:border-primary/50 focus-within:shadow-glow">
-            <input
-              type="text"
-              placeholder="Type a secure message..."
-              value={input}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            />
-            {/* Quick media buttons */}
-            <button
-              onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = "image/*";
-                  fileInputRef.current.click();
-                  fileInputRef.current.accept = "image/*,video/*,audio/*";
-                }
-              }}
-              className="flex hover:text-primary transition-colors"
-              title="Send photo"
-            >
-              <Image className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button onClick={() => { setGifOpen((v) => !v); setEmojiOpen(false); setStickerOpen(false); }} className="flex hover:text-primary transition-colors" title="GIF">
-              <span className="text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1">GIF</span>
-            </button>
-            <button onClick={() => { setEmojiOpen((v) => !v); setStickerOpen(false); setGifOpen(false); }} className="flex hover:text-primary transition-colors">
-              <Smile className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button onClick={() => { setStickerOpen((v) => !v); setEmojiOpen(false); setGifOpen(false); }} className="flex hover:text-primary transition-colors" title="Stickers">
-              <span className="text-sm">🎭</span>
-            </button>
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`flex hover:text-primary transition-colors ${isRecording ? "text-destructive animate-pulse" : ""}`}
-              title={isRecording ? `Recording ${recordingDuration}s - click to stop` : "Voice message"}
-            >
-              <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
-            </button>
-          </div>
+          {input.length > 0 && (
+            <>
+              <div className="w-px h-4 bg-border/40 flex-shrink-0 mx-0.5" />
+              <button onClick={() => handleInputChange(input + "****")} className="flex-shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground hover:bg-surface-hover" title="Bold">B</button>
+              <button onClick={() => handleInputChange(input + "**")} className="flex-shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] italic text-muted-foreground hover:bg-surface-hover" title="Italic">I</button>
+              <button onClick={() => handleInputChange(input + "``")} className="flex-shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:bg-surface-hover" title="Code">&lt;/&gt;</button>
+            </>
+          )}
+        </div>
+        {/* Input + Send row */}
+        <div className="mx-auto flex max-w-3xl items-center gap-1.5">
+          <input
+            type="text"
+            placeholder="Message..."
+            value={input}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            className="flex-1 rounded-2xl glass border border-border/50 px-3 py-2 md:py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+          />
           <div className="relative">
             <button
               onClick={handleSend}
@@ -1116,44 +1092,26 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
         {/* Forward, Pin & Reply buttons */}
         {message.text && (
-          <div className={`message-actions mt-1 flex items-center gap-2 text-[9px] flex-wrap ${isOwn ? "text-white/50" : "text-muted-foreground/50"}`}>
+          <div className={`message-actions mt-1 flex items-center gap-1 text-[10px] flex-wrap ${isOwn ? "text-white/40" : "text-muted-foreground/40"}`}>
             {onReply && (
-              <button onClick={() => onReply(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
-                ↩ Reply
-              </button>
+              <button onClick={() => onReply(message)} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Reply">↩</button>
             )}
             {onForward && (
-              <button onClick={() => onForward(message)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
-                <Forward className="h-2.5 w-2.5" /> Forward
-              </button>
+              <button onClick={() => onForward(message)} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Forward">↪</button>
             )}
             {onPin && (
-              <button onClick={() => onPin(message.text)} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
-                <Copy className="h-2.5 w-2.5" /> Pin
-              </button>
+              <button onClick={() => onPin(message.text)} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Pin">📌</button>
             )}
+            <button onClick={() => navigator.clipboard?.writeText(message.text).catch(() => {})} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Copy">📋</button>
+            <button onClick={() => {
+              try { const saved = JSON.parse(localStorage.getItem("meshlink-bookmarks") || "[]"); saved.unshift({ text: message.text, timestamp: message.timestamp, id: message.id }); localStorage.setItem("meshlink-bookmarks", JSON.stringify(saved.slice(0, 100))); } catch {}
+            }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Save">🔖</button>
             {isOwn && (
               <>
-                <button onClick={() => setIsEditing(true)} className="hover:text-white/80 transition-colors">
-                  ✏️ Edit
-                </button>
-                <button onClick={handleDeleteForEveryone} className="hover:text-destructive transition-colors">
-                  🗑️ Delete
-                </button>
+                <button onClick={() => setIsEditing(true)} className="px-1.5 py-0.5 rounded hover:text-white/80 hover:bg-white/10" title="Edit">✏️</button>
+                <button onClick={handleDeleteForEveryone} className="px-1.5 py-0.5 rounded hover:text-destructive hover:bg-destructive/10" title="Delete">🗑️</button>
               </>
             )}
-            <button onClick={() => navigator.clipboard?.writeText(message.text).catch(() => {})} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
-              📋 Copy
-            </button>
-            <button onClick={() => {
-              try {
-                const saved = JSON.parse(localStorage.getItem("meshlink-bookmarks") || "[]");
-                saved.unshift({ text: message.text, timestamp: message.timestamp, id: message.id });
-                localStorage.setItem("meshlink-bookmarks", JSON.stringify(saved.slice(0, 100)));
-              } catch { /* ignore */ }
-            }} className={`flex items-center gap-0.5 ${isOwn ? "hover:text-white/80" : "hover:text-muted-foreground"} transition-colors`}>
-              🔖 Save
-            </button>
           </div>
         )}
 
