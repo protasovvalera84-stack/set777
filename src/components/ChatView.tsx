@@ -687,6 +687,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
 
       {/* Input */}
       <div className="chat-input relative z-10 border-t border-border/40 px-3 md:px-6 py-2 md:py-4 glass-strong">
+        {/* Formatting toolbar */}
+        {input.length > 0 && (
+          <div className="flex items-center gap-1 mb-1.5 mx-auto max-w-3xl pl-12">
+            <button onClick={() => handleInputChange(input + "****")} className="rounded-lg px-2 py-0.5 text-[10px] font-bold text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Bold **text**">B</button>
+            <button onClick={() => handleInputChange(input + "**")} className="rounded-lg px-2 py-0.5 text-[10px] italic text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Italic *text*">I</button>
+            <button onClick={() => handleInputChange(input + "``")} className="rounded-lg px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:bg-surface-hover hover:text-foreground" title="Code `text`">&lt;/&gt;</button>
+          </div>
+        )}
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <button
             onClick={() => fileInputRef.current?.click()}
