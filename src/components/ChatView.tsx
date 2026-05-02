@@ -739,6 +739,17 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             </>
           )}
         </div>
+        {/* Quick reply templates (shown when input empty) */}
+        {!input && chat.messages.length > 0 && (
+          <div className="flex gap-1.5 mb-1.5 mx-auto max-w-3xl overflow-x-auto scrollbar-thin pb-0.5">
+            {["👍", "Thanks!", "OK", "Got it", "😊", "On my way", "Call me"].map((t) => (
+              <button key={t} onClick={() => onSendMessage(chat.id, t, undefined, activeTopic)}
+                className="flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] border border-border/40 text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-all">
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Input + Send row */}
         <div className="mx-auto flex max-w-3xl items-center gap-1.5">
           <input
@@ -1070,10 +1081,22 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             </p>
           </div>
         )}
-        {message.text && !isEditing && (
-          <p className={`text-sm whitespace-pre-line leading-relaxed ${isOwn ? "text-white" : "text-foreground"}`}>
-            <LinkifiedText text={message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text} isOwn={isOwn} />
-          </p>
+        {message.text && !isEditing && (() => {
+          const displayText = message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text;
+          // Single emoji = big animated
+          const isSingleEmoji = /^[\p{Emoji}\u200d\ufe0f]{1,6}$/u.test(displayText.trim()) && displayText.trim().length <= 6;
+          if (isSingleEmoji) {
+            return <p className="text-4xl py-1 animate-bounce" style={{ animationDuration: "1s", animationIterationCount: 1 }}>{displayText}</p>;
+          }
+          return (
+            <p className={`text-sm whitespace-pre-line leading-relaxed ${isOwn ? "text-white" : "text-foreground"}`}>
+              <LinkifiedText text={displayText} isOwn={isOwn} />
+            </p>
+          );
+        })()}
+        {/* Edited marker */}
+        {message.text?.startsWith("* ") && (
+          <span className={`text-[8px] ${isOwn ? "text-white/40" : "text-muted-foreground/40"}`}>(edited)</span>
         )}
         {isEditing && (
           <div className="flex items-center gap-1.5 mt-1">
