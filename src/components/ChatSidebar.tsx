@@ -243,8 +243,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <div className="absolute top-full left-3 right-3 mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 animate-fade-in-up">
               <LogoMenuItem icon={<Zap className="h-4 w-4 text-amber-400" />} label="Ультимейт" sub="Скоро" />
               <LogoMenuItem icon={<Briefcase className="h-4 w-4 text-blue-400" />} label="Для бизнеса" sub="Скоро" />
-              <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="Скоро" />
-              <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="Скоро" />
+              <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="" onClick={() => { setLogoMenuOpen(false); setSchedulerOpen(true); }} />
+              <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="" onClick={() => { setLogoMenuOpen(false); setWalletOpen(true); }} />
               <LogoMenuItem icon={<Globe className="h-4 w-4 text-cyan-400" />} label="Экосистема Meshlink" sub="Скоро" />
             </div>
           )}
@@ -604,17 +604,18 @@ function ChatItem({ chat, selected, onSelect, index, isFavorite, isMuted, onMute
   );
 }
 
-function LogoMenuItem({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
+function LogoMenuItem({ icon, label, sub, onClick }: { icon: React.ReactNode; label: string; sub: string; onClick?: () => void }) {
   return (
     <button
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-surface-hover opacity-60 cursor-default"
-      disabled
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-surface-hover ${!onClick ? "opacity-60 cursor-default" : ""}`}
+      disabled={!onClick}
+      onClick={onClick}
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/80">{icon}</div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">{label}</p>
       </div>
-      <span className="text-[9px] font-mono text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded-md">{sub}</span>
+      {sub && <span className="text-[9px] font-mono text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded-md">{sub}</span>}
     </button>
   );
 }

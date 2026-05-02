@@ -26,6 +26,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
   const [isVideoOn, setIsVideoOn] = useState(type === "video");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isSpeaker, setIsSpeaker] = useState(true);
   // Reactive stream tracking -- forces re-render when streams change
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -345,7 +346,7 @@ export function CallScreen({ open, type, contactName, contactAvatar, matrixCall,
               <PhoneOff className="h-6 w-6" />
             </button>
             <CallButton icon={isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />} label={isScreenSharing ? "Stop Share" : "Share Screen"} active={isScreenSharing} onClick={toggleScreenShare} />
-            <CallButton icon={<Volume2 className="h-5 w-5" />} label="Speaker" active={false} onClick={() => {}} />
+            <CallButton icon={<Volume2 className="h-5 w-5" />} label={isSpeaker ? "Speaker" : "Earpiece"} active={isSpeaker} onClick={() => setIsSpeaker((s) => !s)} />
           </div>
         </div>
       </div>
