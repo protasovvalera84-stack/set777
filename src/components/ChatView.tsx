@@ -14,6 +14,7 @@ import { CreatePollDialog } from "@/components/Poll";
 import { StickerPicker } from "@/components/StickerPicker";
 import { Virtuoso } from "react-virtuoso";
 import { GroupCallScreen } from "@/components/GroupCallScreen";
+import { AiAssistant } from "@/components/AiAssistant";
 
 // Lazy load heavy overlay components
 const MediaGallery = lazy(() => import("@/components/MediaGallery").then(m => ({ default: m.MediaGallery })));
@@ -79,6 +80,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const virtuosoRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -428,6 +430,9 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                   <button onClick={() => { setShowTimerMenu(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
                     <Timer className={`h-3.5 w-3.5 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
                     {disappearTimer ? "Timer Active" : "Disappearing Messages"}
+                  </button>
+                  <button onClick={() => { setAiOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> AI Assistant
                   </button>
                   {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
                     <button onClick={() => { onSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover border-t border-border/20 mt-1 pt-2">
@@ -869,6 +874,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         onEnd={() => setGroupCallOpen(false)}
       />
 
+      {/* AI Assistant */}
+      <AiAssistant
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onInsert={(text) => { handleInputChange(input + text); setAiOpen(false); }}
+        chatContext={chat.messages.slice(-5).map((m) => `${m.senderId}: ${m.text}`).join("\n")}
+      />
+
       {/* Forward message dialog */}
       {forwardingMsg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={() => setForwardingMsg(null)}>
@@ -1097,6 +1110,36 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         )}
         {message.text && !isEditing && (() => {
           const displayText = message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text;
+
+          // Interactive poll detection (📊 prefix)
+          if (displayText.startsWith("📊")) {
+            const lines = displayText.split("\n").filter((l) => l.trim());
+            const question = lines[0]?.replace("📊 **", "").replace("**", "").replace("📊 ", "") || "Poll";
+            const options = lines.slice(1).filter((l) => /^\d+\./.test(l.trim())).map((l) => l.replace(/^\d+\.\s*/, "").trim());
+            if (options.length >= 2) {
+              return (
+                <div className="mt-1">
+                  <p className={`text-sm font-semibold mb-2 ${isOwn ? "text-white" : "text-foreground"}`}>📊 {question}</p>
+                  <div className="space-y-1.5">
+                    {options.map((opt, oi) => (
+                      <button key={oi} onClick={() => {
+                        if (mesh.client && roomId) {
+                          mesh.client.sendEvent(roomId, "m.room.message" as any, {
+                            msgtype: "m.text",
+                            body: `Vote: ${opt}`,
+                            "m.relates_to": { "m.in_reply_to": { event_id: message.id } },
+                          }).catch(() => {});
+                        }
+                      }} className={`w-full text-left rounded-xl px-3 py-2 text-xs border transition-all ${isOwn ? "border-white/20 hover:bg-white/10 text-white" : "border-border/30 hover:bg-surface-hover text-foreground"}`}>
+                        {oi + 1}. {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+          }
+
           // Single emoji = big animated
           const isSingleEmoji = /^[\p{Emoji}\u200d\ufe0f]{1,6}$/u.test(displayText.trim()) && displayText.trim().length <= 6;
           if (isSingleEmoji) {
