@@ -391,34 +391,32 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             </>
           )}
 
-          {/* More menu (⋮) — contains Export, Files, Gallery, Timer, Group Call, Settings */}
+          {/* More menu (⋮) */}
           <div className="relative">
             <button onClick={() => setHeaderMenuOpen((v) => !v)} className="rounded-xl p-2 hover:bg-surface-hover">
               <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
             {headerMenuOpen && (
-              <>
-                {/* Backdrop to close menu */}
-                <div className="fixed inset-0 z-40" onClick={() => setHeaderMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-1.5 w-48 animate-fade-in-up">
-                  <button onClick={() => { setChatSearchOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" /> Search in Chat
+              <div className="fixed inset-0 z-[100]" onClick={() => setHeaderMenuOpen(false)}>
+                <div className="absolute right-4 top-14 w-52 rounded-2xl glass-strong border border-border/60 shadow-elegant p-1.5 animate-fade-in-up bg-background/95 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => { setChatSearchOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <SearchIcon className="h-4 w-4 text-muted-foreground" /> Search in Chat
                   </button>
                   {onCall && (
-                    <button onClick={() => { onCall("video"); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                      <Video className="h-3.5 w-3.5 text-muted-foreground" /> Video Call
+                    <button onClick={() => { onCall("video"); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                      <Video className="h-4 w-4 text-muted-foreground" /> Video Call
                     </button>
                   )}
                   {chat.type === "group" && onCall && (
-                    <button onClick={() => { setGroupCallOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground" /> Group Call
+                    <button onClick={() => { setGroupCallOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                      <Users className="h-4 w-4 text-muted-foreground" /> Group Call
                     </button>
                   )}
-                  <button onClick={() => { setGalleryOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Image className="h-3.5 w-3.5 text-muted-foreground" /> Media Gallery
+                  <button onClick={() => { setGalleryOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Image className="h-4 w-4 text-muted-foreground" /> Media Gallery
                   </button>
-                  <button onClick={() => { setFileManagerOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" /> Shared Files
+                  <button onClick={() => { setFileManagerOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" /> Shared Files
                   </button>
                   <button onClick={() => {
                     const lines = chat.messages.map((m) => `[${m.timestamp}] ${m.senderId === "me" ? "You" : m.senderId}: ${m.text || "[media]"}`);
@@ -428,36 +426,38 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                     a.href = url; a.download = `${chat.name}-export.txt`; a.click();
                     URL.revokeObjectURL(url);
                     setHeaderMenuOpen(false);
-                  }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export Chat
+                  }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Download className="h-4 w-4 text-muted-foreground" /> Export Chat
                   </button>
-                  <button onClick={() => { setShowTimerMenu(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Timer className={`h-3.5 w-3.5 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
-                    {disappearTimer ? "Timer Active" : "Disappearing Messages"}
+                  <button onClick={() => { setShowTimerMenu(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Timer className={`h-4 w-4 ${disappearTimer ? "text-primary" : "text-muted-foreground"}`} />
+                    {disappearTimer ? "Timer Active" : "Disappearing Msgs"}
                   </button>
-                  <button onClick={() => { setAiOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" /> AI Assistant
+                  <button onClick={() => { setAiOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Sparkles className="h-4 w-4 text-primary" /> AI Assistant
                   </button>
                   {(chat.type === "group" || chat.type === "channel") && (
-                    <button onClick={() => { setVoiceChannelsOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                      <Mic className="h-3.5 w-3.5 text-muted-foreground" /> Voice Channels
+                    <button onClick={() => { setVoiceChannelsOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                      <Mic className="h-4 w-4 text-muted-foreground" /> Voice Channels
                     </button>
                   )}
-                  <button onClick={() => { setDocEditorOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
-                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" /> Document Editor
+                  <button onClick={() => { setDocEditorOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" /> Document Editor
                   </button>
-                  {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
-                    <button onClick={() => { onSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover border-t border-border/20 mt-1 pt-2">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /> Group Settings
-                    </button>
-                  )}
-                  {chat.type === "dm" && onDmSettingsClick && (
-                    <button onClick={() => { onDmSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover border-t border-border/20 mt-1 pt-2">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /> Chat Settings
-                    </button>
-                  )}
+                  <div className="border-t border-border/30 mt-1 pt-1">
+                    {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
+                      <button onClick={() => { onSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                        <MoreVertical className="h-4 w-4 text-muted-foreground" /> Group Settings
+                      </button>
+                    )}
+                    {chat.type === "dm" && onDmSettingsClick && (
+                      <button onClick={() => { onDmSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
+                        <MoreVertical className="h-4 w-4 text-muted-foreground" /> Chat Settings
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
