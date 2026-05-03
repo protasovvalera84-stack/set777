@@ -397,8 +397,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
             {headerMenuOpen && (
-              <div className="fixed inset-0 z-[100]" onClick={() => setHeaderMenuOpen(false)}>
-                <div className="absolute right-4 top-14 w-52 rounded-2xl glass-strong border border-border/60 shadow-elegant p-1.5 animate-fade-in-up bg-background/95 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setHeaderMenuOpen(false)}>
+                <div className="absolute right-3 top-12 w-52 rounded-2xl bg-background border border-border shadow-2xl p-1.5 animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => { setChatSearchOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-foreground hover:bg-surface-hover">
                     <SearchIcon className="h-4 w-4 text-muted-foreground" /> Search in Chat
                   </button>
