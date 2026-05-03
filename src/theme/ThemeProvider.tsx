@@ -167,6 +167,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Auto-theme by time of day (if enabled)
+  React.useEffect(() => {
+    if (localStorage.getItem("meshlink-auto-theme") !== "true") return;
+    const check = () => {
+      const hour = new Date().getHours();
+      const shouldBeDark = hour < 7 || hour >= 20;
+      setMode((prev) => {
+        if (shouldBeDark && prev !== "dark") { localStorage.setItem("meshlink-mode", "dark"); return "dark"; }
+        if (!shouldBeDark && prev !== "light") { localStorage.setItem("meshlink-mode", "light"); return "light"; }
+        return prev;
+      });
+    };
+    check();
+    const interval = setInterval(check, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Apply dark class + palette colors
   useLayoutEffect(() => {
     const root = document.documentElement;
