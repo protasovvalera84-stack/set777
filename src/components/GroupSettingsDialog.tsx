@@ -18,7 +18,7 @@ interface GroupSettingsDialogProps {
   onFoldersChange: (folders: ChatFolder[]) => void;
 }
 
-type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites" | "invite" | "slowmode" | "log";
+type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites" | "invite" | "slowmode" | "log" | "welcome";
 
 function resizeImg(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -153,6 +153,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
              page === "invite" ? "Invite Link" :
              page === "slowmode" ? "Slow Mode" :
              page === "log" ? "Action Log" :
+             page === "welcome" ? "Welcome Message" :
              page === "favorites" ? "Add to Favorites" : "Topics"}
           </h2>
           {page === "main" && (
@@ -205,6 +206,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                 <MenuItem icon={<Link2 className="h-4 w-4" />} label="Invite Link" sub="Share or QR code" onClick={() => setPage("invite")} />
                 <MenuItem icon={<Clock className="h-4 w-4" />} label="Slow Mode" sub="Limit message frequency" onClick={() => setPage("slowmode")} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Action Log" sub="Who did what" onClick={() => setPage("log")} />
+                <MenuItem icon={<Hash className="h-4 w-4" />} label="Welcome Message" sub="Auto-greet new members" onClick={() => setPage("welcome" as Page)} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy" sub="Permissions & access" onClick={() => setPage("privacy")} />
                 <MenuItem icon={muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />} label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((m) => !m)} />
               </div>
@@ -370,6 +372,21 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ===== WELCOME MESSAGE ===== */}
+          {page === "welcome" && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Set a message that new members see when they join.</p>
+              <textarea
+                defaultValue={`Welcome to ${chat.name}! 👋\nPlease read the rules and introduce yourself.`}
+                rows={4}
+                className="w-full rounded-xl glass border border-border/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent resize-none"
+              />
+              <button className="w-full rounded-xl py-2.5 text-xs font-medium gradient-primary text-primary-foreground shadow-glow">
+                Save Welcome Message
+              </button>
             </div>
           )}
 
