@@ -13,6 +13,8 @@ const WalletPage = lazy(() => import("@/components/WalletPage").then(m => ({ def
 const RssReader = lazy(() => import("@/components/RssReader").then(m => ({ default: m.RssReader })));
 const QrLoginPage = lazy(() => import("@/components/QrLogin").then(m => ({ default: m.QrLoginPage })));
 const TicTacToe = lazy(() => import("@/components/TicTacToe").then(m => ({ default: m.TicTacToe })));
+const FeedPage = lazy(() => import("@/components/FeedPage").then(m => ({ default: m.FeedPage })));
+const BotApiPage = lazy(() => import("@/components/BotApiPage").then(m => ({ default: m.BotApiPage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -75,6 +77,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [rssOpen, setRssOpen] = useState(false);
   const [qrLoginOpen, setQrLoginOpen] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
+  const [botApiOpen, setBotApiOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -525,6 +529,12 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <button onClick={() => setGameOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Games">
               <span className="text-base">🎮</span>
             </button>
+            <button onClick={() => setFeedOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Feed">
+              <span className="text-base">📢</span>
+            </button>
+            <button onClick={() => setBotApiOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Bots">
+              <span className="text-base">🤖</span>
+            </button>
           </div>
         </div>
 
@@ -559,7 +569,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {walletOpen && <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />}
         {rssOpen && <RssReader open={rssOpen} onClose={() => setRssOpen(false)} />}
         {qrLoginOpen && <QrLoginPage open={qrLoginOpen} onClose={() => setQrLoginOpen(false)} />}
-        {gameOpen && <TicTacToe open={gameOpen} onClose={() => setGameOpen(false)} onSendResult={(text) => { /* TODO: send to active chat */ setGameOpen(false); }} />}
+        {gameOpen && <TicTacToe open={gameOpen} onClose={() => setGameOpen(false)} onSendResult={() => setGameOpen(false)} />}
+        {feedOpen && <FeedPage open={feedOpen} onClose={() => setFeedOpen(false)} />}
+        {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => setBotApiOpen(false)} />}
       </Suspense>
     </>
   );
