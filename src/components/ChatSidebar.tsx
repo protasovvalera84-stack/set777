@@ -15,6 +15,7 @@ const QrLoginPage = lazy(() => import("@/components/QrLogin").then(m => ({ defau
 const TicTacToe = lazy(() => import("@/components/TicTacToe").then(m => ({ default: m.TicTacToe })));
 const FeedPage = lazy(() => import("@/components/FeedPage").then(m => ({ default: m.FeedPage })));
 const BotApiPage = lazy(() => import("@/components/BotApiPage").then(m => ({ default: m.BotApiPage })));
+const HelpPage = lazy(() => import("@/components/HelpPage").then(m => ({ default: m.HelpPage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -79,6 +80,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [gameOpen, setGameOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [botApiOpen, setBotApiOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -535,6 +537,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <button onClick={() => setBotApiOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Bots">
               <span className="text-base">🤖</span>
             </button>
+            <button onClick={() => setHelpOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Help">
+              <span className="text-base">❓</span>
+            </button>
           </div>
         </div>
 
@@ -572,6 +577,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {gameOpen && <TicTacToe open={gameOpen} onClose={() => setGameOpen(false)} onSendResult={() => setGameOpen(false)} />}
         {feedOpen && <FeedPage open={feedOpen} onClose={() => setFeedOpen(false)} />}
         {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => setBotApiOpen(false)} />}
+        {helpOpen && <HelpPage open={helpOpen} onClose={() => setHelpOpen(false)} />}
       </Suspense>
     </>
   );
