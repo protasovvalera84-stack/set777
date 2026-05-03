@@ -765,6 +765,11 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             className="flex-1 rounded-2xl glass border border-border/50 px-3 py-2 md:py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
           />
+          {input.length > 0 && (
+            <span className={`text-[9px] font-mono flex-shrink-0 ${input.length > 4000 ? "text-destructive" : input.length > 3000 ? "text-yellow-500" : "text-muted-foreground/40"}`}>
+              {input.length}
+            </span>
+          )}
           <div className="relative">
             <button
               onClick={handleSend}
