@@ -16,12 +16,16 @@ interface WalletPageProps {
 }
 
 export function WalletPage({ open, onClose }: WalletPageProps) {
-  const [balance] = useState("0.00");
+  const [balance, setBalance] = useState(() => {
+    return parseFloat(localStorage.getItem("meshlink-wallet-balance") || "100");
+  });
   const [showSend, setShowSend] = useState(false);
   const [showReceive, setShowReceive] = useState(false);
   const [sendTo, setSendTo] = useState("");
   const [sendAmount, setSendAmount] = useState("");
-  const [transactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try { return JSON.parse(localStorage.getItem("meshlink-wallet-tx") || "[]"); } catch { return []; }
+  });
 
   const walletAddress = `mesh_${Math.random().toString(36).slice(2, 10)}...${Math.random().toString(36).slice(2, 6)}`;
 
@@ -44,7 +48,7 @@ export function WalletPage({ open, onClose }: WalletPageProps) {
         {/* Balance card */}
         <div className="rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/5 border border-primary/30 p-6 text-center">
           <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground mb-1">Total Balance</p>
-          <p className="text-3xl font-bold gradient-text">{balance} MLK</p>
+          <p className="text-3xl font-bold gradient-text">{balance.toFixed(2)} MLK</p>
           <p className="text-xs text-muted-foreground mt-1">Meshlink Tokens</p>
 
           {/* Actions */}
@@ -166,9 +170,21 @@ export function WalletPage({ open, onClose }: WalletPageProps) {
                 </div>
               </div>
               <button
-                disabled={!sendTo.trim() || !sendAmount}
+                onClick={() => {
+                  const amount = parseFloat(sendAmount);
+                  if (!sendTo.trim() || isNaN(amount) || amount <= 0 || amount > balance) return;
+                  const tx: Transaction = { id: `tx-${Date.now()}`, type: "sent", amount: amount.toFixed(2), currency: "MLK", to: sendTo.trim(), date: new Date().toLocaleString() };
+                  const newTx = [tx, ...transactions];
+                  const newBalance = balance - amount;
+                  setTransactions(newTx);
+                  setBalance(newBalance);
+                  localStorage.setItem("meshlink-wallet-tx", JSON.stringify(newTx));
+                  localStorage.setItem("meshlink-wallet-balance", String(newBalance));
+                  setSendTo(""); setSendAmount(""); setShowSend(false);
+                }}
+                disabled={!sendTo.trim() || !sendAmount || parseFloat(sendAmount) > balance}
                 className={`w-full rounded-2xl py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                  sendTo.trim() && sendAmount ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"
+                  sendTo.trim() && sendAmount && parseFloat(sendAmount) <= balance ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 <Send className="h-4 w-4" /> Send Tokens
