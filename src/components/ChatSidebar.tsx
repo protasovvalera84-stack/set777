@@ -10,6 +10,9 @@ const ContactsPage = lazy(() => import("@/components/ContactsPage").then(m => ({
 const SchedulerPage = lazy(() => import("@/components/SchedulerPage").then(m => ({ default: m.SchedulerPage })));
 const AutoReplyPage = lazy(() => import("@/components/AutoReplyPage").then(m => ({ default: m.AutoReplyPage })));
 const WalletPage = lazy(() => import("@/components/WalletPage").then(m => ({ default: m.WalletPage })));
+const RssReader = lazy(() => import("@/components/RssReader").then(m => ({ default: m.RssReader })));
+const QrLoginPage = lazy(() => import("@/components/QrLogin").then(m => ({ default: m.QrLoginPage })));
+const TicTacToe = lazy(() => import("@/components/TicTacToe").then(m => ({ default: m.TicTacToe })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -69,6 +72,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoReplyOpen, setAutoReplyOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [rssOpen, setRssOpen] = useState(false);
+  const [qrLoginOpen, setQrLoginOpen] = useState(false);
+  const [gameOpen, setGameOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -510,6 +516,15 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <button onClick={() => setContactsOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Contacts">
               <span className="text-base">👥</span>
             </button>
+            <button onClick={() => setRssOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="RSS Reader">
+              <span className="text-base">📰</span>
+            </button>
+            <button onClick={() => setQrLoginOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="QR Login">
+              <span className="text-base">📱</span>
+            </button>
+            <button onClick={() => setGameOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Games">
+              <span className="text-base">🎮</span>
+            </button>
           </div>
         </div>
 
@@ -542,6 +557,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {schedulerOpen && <SchedulerPage open={schedulerOpen} onClose={() => setSchedulerOpen(false)} />}
         {autoReplyOpen && <AutoReplyPage open={autoReplyOpen} onClose={() => setAutoReplyOpen(false)} />}
         {walletOpen && <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />}
+        {rssOpen && <RssReader open={rssOpen} onClose={() => setRssOpen(false)} />}
+        {qrLoginOpen && <QrLoginPage open={qrLoginOpen} onClose={() => setQrLoginOpen(false)} />}
+        {gameOpen && <TicTacToe open={gameOpen} onClose={() => setGameOpen(false)} onSendResult={(text) => { /* TODO: send to active chat */ setGameOpen(false); }} />}
       </Suspense>
     </>
   );

@@ -3,9 +3,13 @@ import {
   X, Camera, ArrowLeft, User, AtSign, FileText, Shield,
   Eye, EyeOff, Phone, Users, MessageSquare, CheckCheck,
   Wifi, ChevronRight, Trash2, LogOut, Lock, Palette, Moon, Sun, Check,
+  Smartphone, Download,
 } from "lucide-react";
 import { UserProfile } from "@/data/mockData";
 import { useTheme } from "@/theme/ThemeProvider";
+import { PinSetup, SessionsPage } from "@/components/SecurityFeatures";
+import { SecurityAuditPage } from "@/components/AdvancedFeatures";
+import { SettingsExport } from "@/components/SettingsTools";
 
 interface AccountSettingsProps {
   open: boolean;
@@ -60,6 +64,10 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
   const [page, setPage] = useState<Page>("main");
   const [draft, setDraft] = useState<UserProfile>({ ...profile });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl);
+  const [pinSetupOpen, setPinSetupOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Re-sync draft from profile every time dialog opens
@@ -156,7 +164,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onLogout={onLogout} />}
+          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onLogout={onLogout} setPinSetupOpen={setPinSetupOpen} setSecurityOpen={setSecurityOpen} setSessionsOpen={setSessionsOpen} setExportOpen={setExportOpen} />}
           {page === "editProfile" && (
             <EditProfilePage
               draft={draft}
@@ -169,6 +177,11 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
           {page === "privacy" && <PrivacyPage draft={draft} updatePrivacy={updatePrivacy} />}
         </div>
       </div>
+      {/* Connected dialog components */}
+      <PinSetup open={pinSetupOpen} onClose={() => setPinSetupOpen(false)} />
+      <SecurityAuditPage open={securityOpen} onClose={() => setSecurityOpen(false)} />
+      <SessionsPage open={sessionsOpen} onClose={() => setSessionsOpen(false)} />
+      <SettingsExport open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }
@@ -179,11 +192,19 @@ function MainPage({
   avatarPreview,
   setPage,
   onLogout,
+  setPinSetupOpen,
+  setSecurityOpen,
+  setSessionsOpen,
+  setExportOpen,
 }: {
   profile: UserProfile;
   avatarPreview: string | null;
   setPage: (p: Page) => void;
   onLogout: () => void;
+  setPinSetupOpen: (v: boolean) => void;
+  setSecurityOpen: (v: boolean) => void;
+  setSessionsOpen: (v: boolean) => void;
+  setExportOpen: (v: boolean) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -213,6 +234,10 @@ function MainPage({
       <div className="space-y-1">
         <MenuItem icon={<User className="h-4 w-4" />} label="Edit Profile" sub="Name, username, bio, photo" onClick={() => setPage("editProfile")} />
         <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy & Security" sub="Last seen, read receipts, calls" onClick={() => setPage("privacy")} />
+        <MenuItem icon={<Lock className="h-4 w-4" />} label="PIN Lock" sub={localStorage.getItem("meshlink-pin") ? "PIN enabled" : "Set a PIN"} onClick={() => setPinSetupOpen(true)} />
+        <MenuItem icon={<Shield className="h-4 w-4" />} label="Security Audit" sub="Check your security score" onClick={() => setSecurityOpen(true)} />
+        <MenuItem icon={<Smartphone className="h-4 w-4" />} label="Active Sessions" sub="Manage devices" onClick={() => setSessionsOpen(true)} />
+        <MenuItem icon={<Download className="h-4 w-4" />} label="Export / Import" sub="Backup your settings" onClick={() => setExportOpen(true)} />
         <MenuItem icon={<Lock className="h-4 w-4" />} label="Encryption" sub="Matrix E2EE active" />
         <MenuItem icon={<Wifi className="h-4 w-4" />} label="Network" sub="Connected to server" />
       </div>
