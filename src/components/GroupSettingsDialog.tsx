@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   X, ArrowLeft, Camera, Users, UserPlus, UserMinus, Shield, Hash,
-  Bell, BellOff, Lock, Trash2, LogOut, ChevronRight, Search, Check, Plus, Star, Link2, Copy, QrCode,
+  Bell, BellOff, Lock, Trash2, LogOut, ChevronRight, Search, Check, Plus, Star, Link2, Copy, QrCode, Clock,
 } from "lucide-react";
 import { Chat, Contact, Topic, ChatFolder } from "@/data/mockData";
 import { useMesh } from "@/lib/MeshProvider";
@@ -18,7 +18,7 @@ interface GroupSettingsDialogProps {
   onFoldersChange: (folders: ChatFolder[]) => void;
 }
 
-type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites" | "invite";
+type Page = "main" | "members" | "addMembers" | "privacy" | "topics" | "favorites" | "invite" | "slowmode" | "log";
 
 function resizeImg(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -151,6 +151,8 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
              page === "addMembers" ? "Add Members" :
              page === "privacy" ? "Privacy" :
              page === "invite" ? "Invite Link" :
+             page === "slowmode" ? "Slow Mode" :
+             page === "log" ? "Action Log" :
              page === "favorites" ? "Add to Favorites" : "Topics"}
           </h2>
           {page === "main" && (
@@ -201,6 +203,8 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                 <MenuItem icon={<Star className={`h-4 w-4 ${isInAnyFolder ? "text-primary" : ""}`} />} label={isInAnyFolder ? "In Favorites" : "Add to Favorites"} sub="Save to a folder" onClick={() => setPage("favorites")} />
                 <MenuItem icon={<Users className="h-4 w-4" />} label="Members" sub={`${(draft.memberIds || []).length} members`} onClick={() => setPage("members")} />
                 <MenuItem icon={<Link2 className="h-4 w-4" />} label="Invite Link" sub="Share or QR code" onClick={() => setPage("invite")} />
+                <MenuItem icon={<Clock className="h-4 w-4" />} label="Slow Mode" sub="Limit message frequency" onClick={() => setPage("slowmode")} />
+                <MenuItem icon={<Shield className="h-4 w-4" />} label="Action Log" sub="Who did what" onClick={() => setPage("log")} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Privacy" sub="Permissions & access" onClick={() => setPage("privacy")} />
                 <MenuItem icon={muted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />} label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((m) => !m)} />
               </div>
@@ -328,6 +332,44 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-2">Scan to join</p>
               </div>
+            </div>
+          )}
+
+          {/* ===== SLOW MODE ===== */}
+          {page === "slowmode" && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Limit how often members can send messages.</p>
+              {[
+                { label: "Off", value: 0 },
+                { label: "10 seconds", value: 10 },
+                { label: "30 seconds", value: 30 },
+                { label: "1 minute", value: 60 },
+                { label: "5 minutes", value: 300 },
+                { label: "15 minutes", value: 900 },
+              ].map((opt) => (
+                <button key={opt.value} className="w-full text-left rounded-xl px-3 py-2.5 border border-border/30 hover:bg-surface-hover transition-all">
+                  <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ===== ACTION LOG ===== */}
+          {page === "log" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground mb-3">Recent actions in this {isChannel ? "channel" : "group"}.</p>
+              {[
+                { action: "Group created", by: "You", time: "Today" },
+                { action: "Settings updated", by: "You", time: "Today" },
+              ].map((entry, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2 bg-secondary/30">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs text-foreground">{entry.action}</p>
+                    <p className="text-[10px] text-muted-foreground">{entry.by} · {entry.time}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
