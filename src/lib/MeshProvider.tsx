@@ -161,7 +161,15 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
   let avatarUrl: string | null = null;
   try {
     const mxcAvatar = room.getAvatarUrl(homeserverUrl, 128, 128, "crop", false);
-    if (mxcAvatar) avatarUrl = mxcAvatar;
+    if (mxcAvatar) {
+      // Convert mxc:// to http:// if needed
+      if (mxcAvatar.startsWith("mxc://")) {
+        const parts = mxcAvatar.replace("mxc://", "").split("/");
+        avatarUrl = `${homeserverUrl}/_matrix/media/v3/thumbnail/${parts[0]}/${parts[1]}?width=128&height=128&method=crop`;
+      } else {
+        avatarUrl = mxcAvatar;
+      }
+    }
   } catch { /* no avatar */ }
 
   // Check online status for DMs
