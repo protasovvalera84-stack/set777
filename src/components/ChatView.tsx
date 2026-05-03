@@ -571,7 +571,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           })()}
         </div>
 
-        {/* Scroll to bottom FAB */}
+        {/* Scroll to bottom FAB with unread count */}
         {showScrollBtn && (
           <button
             onClick={() => virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "smooth" })}
@@ -579,6 +579,11 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
             title="Scroll to bottom"
           >
             <ArrowLeft className="h-4 w-4 rotate-[-90deg]" />
+            {chat.unread > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white px-1">
+                {chat.unread}
+              </span>
+            )}
           </button>
         )}
       </div>
@@ -1229,6 +1234,30 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
 /* ===== Linkified Text (detects URLs and makes them clickable) ===== */
 function LinkifiedText({ text, isOwn }: { text: string; isOwn: boolean }) {
+  // Handle code blocks first (```code```)
+  const parts = text.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <>
+      {parts.map((part, pi) => {
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const code = part.slice(3, -3).trim();
+          const lang = code.split("\n")[0].match(/^[a-z]+$/i) ? code.split("\n")[0] : "";
+          const codeBody = lang ? code.split("\n").slice(1).join("\n") : code;
+          return (
+            <pre key={pi} className={`mt-1 mb-1 rounded-xl p-2.5 text-[11px] font-mono overflow-x-auto ${isOwn ? "bg-black/30 text-white/90" : "bg-secondary/80 text-foreground"}`}>
+              {lang && <span className="text-[8px] text-primary/60 uppercase block mb-1">{lang}</span>}
+              <code>{codeBody}</code>
+            </pre>
+          );
+        }
+        return <InlineFormat key={pi} text={part} isOwn={isOwn} />;
+      })}
+    </>
+  );
+}
+
+function InlineFormat({ text, isOwn }: { text: string; isOwn: boolean }) {
   // Apply markdown: **bold**, *italic*, `code`, @mentions, and URLs
   const formatText = (input: string): React.ReactNode[] => {
     const nodes: React.ReactNode[] = [];
