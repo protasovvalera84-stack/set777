@@ -15,6 +15,8 @@ import { StickerPicker } from "@/components/StickerPicker";
 import { Virtuoso } from "react-virtuoso";
 import { GroupCallScreen } from "@/components/GroupCallScreen";
 import { AiAssistant } from "@/components/AiAssistant";
+import { VoiceChannels } from "@/components/VoiceChannels";
+import { DocEditor } from "@/components/DocEditor";
 
 // Lazy load heavy overlay components
 const MediaGallery = lazy(() => import("@/components/MediaGallery").then(m => ({ default: m.MediaGallery })));
@@ -81,6 +83,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [isDragOver, setIsDragOver] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [voiceChannelsOpen, setVoiceChannelsOpen] = useState(false);
+  const [docEditorOpen, setDocEditorOpen] = useState(false);
   const virtuosoRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -433,6 +437,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                   </button>
                   <button onClick={() => { setAiOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
                     <Sparkles className="h-3.5 w-3.5 text-primary" /> AI Assistant
+                  </button>
+                  {(chat.type === "group" || chat.type === "channel") && (
+                    <button onClick={() => { setVoiceChannelsOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                      <Mic className="h-3.5 w-3.5 text-muted-foreground" /> Voice Channels
+                    </button>
+                  )}
+                  <button onClick={() => { setDocEditorOpen(true); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover">
+                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" /> Document Editor
                   </button>
                   {(chat.type === "group" || chat.type === "channel") && onSettingsClick && (
                     <button onClick={() => { onSettingsClick(); setHeaderMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-foreground hover:bg-surface-hover border-t border-border/20 mt-1 pt-2">
@@ -881,6 +893,12 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         onInsert={(text) => { handleInputChange(input + text); setAiOpen(false); }}
         chatContext={chat.messages.slice(-5).map((m) => `${m.senderId}: ${m.text}`).join("\n")}
       />
+
+      {/* Voice Channels */}
+      <VoiceChannels open={voiceChannelsOpen} onClose={() => setVoiceChannelsOpen(false)} chatName={chat.name} />
+
+      {/* Document Editor */}
+      <DocEditor open={docEditorOpen} onClose={() => setDocEditorOpen(false)} chatId={chat.id} />
 
       {/* Forward message dialog */}
       {forwardingMsg && (

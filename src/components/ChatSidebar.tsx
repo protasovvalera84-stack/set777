@@ -507,38 +507,38 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           </div>
         </div>
 
-        {/* Quick access toolbar */}
-        <div className="border-t border-border/40 px-2 py-1 glass">
-          <div className="flex items-center justify-around">
-            <button onClick={() => setAutoReplyOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Auto-Reply">
-              <span className="text-base">🤖</span>
+        {/* Quick access toolbar (2 rows of 5) */}
+        <div className="border-t border-border/40 px-2 py-1.5 glass">
+          <div className="grid grid-cols-5 gap-0.5">
+            <button onClick={() => setContactsOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Contacts">
+              <span className="text-sm">👥</span>
             </button>
-            <button onClick={() => setWalletOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Wallet">
-              <span className="text-base">👛</span>
+            <button onClick={() => setFeedOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Feed">
+              <span className="text-sm">📢</span>
             </button>
-            <button onClick={() => setSchedulerOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Scheduler">
-              <span className="text-base">📅</span>
+            <button onClick={() => setWalletOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Wallet">
+              <span className="text-sm">👛</span>
             </button>
-            <button onClick={() => setContactsOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Contacts">
-              <span className="text-base">👥</span>
+            <button onClick={() => setSchedulerOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Scheduler">
+              <span className="text-sm">📅</span>
             </button>
-            <button onClick={() => setRssOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="RSS Reader">
-              <span className="text-base">📰</span>
+            <button onClick={() => setAutoReplyOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Auto-Reply">
+              <span className="text-sm">💬</span>
             </button>
-            <button onClick={() => setQrLoginOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="QR Login">
-              <span className="text-base">📱</span>
+            <button onClick={() => setBotApiOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Bots">
+              <span className="text-sm">🤖</span>
             </button>
-            <button onClick={() => setGameOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Games">
-              <span className="text-base">🎮</span>
+            <button onClick={() => setRssOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="RSS">
+              <span className="text-sm">📰</span>
             </button>
-            <button onClick={() => setFeedOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Feed">
-              <span className="text-base">📢</span>
+            <button onClick={() => setGameOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Games">
+              <span className="text-sm">🎮</span>
             </button>
-            <button onClick={() => setBotApiOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Bots">
-              <span className="text-base">🤖</span>
+            <button onClick={() => setQrLoginOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="QR Login">
+              <span className="text-sm">📱</span>
             </button>
-            <button onClick={() => setHelpOpen(true)} className="p-2 rounded-xl hover:bg-surface-hover" title="Help">
-              <span className="text-base">❓</span>
+            <button onClick={() => setHelpOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Help">
+              <span className="text-sm">❓</span>
             </button>
           </div>
         </div>
