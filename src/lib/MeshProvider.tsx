@@ -78,12 +78,13 @@ async function ensureRegistry(baseUrl: string, token: string, serverName: string
   }
 }
 
-/** Register a room in the registry */
+/** Register a room in the registry (uses messages, not state events) */
 async function registerInRegistry(baseUrl: string, token: string, serverName: string, roomId: string, name: string, type: string): Promise<void> {
   const registryId = await ensureRegistry(baseUrl, token, serverName);
   if (!registryId) return;
   try {
-    await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/state/org.meshlink.registry/${encodeURIComponent(roomId)}`, {
+    // Send as a custom message event (any user can send messages)
+    await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/send/org.meshlink.registry/${Date.now()}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name, type, room_id: roomId, ts: Date.now() }),
@@ -91,28 +92,55 @@ async function registerInRegistry(baseUrl: string, token: string, serverName: st
   } catch { /* non-critical */ }
 }
 
-/** Search rooms in the registry */
+/** Search rooms in the registry (reads messages) */
 async function searchRegistry(baseUrl: string, token: string, serverName: string, query: string): Promise<{ id: string; name: string; type: string }[]> {
   const registryId = await ensureRegistry(baseUrl, token, serverName);
   if (!registryId) return [];
   try {
-    const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/state`, {
+    // Read recent messages from registry room
+    const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/messages?dir=b&limit=200`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!resp.ok) return [];
-    const events = await resp.json() as any[];
+    const data = await resp.json() as any;
+    const events = data.chunk || [];
     const lowerQuery = query.toLowerCase();
     const results: { id: string; name: string; type: string }[] = [];
+    const seenIds = new Set<string>();
+
     for (const event of events) {
       if (event.type === "org.meshlink.registry") {
         const content = event.content || {};
-        const roomId = content.room_id || event.state_key;
+        const roomId = content.room_id;
         const roomName = content.name || "";
-        if (roomName.toLowerCase().includes(lowerQuery)) {
+        if (roomId && roomName.toLowerCase().includes(lowerQuery) && !seenIds.has(roomId)) {
+          seenIds.add(roomId);
           results.push({ id: roomId, name: roomName, type: content.type || "group" });
         }
       }
     }
+
+    // Also check state events (for backward compatibility)
+    try {
+      const stateResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/state`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (stateResp.ok) {
+        const stateEvents = await stateResp.json() as any[];
+        for (const event of stateEvents) {
+          if (event.type === "org.meshlink.registry") {
+            const content = event.content || {};
+            const roomId = content.room_id || event.state_key;
+            const roomName = content.name || "";
+            if (roomId && roomName.toLowerCase().includes(lowerQuery) && !seenIds.has(roomId)) {
+              seenIds.add(roomId);
+              results.push({ id: roomId, name: roomName, type: content.type || "group" });
+            }
+          }
+        }
+      }
+    } catch { /* state might not be readable */ }
+
     return results;
   } catch {
     return [];
