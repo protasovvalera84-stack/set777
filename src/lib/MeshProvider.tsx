@@ -486,6 +486,21 @@ export function MeshProvider({ session, children }: Props) {
           debouncedRefresh();
           setMessageVersion((v) => v + 1);
 
+          // Play notification sound for new messages from others
+          const latestRoom = client.getRooms().find((r) => {
+            const tl = r.getLiveTimeline().getEvents();
+            const last = tl[tl.length - 1];
+            return last && last.getSender() !== session.userId && last.getType() === "m.room.message" && (Date.now() - (last.getTs() || 0)) < 3000;
+          });
+          if (latestRoom) {
+            try {
+              const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeYl5KLgXVpXVRQUFdhaHB4f4WJi4uJhYB5cWlhWlVTVFleZW1ze4GGiYuLiYWAeXFpYVpVU1RZXmVtc3uBhomLi4mFgHlxaWFaVVNUWV5lbXN7gYaJi4uJhYB5cWlhWlVTVFleZW1ze4GGiYuLiYWAeXFpYVpVU1RZXmVtc3uBhomLi4mFgHlxaQ==");
+              audio.volume = 0.3;
+              audio.play().catch(() => {});
+            } catch { /* ignore */ }
+            if (navigator.vibrate) navigator.vibrate(100);
+          }
+
           // Browser push notification when tab is not focused
           if (document.hidden && Notification.permission === "granted") {
             const rooms = client.getRooms();

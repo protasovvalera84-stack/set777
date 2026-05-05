@@ -363,7 +363,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                     <span className="h-1.5 w-1.5 rounded-full bg-online animate-pulse" />
                     <span>online - encrypted</span>
                   </>
-                ) : "last seen recently"
+                ) : chat.lastSeen ? `last seen ${chat.lastSeen}` : "last seen recently"
               ) : (
                 <>
                   <Users className="h-3 w-3" />
@@ -1198,8 +1198,8 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         <p className={`mt-1 text-[10px] ${isOwn ? "text-white/70" : "text-muted-foreground"} text-right font-mono`}>
           {message.timestamp}
           {isOwn && (
-            <span className="ml-1" title={message.read ? "Read" : "Sent"}>
-              {message.read ? "\u2713\u2713" : "\u2713"}
+            <span className="ml-1" title={message.read ? "Read" : message.id?.startsWith("~") ? "Sending" : "Sent"}>
+              {message.id?.startsWith("~") ? "🕐" : message.read ? "\u2713\u2713" : "\u2713"}
             </span>
           )}
           {isOwn && message.read && isGroup && (
