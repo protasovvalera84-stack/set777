@@ -32,7 +32,89 @@ import {
 } from "@/lib/meshClient";
 
 // Registry alias for discovering public groups/channels
-const REGISTRY_ALIAS = "#meshlink-registry";
+const REGISTRY_ALIAS_LOCAL = "meshlink-registry";
+
+/** Ensure the registry room exists. Creates it if not found. Returns room_id or null. */
+async function ensureRegistry(baseUrl: string, token: string, serverName: string): Promise<string | null> {
+  const fullAlias = `#${REGISTRY_ALIAS_LOCAL}:${serverName}`;
+  try {
+    // Try to find existing registry
+    const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (resp.ok) {
+      const data = await resp.json() as any;
+      // Join it
+      await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(data.room_id)}`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+      }).catch(() => {});
+      return data.room_id;
+    }
+    // Not found — create it
+    const createResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        name: "Meshlink Room Registry",
+        preset: "public_chat",
+        visibility: "public",
+        room_alias_name: REGISTRY_ALIAS_LOCAL,
+        initial_state: [
+          { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
+          { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
+        ],
+      }),
+    });
+    if (createResp.ok) {
+      const data = await createResp.json() as any;
+      return data.room_id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Register a room in the registry */
+async function registerInRegistry(baseUrl: string, token: string, serverName: string, roomId: string, name: string, type: string): Promise<void> {
+  const registryId = await ensureRegistry(baseUrl, token, serverName);
+  if (!registryId) return;
+  try {
+    await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/state/org.meshlink.registry/${encodeURIComponent(roomId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name, type, room_id: roomId, ts: Date.now() }),
+    });
+  } catch { /* non-critical */ }
+}
+
+/** Search rooms in the registry */
+async function searchRegistry(baseUrl: string, token: string, serverName: string, query: string): Promise<{ id: string; name: string; type: string }[]> {
+  const registryId = await ensureRegistry(baseUrl, token, serverName);
+  if (!registryId) return [];
+  try {
+    const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryId)}/state`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) return [];
+    const events = await resp.json() as any[];
+    const lowerQuery = query.toLowerCase();
+    const results: { id: string; name: string; type: string }[] = [];
+    for (const event of events) {
+      if (event.type === "org.meshlink.registry") {
+        const content = event.content || {};
+        const roomId = content.room_id || event.state_key;
+        const roomName = content.name || "";
+        if (roomName.toLowerCase().includes(lowerQuery)) {
+          results.push({ id: roomId, name: roomName, type: content.type || "group" });
+        }
+      }
+    }
+    return results;
+  } catch {
+    return [];
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Public types consumed by UI components                            */
@@ -626,25 +708,8 @@ export function MeshProvider({ session, children }: Props) {
         });
       } catch { /* non-critical */ }
       // Register in Meshlink registry for discoverability
-      try {
-        const serverName = session.userId.split(":")[1];
-        const registryAlias = `${REGISTRY_ALIAS}:${serverName}`;
-        const regResp = await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/room/${encodeURIComponent(registryAlias)}`, {
-          headers: { Authorization: `Bearer ${c.getAccessToken()}` },
-        });
-        if (regResp.ok) {
-          const regData = await regResp.json() as any;
-          const registryRoomId = regData.room_id;
-          await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/join/${encodeURIComponent(registryRoomId)}`, {
-            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` }, body: "{}",
-          });
-          await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(registryRoomId)}/state/org.meshlink.registry/${encodeURIComponent(resp.room_id)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
-            body: JSON.stringify({ name, type: "group", room_id: resp.room_id, creator: session.userId }),
-          });
-        }
-      } catch { /* registry not available */ }
+      const serverName = session.userId.split(":")[1];
+      await registerInRegistry(c.getHomeserverUrl(), c.getAccessToken() || "", serverName, resp.room_id, name, "group");
       return resp.room_id;
     },
     [],
@@ -676,6 +741,9 @@ export function MeshProvider({ session, children }: Props) {
           body: JSON.stringify({ visibility: "public" }),
         });
       } catch { /* non-critical */ }
+      // Register in Meshlink registry
+      const serverName = session.userId.split(":")[1];
+      await registerInRegistry(c.getHomeserverUrl(), c.getAccessToken() || "", serverName, resp.room_id, name, "channel");
       return resp.room_id;
     },
     [],
@@ -836,121 +904,75 @@ export function MeshProvider({ session, children }: Props) {
     if (!c || !query.trim()) return [];
     const results: MeshRoom[] = [];
     const baseUrl = c.getHomeserverUrl();
-    const token = c.getAccessToken();
+    const token = c.getAccessToken() || "";
+    const serverName = session.userId.split(":")[1];
 
-    // Method 1: publicRooms with filter
-    try {
-      const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ limit: 50, filter: { generic_search_term: query } }),
+    // Method 1: Meshlink Registry (most reliable for our server)
+    const registryResults = await searchRegistry(baseUrl, token, serverName, query);
+    for (const r of registryResults) {
+      results.push({
+        id: r.id,
+        name: r.name,
+        avatar: getInitials(r.name),
+        avatarUrl: null,
+        type: r.type === "channel" ? "channel" : "group",
+        lastMessage: "",
+        lastMessageTime: "",
+        unread: 0,
+        members: 0,
+        online: false,
       });
-      if (resp.ok) {
-        const data = await resp.json() as any;
-        for (const r of (data.chunk || [])) {
-          const alias = r.canonical_alias || "";
-          results.push({
-            id: r.room_id,
-            name: r.name || r.canonical_alias || "Unnamed",
-            avatar: getInitials(r.name || "??"),
-            avatarUrl: null,
-            type: alias.includes("channel-") ? "channel" : "group",
-            lastMessage: r.topic || "",
-            lastMessageTime: "",
-            unread: 0,
-            members: r.num_joined_members || 0,
-            online: false,
-          });
-        }
-      }
-    } catch { /* continue to fallback */ }
+    }
 
-    // Method 2: Search Meshlink registry (custom room with all groups listed)
+    // Method 2: publicRooms API (works if server allows it)
     if (results.length === 0) {
       try {
-        const serverName = session.userId.split(":")[1];
-        const registryAlias = `${REGISTRY_ALIAS}:${serverName}`;
-        const aliasResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(registryAlias)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ limit: 50, filter: { generic_search_term: query } }),
         });
-        if (aliasResp.ok) {
-          const aliasData = await aliasResp.json() as any;
-          const registryRoomId = aliasData.room_id;
-          // Join registry
-          await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(registryRoomId)}`, {
-            method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: "{}",
-          });
-          // Read state events
-          const stateResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryRoomId)}/state`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (stateResp.ok) {
-            const stateData = await stateResp.json() as any[];
-            const lowerQuery = query.toLowerCase();
-            for (const event of stateData) {
-              if (event.type === "org.meshlink.registry") {
-                const content = event.content || {};
-                const roomId = content.room_id || event.state_key;
-                if (content.name && content.name.toLowerCase().includes(lowerQuery)) {
-                  if (!results.find((r) => r.id === roomId)) {
-                    results.push({
-                      id: roomId,
-                      name: content.name,
-                      avatar: getInitials(content.name),
-                      avatarUrl: null,
-                      type: content.type === "channel" ? "channel" : "group",
-                      lastMessage: "",
-                      lastMessageTime: "",
-                      unread: 0,
-                      members: 0,
-                      online: false,
-                    });
-                  }
-                }
-              }
+        if (resp.ok) {
+          const data = await resp.json() as any;
+          for (const r of (data.chunk || [])) {
+            if (!results.find((x) => x.id === r.room_id)) {
+              const alias = r.canonical_alias || "";
+              results.push({
+                id: r.room_id,
+                name: r.name || "Unnamed",
+                avatar: getInitials(r.name || "??"),
+                avatarUrl: null,
+                type: alias.includes("channel-") ? "channel" : "group",
+                lastMessage: r.topic || "",
+                lastMessageTime: "",
+                unread: 0,
+                members: r.num_joined_members || 0,
+                online: false,
+              });
             }
           }
         }
-      } catch { /* registry not available */ }
+      } catch { /* optional */ }
     }
 
-    // Method 3: Try alias lookup (works even without room directory)
+    // Method 3: Alias lookup (exact match)
     if (results.length === 0) {
       const slug = query.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const serverName = session.userId.split(":")[1] || "72.56.244.207";
-      const aliasesToTry = [
-        `#group-${slug}:${serverName}`,
-        `#channel-${slug}:${serverName}`,
-        `#${slug}:${serverName}`,
-      ];
-      for (const alias of aliasesToTry) {
+      for (const prefix of ["group-", "channel-", ""]) {
         try {
+          const alias = `#${prefix}${slug}:${serverName}`;
           const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(alias)}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            headers: { Authorization: `Bearer ${token}` },
           });
           if (resp.ok) {
             const data = await resp.json() as any;
             if (data.room_id && !results.find((r) => r.id === data.room_id)) {
-              // Get room name
-              let roomName = query;
-              try {
-                const stateResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(data.room_id)}/state/m.room.name`, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : {},
-                });
-                if (stateResp.ok) {
-                  const nameData = await stateResp.json() as any;
-                  roomName = nameData.name || query;
-                }
-              } catch { /* use query as name */ }
               results.push({
                 id: data.room_id,
-                name: roomName,
-                avatar: getInitials(roomName),
+                name: query,
+                avatar: getInitials(query),
                 avatarUrl: null,
-                type: alias.includes("channel-") ? "channel" : "group",
+                type: prefix.includes("channel") ? "channel" : "group",
                 lastMessage: "",
                 lastMessageTime: "",
                 unread: 0,
@@ -959,12 +981,13 @@ export function MeshProvider({ session, children }: Props) {
               });
             }
           }
-        } catch { /* alias not found, continue */ }
+        } catch { /* continue */ }
       }
     }
 
     return results;
   }, [session.homeserverUrl, session.userId]);
+
 
   const value: MeshContextValue = {
     client: clientRef.current,
