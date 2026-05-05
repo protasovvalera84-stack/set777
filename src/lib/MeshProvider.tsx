@@ -162,6 +162,7 @@ export interface MeshRoom {
   unread: number;
   members: number;
   online: boolean;
+  lastSeen?: string;
 }
 
 export interface MeshMessage {
@@ -320,12 +321,19 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // Check online status for DMs
   let online = false;
+  let lastSeen = "";
   if (roomType === "dm" && client) {
     const other = members.find((m) => m.userId !== myUserId);
     if (other) {
       try {
         const user = client.getUser(other.userId);
         online = user?.presence === "online" || user?.currentlyActive === true;
+        if (!online && user?.lastActiveAgo) {
+          const mins = Math.floor(user.lastActiveAgo / 60000);
+          if (mins < 60) lastSeen = `${mins}m ago`;
+          else if (mins < 1440) lastSeen = `${Math.floor(mins / 60)}h ago`;
+          else lastSeen = `${Math.floor(mins / 1440)}d ago`;
+        }
       } catch { /* ignore */ }
     }
   }
@@ -341,6 +349,7 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
     unread: room.getUnreadNotificationCount("total") || 0,
     members: members.length,
     online,
+    lastSeen,
   };
 }
 
