@@ -47,6 +47,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
   const [page, setPage] = useState<Page>("main");
   const [draft, setDraft] = useState<Chat>({ ...chat });
   const [memberSearch, setMemberSearch] = useState("");
+  const [serverSearchResults, setServerSearchResults] = useState<{ id: string; name: string; avatar: string }[]>([]);
   const [selectedAdd, setSelectedAdd] = useState<Set<string>>(new Set());
   const [muted, setMuted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -103,10 +104,21 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
     setDraft((d) => ({ ...d, memberIds: (d.memberIds || []).filter((m) => m !== id) }));
   };
 
-  const addMembers = () => {
+  const addMembers = async () => {
     const ids = Array.from(selectedAdd);
+    if (!mesh.client || ids.length === 0) return;
+    // Invite each user via Matrix API
+    for (const userId of ids) {
+      try {
+        await mesh.client.invite(chat.id, userId);
+      } catch (err) {
+        console.error(`Failed to invite ${userId}:`, err);
+      }
+    }
     setDraft((d) => ({ ...d, memberIds: [...(d.memberIds || []), ...ids] }));
     setSelectedAdd(new Set());
+    setMemberSearch("");
+    setServerSearchResults([]);
     setPage("members");
   };
 
@@ -255,19 +267,44 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
             <div className="space-y-3">
               <div className="flex items-center gap-2.5 rounded-2xl glass border border-border/50 px-4 py-2.5 focus-within:border-primary/50 focus-within:shadow-glow transition-all">
                 <Search className="h-4 w-4 text-muted-foreground" />
-                <input type="text" placeholder="Search contacts..." value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} autoFocus
+                <input type="text" placeholder="Search by username or ID..." value={memberSearch}
+                  onChange={async (e) => {
+                    const q = e.target.value;
+                    setMemberSearch(q);
+                    if (q.length < 2) { setServerSearchResults([]); return; }
+                    // Search users on server
+                    try {
+                      const users = await mesh.searchUsers(q);
+                      const currentMembers = new Set(draft.memberIds || []);
+                      setServerSearchResults(
+                        users
+                          .filter((u) => u.userId !== mesh.userId && !currentMembers.has(u.userId))
+                          .map((u) => ({
+                            id: u.userId,
+                            name: u.displayName || u.userId,
+                            avatar: (u.displayName || "?").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+                          }))
+                      );
+                    } catch { setServerSearchResults([]); }
+                  }}
+                  autoFocus
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none" />
               </div>
-              {filteredAdd.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No contacts to add</p>
+              {memberSearch.length < 2 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Type at least 2 characters to search</p>
+              ) : serverSearchResults.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No users found</p>
               ) : (
-                filteredAdd.map((c) => {
+                serverSearchResults.map((c) => {
                   const sel = selectedAdd.has(c.id);
                   return (
                     <button key={c.id} onClick={() => setSelectedAdd((prev) => { const n = new Set(prev); sel ? n.delete(c.id) : n.add(c.id); return n; })}
                       className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all ${sel ? "bg-primary/10 border border-primary/30" : "hover:bg-surface-hover border border-transparent"}`}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-muted text-xs font-bold text-foreground border border-border">{c.avatar}</div>
-                      <div className="flex-1"><p className="text-sm font-medium text-foreground">{c.name}</p></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{c.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.id}</p>
+                      </div>
                       <div className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${sel ? "gradient-primary" : "border border-border/60"}`}>
                         {sel && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
                       </div>

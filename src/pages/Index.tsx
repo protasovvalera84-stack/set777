@@ -323,45 +323,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const handleSearch = useCallback(async (query: string): Promise<SearchResult[]> => {
     const results: SearchResult[] = [];
 
-    // Search users on the server
-    const users = await mesh.searchUsers(query);
-    for (const u of users) {
-      if (u.userId === mesh.userId) continue;
-      results.push({
-        type: "user",
-        id: u.userId,
-        name: u.displayName,
-        avatar: u.displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
-      });
-    }
-
-    // Search in local messages (find chats containing the query)
-    if (query.length >= 2 && mesh.client) {
-      const rooms = mesh.client.getRooms();
-      for (const room of rooms) {
-        if (room.getMyMembership() !== "join") continue;
-        const events = room.getLiveTimeline().getEvents();
-        const match = events.find((e) => {
-          if (e.getType() !== "m.room.message") return false;
-          const body = e.getContent()?.body;
-          return typeof body === "string" && body.toLowerCase().includes(query.toLowerCase());
-        });
-        if (match) {
-          const existingRoom = results.find((r) => r.id === room.roomId);
-          if (!existingRoom) {
-            results.push({
-              type: "room",
-              id: room.roomId,
-              name: room.name || "Chat",
-              avatar: (room.name || "??").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
-              members: room.getJoinedMemberCount(),
-            });
-          }
-        }
-      }
-    }
-
-    // Also search public rooms
+    // 1. Search public rooms FIRST (groups and channels)
     try {
       const rooms = await mesh.getPublicRooms();
       for (const r of rooms) {
@@ -377,8 +339,39 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
           }
         }
       }
-    } catch {
-      // optional
+    } catch { /* optional */ }
+
+    // 2. Search joined rooms by name
+    if (mesh.client) {
+      const rooms = mesh.client.getRooms();
+      for (const room of rooms) {
+        if (room.getMyMembership() !== "join") continue;
+        if (room.name && room.name.toLowerCase().includes(query.toLowerCase())) {
+          if (!results.find((r) => r.id === room.roomId)) {
+            results.push({
+              type: "room",
+              id: room.roomId,
+              name: room.name,
+              avatar: (room.name || "??").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+              members: room.getJoinedMemberCount(),
+            });
+          }
+        }
+      }
+    }
+
+    // 3. Search users on the server
+    const users = await mesh.searchUsers(query);
+    for (const u of users) {
+      if (u.userId === mesh.userId) continue;
+      // Don't show user if a room with same name already in results
+      if (results.find((r) => r.type === "room" && r.name.toLowerCase() === u.displayName.toLowerCase())) continue;
+      results.push({
+        type: "user",
+        id: u.userId,
+        name: u.displayName,
+        avatar: u.displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
+      });
     }
 
     return results;
