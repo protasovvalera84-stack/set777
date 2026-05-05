@@ -86,6 +86,7 @@ interface MeshContextValue {
   inviteUser: (roomId: string, userId: string) => Promise<void>;
   searchUsers: (term: string) => Promise<{ userId: string; displayName: string }[]>;
   getPublicRooms: () => Promise<MeshRoom[]>;
+  searchRooms: (query: string) => Promise<MeshRoom[]>;
 }
 
 const MeshContext = createContext<MeshContextValue | null>(null);
@@ -708,27 +709,17 @@ export function MeshProvider({ session, children }: Props) {
   const publicRoomsCache = useRef<{ data: MeshRoom[]; ts: number }>({ data: [], ts: 0 });
 
   const getPublicRooms = useCallback(async (): Promise<MeshRoom[]> => {
-    // Cache for 30 seconds
+    // Cache for 10 seconds
     if (Date.now() - publicRoomsCache.current.ts < 10000) {
       return publicRoomsCache.current.data;
     }
     const c = clientRef.current;
     if (!c) return [];
     try {
-      // Use direct HTTP request for reliability
-      const baseUrl = c.getHomeserverUrl();
-      const token = c.getAccessToken();
-      const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ limit: 100 }),
-      });
-      if (!resp.ok) throw new Error("Failed");
-      const data = await resp.json();
-      const result = ((data as any).chunk || []).map((r: any) => {
+      // Try SDK method first (handles URL/auth automatically)
+      const resp = await c.publicRooms({ limit: 100 });
+      const chunk = resp.chunk || [];
+      const result = chunk.map((r) => {
         const alias = r.canonical_alias || "";
         const roomType = alias.includes("channel-") ? "channel" as const : "group" as const;
         return {
@@ -746,10 +737,101 @@ export function MeshProvider({ session, children }: Props) {
       });
       publicRoomsCache.current = { data: result, ts: Date.now() };
       return result;
+    } catch (err) {
+      console.warn("publicRooms SDK failed, trying HTTP fallback:", err);
+      // Fallback: direct HTTP
+      try {
+        const baseUrl = c.getHomeserverUrl();
+        const token = c.getAccessToken();
+        const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ limit: 100 }),
+        });
+        if (!resp.ok) {
+          // Try r0 endpoint
+          const resp2 = await fetch(`${baseUrl}/_matrix/client/r0/publicRooms`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ limit: 100 }),
+          });
+          if (!resp2.ok) return [];
+          const data2 = await resp2.json();
+          return ((data2 as any).chunk || []).map((r: any) => ({
+            id: r.room_id,
+            name: r.name || "Unnamed",
+            avatar: getInitials(r.name || "??"),
+            avatarUrl: null,
+            type: "group" as const,
+            lastMessage: "", lastMessageTime: "", unread: 0,
+            members: r.num_joined_members || 0, online: false,
+          }));
+        }
+        const data = await resp.json();
+        const result = ((data as any).chunk || []).map((r: any) => ({
+          id: r.room_id,
+          name: r.name || "Unnamed",
+          avatar: getInitials(r.name || "??"),
+          avatarUrl: null,
+          type: "group" as const,
+          lastMessage: "", lastMessageTime: "", unread: 0,
+          members: r.num_joined_members || 0, online: false,
+        }));
+        publicRoomsCache.current = { data: result, ts: Date.now() };
+        return result;
+      } catch {
+        return [];
+      }
+    }
+  }, []);
+
+  // Search public rooms by name (with filter)
+  const searchRooms = useCallback(async (query: string): Promise<MeshRoom[]> => {
+    const c = clientRef.current;
+    if (!c || !query.trim()) return [];
+    try {
+      const baseUrl = c.getHomeserverUrl();
+      const token = c.getAccessToken();
+      // Use POST with filter for server-side search
+      const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          limit: 50,
+          filter: { generic_search_term: query },
+        }),
+      });
+      if (!resp.ok) return [];
+      const data = await resp.json() as any;
+      return (data.chunk || []).map((r: any) => {
+        const alias = r.canonical_alias || "";
+        const roomType = alias.includes("channel-") ? "channel" as const : "group" as const;
+        return {
+          id: r.room_id,
+          name: r.name || r.canonical_alias || "Unnamed",
+          avatar: getInitials(r.name || "??"),
+          avatarUrl: null,
+          type: roomType,
+          lastMessage: r.topic || "",
+          lastMessageTime: "",
+          unread: 0,
+          members: r.num_joined_members || 0,
+          online: false,
+        };
+      });
     } catch {
       return [];
     }
-  }, []);
+  }, [session.homeserverUrl]);
 
   const value: MeshContextValue = {
     client: clientRef.current,
@@ -772,6 +854,7 @@ export function MeshProvider({ session, children }: Props) {
     inviteUser,
     searchUsers,
     getPublicRooms,
+    searchRooms,
   };
 
   return (
