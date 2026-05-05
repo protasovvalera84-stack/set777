@@ -4,6 +4,7 @@ import { ChatView } from "@/components/ChatView";
 import { EmptyChat } from "@/components/EmptyChat";
 import { AccountSettings } from "@/components/AccountSettings";
 import { CallScreen, IncomingCallBanner, CallType } from "@/components/CallScreen";
+import { toast } from "sonner";
 import { GroupSettingsDialog } from "@/components/GroupSettingsDialog";
 import { DmSettingsDialog } from "@/components/DmSettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -176,8 +177,10 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       }
       setSelectedChatId(roomId);
       if (window.innerWidth < 768) setSidebarOpen(false);
+      toast.success(chat.type === "channel" ? "Channel created!" : chat.type === "group" ? "Group created!" : "Chat started!");
     } catch (err) {
       console.error("Failed to create chat:", err);
+      toast.error("Failed to create. Try again.");
     }
   }, [mesh]);
 
