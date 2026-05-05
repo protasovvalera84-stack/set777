@@ -38,17 +38,20 @@ const REGISTRY_ALIAS_LOCAL = "meshlink-registry";
 async function ensureRegistry(baseUrl: string, token: string, serverName: string): Promise<string | null> {
   const fullAlias = `#${REGISTRY_ALIAS_LOCAL}:${serverName}`;
   try {
-    // Try to find existing registry
+    // Try to find existing registry by alias
     const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (resp.ok) {
       const data = await resp.json() as any;
-      // Join it
-      await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(data.room_id)}`, {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+      const roomId = data.room_id;
+      // Join using ALIAS (not room_id) — this ensures server routing works
+      await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(fullAlias)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ server_name: [serverName] }),
       }).catch(() => {});
-      return data.room_id;
+      return roomId;
     }
     // Not found — create it
     const createResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
@@ -57,11 +60,11 @@ async function ensureRegistry(baseUrl: string, token: string, serverName: string
       body: JSON.stringify({
         name: "Meshlink Room Registry",
         preset: "public_chat",
-        visibility: "public",
         room_alias_name: REGISTRY_ALIAS_LOCAL,
         initial_state: [
           { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
           { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
+          { type: "m.room.power_levels", content: { events_default: 0, state_default: 0, users_default: 0 }, state_key: "" },
         ],
       }),
     });
