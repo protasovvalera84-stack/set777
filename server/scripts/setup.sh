@@ -511,6 +511,10 @@ log "Platform installers generated."
 # Step 7: Generate server signing key
 # =============================================================================
 if [ ! -f "$SERVER_DIR/synapse/signing.key" ]; then
+    # Remove if it's a directory (Docker volume artifact)
+    if [ -d "$SERVER_DIR/synapse/signing.key" ]; then
+        rm -rf "$SERVER_DIR/synapse/signing.key"
+    fi
     log "Generating server signing key..."
     docker run --rm \
         -v "$SERVER_DIR/synapse:/data" \
