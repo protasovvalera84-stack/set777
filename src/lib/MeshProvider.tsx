@@ -31,6 +31,9 @@ import {
   type MeshEvent,
 } from "@/lib/meshClient";
 
+// Registry alias for discovering public groups/channels
+const REGISTRY_ALIAS = "#meshlink-registry";
+
 /* ------------------------------------------------------------------ */
 /*  Public types consumed by UI components                            */
 /* ------------------------------------------------------------------ */
@@ -622,6 +625,26 @@ export function MeshProvider({ session, children }: Props) {
           body: JSON.stringify({ visibility: "public" }),
         });
       } catch { /* non-critical */ }
+      // Register in Meshlink registry for discoverability
+      try {
+        const serverName = session.userId.split(":")[1];
+        const registryAlias = `${REGISTRY_ALIAS}:${serverName}`;
+        const regResp = await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/room/${encodeURIComponent(registryAlias)}`, {
+          headers: { Authorization: `Bearer ${c.getAccessToken()}` },
+        });
+        if (regResp.ok) {
+          const regData = await regResp.json() as any;
+          const registryRoomId = regData.room_id;
+          await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/join/${encodeURIComponent(registryRoomId)}`, {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` }, body: "{}",
+          });
+          await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(registryRoomId)}/state/org.meshlink.registry/${encodeURIComponent(resp.room_id)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
+            body: JSON.stringify({ name, type: "group", room_id: resp.room_id, creator: session.userId }),
+          });
+        }
+      } catch { /* registry not available */ }
       return resp.room_id;
     },
     [],
@@ -845,7 +868,56 @@ export function MeshProvider({ session, children }: Props) {
       }
     } catch { /* continue to fallback */ }
 
-    // Method 2: Try alias lookup (works even without room directory)
+    // Method 2: Search Meshlink registry (custom room with all groups listed)
+    if (results.length === 0) {
+      try {
+        const serverName = session.userId.split(":")[1];
+        const registryAlias = `${REGISTRY_ALIAS}:${serverName}`;
+        const aliasResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(registryAlias)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (aliasResp.ok) {
+          const aliasData = await aliasResp.json() as any;
+          const registryRoomId = aliasData.room_id;
+          // Join registry
+          await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(registryRoomId)}`, {
+            method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: "{}",
+          });
+          // Read state events
+          const stateResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(registryRoomId)}/state`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (stateResp.ok) {
+            const stateData = await stateResp.json() as any[];
+            const lowerQuery = query.toLowerCase();
+            for (const event of stateData) {
+              if (event.type === "org.meshlink.registry") {
+                const content = event.content || {};
+                const roomId = content.room_id || event.state_key;
+                if (content.name && content.name.toLowerCase().includes(lowerQuery)) {
+                  if (!results.find((r) => r.id === roomId)) {
+                    results.push({
+                      id: roomId,
+                      name: content.name,
+                      avatar: getInitials(content.name),
+                      avatarUrl: null,
+                      type: content.type === "channel" ? "channel" : "group",
+                      lastMessage: "",
+                      lastMessageTime: "",
+                      unread: 0,
+                      members: 0,
+                      online: false,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch { /* registry not available */ }
+    }
+
+    // Method 3: Try alias lookup (works even without room directory)
     if (results.length === 0) {
       const slug = query.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const serverName = session.userId.split(":")[1] || "72.56.244.207";
