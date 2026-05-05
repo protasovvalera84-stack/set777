@@ -575,8 +575,13 @@ export function MeshProvider({ session, children }: Props) {
       if (!c) throw new Error("Not connected");
       const resp = await c.createRoom({
         name,
-        preset: "private_chat" as sdk.Preset,
+        preset: "public_chat" as sdk.Preset,
+        visibility: "public" as sdk.Visibility,
+        room_alias_name: `group-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
         invite: userIds,
+        initial_state: [
+          { type: "m.room.history_visibility", content: { history_visibility: "shared" }, state_key: "" },
+        ],
       });
       return resp.room_id;
     },
