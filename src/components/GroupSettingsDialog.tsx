@@ -138,7 +138,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={onClose}>
       <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
       <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md rounded-3xl glass-strong border border-border/60 shadow-elegant max-h-[90vh] flex flex-col overflow-hidden">
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarPick} />
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAvatarPick} />
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40">
@@ -168,21 +168,21 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
             <div className="space-y-5">
               {/* Avatar + Name */}
               <div className="flex flex-col items-center gap-3">
-                <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+                <div className="relative cursor-pointer active:scale-95 transition-transform" onClick={() => fileRef.current?.click()}>
                   {draft.avatarUrl ? (
-                    <img src={draft.avatarUrl} alt="" className="h-20 w-20 rounded-3xl object-cover border-2 border-primary/30 shadow-glow group-hover:opacity-80 transition-opacity" />
+                    <img src={draft.avatarUrl} alt="" className="h-20 w-20 rounded-3xl object-cover border-2 border-primary/30 shadow-glow" />
                   ) : (
-                    <div className={`flex h-20 w-20 items-center justify-center rounded-3xl text-xl font-bold shadow-glow group-hover:opacity-80 transition-opacity ${
+                    <div className={`flex h-20 w-20 items-center justify-center rounded-3xl text-xl font-bold shadow-glow ${
                       isChannel ? "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20" : "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
                     }`}>
                       {draft.avatar}
                     </div>
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/0 group-hover:bg-black/30 transition-colors">
-                    <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/30">
+                    <Camera className="h-6 w-6 text-white" />
                   </div>
                 </div>
-                <button onClick={() => fileRef.current?.click()} className="text-[11px] font-medium text-primary hover:underline">Change Photo</button>
+                <button onClick={() => fileRef.current?.click()} className="text-xs font-medium text-primary hover:underline px-3 py-1 rounded-lg hover:bg-primary/10">📷 Change Photo</button>
               </div>
 
               {/* Name */}
