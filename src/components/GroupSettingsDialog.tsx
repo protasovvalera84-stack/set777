@@ -64,9 +64,23 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
   if (!open) return null;
 
   const isChannel = chat.type === "channel";
-  const memberList = (draft.memberIds || []).map((id) =>
-    id === "me" ? { id: "me", name: "You", avatar: "ME", online: true, peerId: "" } : contacts.find((c) => c.id === id),
-  ).filter(Boolean);
+
+  // Get REAL members from Matrix room (not local draft)
+  const memberList = (() => {
+    if (!mesh.client) return [];
+    const room = mesh.client.getRoom(chat.id);
+    if (!room) return (draft.memberIds || []).map((id) =>
+      id === "me" ? { id: "me", name: "You", avatar: "ME", online: true, peerId: "" } : contacts.find((c) => c.id === id),
+    ).filter(Boolean);
+    const members = room.getJoinedMembers();
+    return members.map((m) => ({
+      id: m.userId,
+      name: m.name || m.userId.split(":")[0].replace("@", ""),
+      avatar: (m.name || m.userId)[0]?.toUpperCase() || "?",
+      online: false,
+      peerId: m.userId,
+    }));
+  })();
 
   const availableToAdd = contacts.filter((c) => !(draft.memberIds || []).includes(c.id));
   const filteredAdd = availableToAdd.filter((c) => !memberSearch || c.name.toLowerCase().includes(memberSearch.toLowerCase()));
@@ -214,7 +228,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
               {/* Menu */}
               <div className="space-y-1">
                 <MenuItem icon={<Star className={`h-4 w-4 ${isInAnyFolder ? "text-primary" : ""}`} />} label={isInAnyFolder ? "In Favorites" : "Add to Favorites"} sub="Save to a folder" onClick={() => setPage("favorites")} />
-                <MenuItem icon={<Users className="h-4 w-4" />} label="Members" sub={`${(draft.memberIds || []).length} members`} onClick={() => setPage("members")} />
+                <MenuItem icon={<Users className="h-4 w-4" />} label="Members" sub={`${memberList.length} members`} onClick={() => setPage("members")} />
                 <MenuItem icon={<Link2 className="h-4 w-4" />} label="Invite Link" sub="Share or QR code" onClick={() => setPage("invite")} />
                 <MenuItem icon={<Clock className="h-4 w-4" />} label="Slow Mode" sub="Limit message frequency" onClick={() => setPage("slowmode")} />
                 <MenuItem icon={<Shield className="h-4 w-4" />} label="Action Log" sub="Who did what" onClick={() => setPage("log")} />
