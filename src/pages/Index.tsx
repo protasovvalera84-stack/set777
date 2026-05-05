@@ -323,7 +323,23 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
   const handleSearch = useCallback(async (query: string): Promise<SearchResult[]> => {
     const results: SearchResult[] = [];
 
-    // 1. Search public rooms FIRST (groups and channels)
+    // 1. Search public rooms with server-side filter (most reliable)
+    try {
+      const serverRooms = await mesh.searchRooms(query);
+      for (const r of serverRooms) {
+        if (!results.find((x) => x.id === r.id)) {
+          results.push({
+            type: "room",
+            id: r.id,
+            name: r.name,
+            avatar: r.avatar,
+            members: r.members,
+          });
+        }
+      }
+    } catch { /* optional */ }
+
+    // 2. Also check cached public rooms
     try {
       const rooms = await mesh.getPublicRooms();
       for (const r of rooms) {
@@ -341,7 +357,7 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       }
     } catch { /* optional */ }
 
-    // 2. Search joined rooms by name
+    // 3. Search joined rooms by name
     if (mesh.client) {
       const rooms = mesh.client.getRooms();
       for (const room of rooms) {
@@ -360,12 +376,12 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       }
     }
 
-    // 3. Search users on the server
+    // 4. Search users LAST — skip if room with same name already found
     const users = await mesh.searchUsers(query);
     for (const u of users) {
       if (u.userId === mesh.userId) continue;
-      // Don't show user if a room with same name already in results
-      if (results.find((r) => r.type === "room" && r.name.toLowerCase() === u.displayName.toLowerCase())) continue;
+      const nameMatch = results.find((r) => r.type === "room" && r.name.toLowerCase() === u.displayName.toLowerCase());
+      if (nameMatch) continue;
       results.push({
         type: "user",
         id: u.userId,
