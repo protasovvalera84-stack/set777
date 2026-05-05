@@ -284,7 +284,11 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
 
         {/* Filters */}
         <div className="relative flex gap-1.5 px-4 pb-3 overflow-x-auto scrollbar-thin">
-          {(["all", "dm", "group", "channel", "favorites"] as const).map((f) => (
+          {(["all", "dm", "group", "channel", "favorites"] as const).map((f) => {
+            const count = f === "all" ? chats.length :
+              f === "favorites" ? chats.filter((c) => folders.some((fo) => fo.chatIds.includes(c.id))).length :
+              chats.filter((c) => c.type === f).length;
+            return (
             <button
               key={f}
               onClick={() => { setFilter(f); if (f !== "favorites") setActiveFolder(null); }}
@@ -293,10 +297,16 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               }`}
             >
               {f === "dm" ? "Direct" : f === "all" ? "All" : f === "favorites" ? (
-                <span className="flex items-center gap-1"><Star className="h-3 w-3" /> Favorites</span>
+                <span className="flex items-center gap-1"><Star className="h-3 w-3" /> Fav</span>
               ) : f.charAt(0).toUpperCase() + f.slice(1) + "s"}
+              {count > 0 && f !== "all" && (
+                <span className={`ml-1 text-[9px] ${filter === f ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>
+                  {count}
+                </span>
+              )}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         {/* Create button for Groups / Channels */}
