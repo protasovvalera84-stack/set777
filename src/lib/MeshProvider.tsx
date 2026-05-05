@@ -109,7 +109,7 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // Determine room type using multiple signals:
 
-  // 1. Check join_rule first -- public rooms are always channels
+  // 1. Check join_rule
   let joinRule = "invite";
   try {
     joinRule = room.getJoinRule();
@@ -120,23 +120,42 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
   // 2. Check if explicitly marked as DM in m.direct account data
   const isMarkedDirect = directRoomIds.has(room.roomId);
 
-  // 3. Determine final type
+  // 3. Check room alias to distinguish groups from channels
+  const alias = room.getCanonicalAlias() || "";
+  const isChannelByAlias = alias.includes("channel-") || alias.includes("chan-");
+  const isGroupByAlias = alias.includes("group-");
+
+  // 4. Check power levels — if only admins can send, it's a channel
+  let isChannelByPower = false;
+  try {
+    const plEvent = room.currentState.getStateEvents("m.room.power_levels", "");
+    if (plEvent) {
+      const pl = plEvent.getContent();
+      const sendLevel = pl.events_default ?? pl.events?.["m.room.message"] ?? 0;
+      if (sendLevel >= 50) isChannelByPower = true;
+    }
+  } catch { /* ignore */ }
+
+  // 5. Determine final type
   let roomType: "dm" | "group" | "channel";
-  if (isPublic) {
-    // Public rooms are always channels, regardless of member count
-    roomType = "channel";
-  } else if (isMarkedDirect) {
+  if (isMarkedDirect) {
     // Explicitly marked as DM
     roomType = "dm";
   } else if (members.length === 2 && !room.isSpaceRoom() && !room.name) {
-    // Unnamed room with exactly 2 members -- likely a DM that wasn't marked
+    // Unnamed room with exactly 2 members -- likely a DM
     roomType = "dm";
+  } else if (isChannelByAlias || isChannelByPower) {
+    // Channel: by alias naming or by power levels (only admins can post)
+    roomType = "channel";
+  } else if (isPublic && !isGroupByAlias && members.length > 20) {
+    // Large public room without group- prefix = channel
+    roomType = "channel";
   } else {
-    // Everything else is a group
+    // Everything else is a group (including public groups)
     roomType = "group";
   }
 
-  console.debug(`Room "${room.name || room.roomId}": joinRule=${joinRule}, markedDirect=${isMarkedDirect}, members=${members.length} -> type=${roomType}`);
+  console.debug(`Room "${room.name || room.roomId}": joinRule=${joinRule}, alias=${alias}, markedDirect=${isMarkedDirect}, members=${members.length}, channelByPower=${isChannelByPower} -> type=${roomType}`);
 
   const timeline = room.getLiveTimeline().getEvents();
   const lastEvt = [...timeline].reverse().find(
@@ -596,7 +615,14 @@ export function MeshProvider({ session, children }: Props) {
         name,
         preset: "public_chat" as sdk.Preset,
         visibility: "public" as sdk.Visibility,
-        room_alias_name: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        room_alias_name: `channel-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
+        power_level_content_override: {
+          events_default: 50, // Only moderators+ can send messages
+          invite: 50,
+        },
+        initial_state: [
+          { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
+        ],
       });
       return resp.room_id;
     },
