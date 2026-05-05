@@ -10,6 +10,7 @@ import { useTheme } from "@/theme/ThemeProvider";
 import { PinSetup, SessionsPage } from "@/components/SecurityFeatures";
 import { SecurityAuditPage } from "@/components/AdvancedFeatures";
 import { SettingsExport } from "@/components/SettingsTools";
+import { AdminPanel } from "@/components/AdminPanel";
 
 interface AccountSettingsProps {
   open: boolean;
@@ -68,6 +69,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
   const [securityOpen, setSecurityOpen] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Re-sync draft from profile every time dialog opens
@@ -182,6 +184,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
       <SecurityAuditPage open={securityOpen} onClose={() => setSecurityOpen(false)} />
       <SessionsPage open={sessionsOpen} onClose={() => setSessionsOpen(false)} />
       <SettingsExport open={exportOpen} onClose={() => setExportOpen(false)} />
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
     </div>
   );
 }
@@ -238,6 +241,7 @@ function MainPage({
         <MenuItem icon={<Shield className="h-4 w-4" />} label="Security Audit" sub="Check your security score" onClick={() => setSecurityOpen(true)} />
         <MenuItem icon={<Smartphone className="h-4 w-4" />} label="Active Sessions" sub="Manage devices" onClick={() => setSessionsOpen(true)} />
         <MenuItem icon={<Download className="h-4 w-4" />} label="Export / Import" sub="Backup your settings" onClick={() => setExportOpen(true)} />
+        <MenuItem icon={<Shield className="h-4 w-4 text-primary" />} label="Admin Panel" sub="System scanner & diagnostics" onClick={() => setAdminOpen(true)} />
         <MenuItem icon={<Lock className="h-4 w-4" />} label="Encryption" sub="Matrix E2EE active" />
         <MenuItem icon={<Wifi className="h-4 w-4" />} label="Network" sub="Connected to server" />
       </div>
