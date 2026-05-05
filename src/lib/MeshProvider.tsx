@@ -147,24 +147,21 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // 5. Determine final type
   let roomType: "dm" | "group" | "channel";
-  if (meshlinkType === "group") {
+  if (isMarkedDirect) {
+    // Explicitly marked as DM — highest priority
+    roomType = "dm";
+  } else if (members.length <= 2 && !room.isSpaceRoom() && !isPublic && !meshlinkType) {
+    // Private room with 1-2 members, no meshlink type = DM
+    roomType = "dm";
+  } else if (meshlinkType === "group") {
     roomType = "group";
   } else if (meshlinkType === "channel") {
     roomType = "channel";
-  } else if (isMarkedDirect) {
-    // Explicitly marked as DM
-    roomType = "dm";
-  } else if (members.length === 2 && !room.isSpaceRoom() && !room.name) {
-    // Unnamed room with exactly 2 members -- likely a DM
-    roomType = "dm";
   } else if (isChannelByAlias || isChannelByPower) {
-    // Channel: by alias naming or by power levels (only admins can post)
     roomType = "channel";
   } else if (isPublic && !isGroupByAlias && members.length > 20) {
-    // Large public room without group- prefix = channel
     roomType = "channel";
   } else {
-    // Everything else is a group (including public groups)
     roomType = "group";
   }
 
@@ -718,8 +715,20 @@ export function MeshProvider({ session, children }: Props) {
     const c = clientRef.current;
     if (!c) return [];
     try {
-      const resp = await c.publicRooms({ limit: 100 });
-      const result = (resp.chunk || []).map((r) => {
+      // Use direct HTTP request for reliability
+      const baseUrl = c.getHomeserverUrl();
+      const token = c.getAccessToken();
+      const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      if (!resp.ok) throw new Error("Failed");
+      const data = await resp.json();
+      const result = ((data as any).chunk || []).map((r: any) => {
         const alias = r.canonical_alias || "";
         const roomType = alias.includes("channel-") ? "channel" as const : "group" as const;
         return {
