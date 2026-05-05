@@ -412,44 +412,80 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           {/* Search results from server */}
           {search.trim() && searchResults.length > 0 && (
-            <div className="px-3 py-2">
-              <div className="flex items-center gap-1.5 px-2 py-2">
-                <Search className="h-3 w-3 text-primary" />
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.15em] gradient-text">Found on server</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-border/60 to-transparent ml-2" />
-              </div>
-              {searchResults.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    if (r.type === "user" && onStartDm) onStartDm(r.id);
-                    else if (r.type === "room" && onJoinRoom) onJoinRoom(r.id);
-                    setSearch("");
-                  }}
-                  className="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all hover:bg-surface-hover border border-transparent"
-                >
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xs font-bold transition-transform group-hover:scale-105 ${
-                    r.type === "user"
-                      ? "bg-gradient-to-br from-primary/30 to-primary-glow/10 text-primary border border-primary/20"
-                      : "bg-gradient-to-br from-accent/30 to-accent/10 text-accent border border-accent/20"
-                  }`}>
-                    {r.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-semibold text-foreground truncate block">{r.name}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {r.type === "user" ? "User" : `${r.members || 0} members`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {r.type === "user" ? (
-                      <UserPlus className="h-4 w-4 text-primary" />
-                    ) : (
-                      <MessageCircle className="h-4 w-4 text-accent" />
-                    )}
-                  </div>
-                </button>
-              ))}
+            <div className="px-3 py-2 space-y-1">
+              {/* Section: My Chats (rooms user is already in) */}
+              {(() => {
+                const myChats = searchResults.filter((r) => r.type === "room" && chats.some((c) => c.id === r.id));
+                if (myChats.length === 0) return null;
+                return (
+                  <>
+                    <div className="flex items-center gap-1.5 px-2 py-1.5">
+                      <MessageCircle className="h-3 w-3 text-primary" />
+                      <span className="text-[9px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">My Chats</span>
+                    </div>
+                    {myChats.map((r) => (
+                      <button key={r.id} onClick={() => { onJoinRoom?.(r.id); setSearch(""); }}
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary-glow/5 text-xs font-bold text-primary border border-primary/20">{r.avatar}</div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{r.members || 0} members</span>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
+
+              {/* Section: Groups & Channels (not joined yet) */}
+              {(() => {
+                const publicRooms = searchResults.filter((r) => r.type === "room" && !chats.some((c) => c.id === r.id));
+                if (publicRooms.length === 0) return null;
+                return (
+                  <>
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 mt-2">
+                      <Users className="h-3 w-3 text-accent" />
+                      <span className="text-[9px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">Groups & Channels</span>
+                    </div>
+                    {publicRooms.map((r) => (
+                      <button key={r.id} onClick={() => { onJoinRoom?.(r.id); setSearch(""); }}
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 text-xs font-bold text-accent border border-accent/20">{r.avatar}</div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{r.members || 0} members · Tap to join</span>
+                        </div>
+                        <MessageCircle className="h-4 w-4 text-accent" />
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
+
+              {/* Section: Users (for new DMs) */}
+              {(() => {
+                const users = searchResults.filter((r) => r.type === "user");
+                if (users.length === 0) return null;
+                return (
+                  <>
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 mt-2">
+                      <UserPlus className="h-3 w-3 text-primary" />
+                      <span className="text-[9px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">People</span>
+                    </div>
+                    {users.map((r) => (
+                      <button key={r.id} onClick={() => { onStartDm?.(r.id); setSearch(""); }}
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary-glow/10 text-xs font-bold text-primary border border-primary/20">{r.avatar}</div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
+                          <span className="text-[10px] text-muted-foreground">Tap to message</span>
+                        </div>
+                        <UserPlus className="h-4 w-4 text-primary" />
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
           {search.trim() && searching && (
