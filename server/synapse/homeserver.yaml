@@ -55,6 +55,11 @@ registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
 enable_set_displayname: true
 enable_set_avatar_url: true
 
+# --- Room Directory ---
+# Allow any user to publish rooms to the public directory
+allow_public_rooms_without_auth: true
+allow_public_rooms_over_federation: false
+
 # --- Security ---
 report_stats: false
 macaroon_secret_key: "${MACAROON_SECRET}"

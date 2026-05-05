@@ -614,6 +614,14 @@ export function MeshProvider({ session, children }: Props) {
           { type: "org.meshlink.room_type", content: { type: "group" }, state_key: "" },
         ],
       });
+      // Explicitly publish to room directory
+      try {
+        await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/list/room/${encodeURIComponent(resp.room_id)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
+          body: JSON.stringify({ visibility: "public" }),
+        });
+      } catch { /* non-critical */ }
       return resp.room_id;
     },
     [],
@@ -637,6 +645,14 @@ export function MeshProvider({ session, children }: Props) {
           { type: "org.meshlink.room_type", content: { type: "channel" }, state_key: "" },
         ],
       });
+      // Explicitly publish to room directory
+      try {
+        await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/list/room/${encodeURIComponent(resp.room_id)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
+          body: JSON.stringify({ visibility: "public" }),
+        });
+      } catch { /* non-critical */ }
       return resp.room_id;
     },
     [],
@@ -791,47 +807,92 @@ export function MeshProvider({ session, children }: Props) {
     }
   }, []);
 
-  // Search public rooms by name (with filter)
+  // Search public rooms by name (with filter + alias fallback)
   const searchRooms = useCallback(async (query: string): Promise<MeshRoom[]> => {
     const c = clientRef.current;
     if (!c || !query.trim()) return [];
+    const results: MeshRoom[] = [];
+    const baseUrl = c.getHomeserverUrl();
+    const token = c.getAccessToken();
+
+    // Method 1: publicRooms with filter
     try {
-      const baseUrl = c.getHomeserverUrl();
-      const token = c.getAccessToken();
-      // Use POST with filter for server-side search
       const resp = await fetch(`${baseUrl}/_matrix/client/v3/publicRooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          limit: 50,
-          filter: { generic_search_term: query },
-        }),
+        body: JSON.stringify({ limit: 50, filter: { generic_search_term: query } }),
       });
-      if (!resp.ok) return [];
-      const data = await resp.json() as any;
-      return (data.chunk || []).map((r: any) => {
-        const alias = r.canonical_alias || "";
-        const roomType = alias.includes("channel-") ? "channel" as const : "group" as const;
-        return {
-          id: r.room_id,
-          name: r.name || r.canonical_alias || "Unnamed",
-          avatar: getInitials(r.name || "??"),
-          avatarUrl: null,
-          type: roomType,
-          lastMessage: r.topic || "",
-          lastMessageTime: "",
-          unread: 0,
-          members: r.num_joined_members || 0,
-          online: false,
-        };
-      });
-    } catch {
-      return [];
+      if (resp.ok) {
+        const data = await resp.json() as any;
+        for (const r of (data.chunk || [])) {
+          const alias = r.canonical_alias || "";
+          results.push({
+            id: r.room_id,
+            name: r.name || r.canonical_alias || "Unnamed",
+            avatar: getInitials(r.name || "??"),
+            avatarUrl: null,
+            type: alias.includes("channel-") ? "channel" : "group",
+            lastMessage: r.topic || "",
+            lastMessageTime: "",
+            unread: 0,
+            members: r.num_joined_members || 0,
+            online: false,
+          });
+        }
+      }
+    } catch { /* continue to fallback */ }
+
+    // Method 2: Try alias lookup (works even without room directory)
+    if (results.length === 0) {
+      const slug = query.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const serverName = session.userId.split(":")[1] || "72.56.244.207";
+      const aliasesToTry = [
+        `#group-${slug}:${serverName}`,
+        `#channel-${slug}:${serverName}`,
+        `#${slug}:${serverName}`,
+      ];
+      for (const alias of aliasesToTry) {
+        try {
+          const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(alias)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (resp.ok) {
+            const data = await resp.json() as any;
+            if (data.room_id && !results.find((r) => r.id === data.room_id)) {
+              // Get room name
+              let roomName = query;
+              try {
+                const stateResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(data.room_id)}/state/m.room.name`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                if (stateResp.ok) {
+                  const nameData = await stateResp.json() as any;
+                  roomName = nameData.name || query;
+                }
+              } catch { /* use query as name */ }
+              results.push({
+                id: data.room_id,
+                name: roomName,
+                avatar: getInitials(roomName),
+                avatarUrl: null,
+                type: alias.includes("channel-") ? "channel" : "group",
+                lastMessage: "",
+                lastMessageTime: "",
+                unread: 0,
+                members: 0,
+                online: false,
+              });
+            }
+          }
+        } catch { /* alias not found, continue */ }
+      }
     }
-  }, [session.homeserverUrl]);
+
+    return results;
+  }, [session.homeserverUrl, session.userId]);
 
   const value: MeshContextValue = {
     client: clientRef.current,
