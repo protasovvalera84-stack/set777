@@ -16,6 +16,7 @@ const TicTacToe = lazy(() => import("@/components/TicTacToe").then(m => ({ defau
 const FeedPage = lazy(() => import("@/components/FeedPage").then(m => ({ default: m.FeedPage })));
 const BotApiPage = lazy(() => import("@/components/BotApiPage").then(m => ({ default: m.BotApiPage })));
 const HelpPage = lazy(() => import("@/components/HelpPage").then(m => ({ default: m.HelpPage })));
+const NotificationsPage = lazy(() => import("@/components/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -81,6 +82,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [feedOpen, setFeedOpen] = useState(false);
   const [botApiOpen, setBotApiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -586,6 +588,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <button onClick={() => setHelpOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Help">
               <span className="text-sm">❓</span>
             </button>
+            <button onClick={() => setNotificationsOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Notifications">
+              <span className="text-sm">🔔</span>
+            </button>
           </div>
         </div>
 
@@ -624,6 +629,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {feedOpen && <FeedPage open={feedOpen} onClose={() => setFeedOpen(false)} />}
         {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => setBotApiOpen(false)} />}
         {helpOpen && <HelpPage open={helpOpen} onClose={() => setHelpOpen(false)} />}
+        {notificationsOpen && <NotificationsPage open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />}
       </Suspense>
     </>
   );
