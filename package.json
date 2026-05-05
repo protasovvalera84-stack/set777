@@ -23,6 +23,7 @@
     "electron:build:all": "vite build && electron-builder --win --linux --x64"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",

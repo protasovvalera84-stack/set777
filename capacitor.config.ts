@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: true,
+    webContentsDebuggingEnabled: false,
   },
   plugins: {
     SplashScreen: {
@@ -20,6 +20,11 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
       backgroundColor: '#0a0a0f',
+    },
+    CapacitorSQLite: {
+      iosDatabaseLocation: 'Library/CapacitorDatabase',
+      iosIsEncryption: false,
+      androidIsEncryption: false,
     },
   },
 };
