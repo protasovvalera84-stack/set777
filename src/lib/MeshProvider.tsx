@@ -109,6 +109,15 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // Determine room type using multiple signals:
 
+  // 0. Check custom Meshlink room type (most reliable — set at creation)
+  let meshlinkType: string | null = null;
+  try {
+    const typeEvent = room.currentState.getStateEvents("org.meshlink.room_type", "");
+    if (typeEvent) {
+      meshlinkType = typeEvent.getContent()?.type || null;
+    }
+  } catch { /* ignore */ }
+
   // 1. Check join_rule
   let joinRule = "invite";
   try {
@@ -138,7 +147,11 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // 5. Determine final type
   let roomType: "dm" | "group" | "channel";
-  if (isMarkedDirect) {
+  if (meshlinkType === "group") {
+    roomType = "group";
+  } else if (meshlinkType === "channel") {
+    roomType = "channel";
+  } else if (isMarkedDirect) {
     // Explicitly marked as DM
     roomType = "dm";
   } else if (members.length === 2 && !room.isSpaceRoom() && !room.name) {
@@ -600,6 +613,7 @@ export function MeshProvider({ session, children }: Props) {
         invite: userIds,
         initial_state: [
           { type: "m.room.history_visibility", content: { history_visibility: "shared" }, state_key: "" },
+          { type: "org.meshlink.room_type", content: { type: "group" }, state_key: "" },
         ],
       });
       return resp.room_id;
@@ -622,6 +636,7 @@ export function MeshProvider({ session, children }: Props) {
         },
         initial_state: [
           { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
+          { type: "org.meshlink.room_type", content: { type: "channel" }, state_key: "" },
         ],
       });
       return resp.room_id;
@@ -697,24 +712,29 @@ export function MeshProvider({ session, children }: Props) {
 
   const getPublicRooms = useCallback(async (): Promise<MeshRoom[]> => {
     // Cache for 30 seconds
-    if (Date.now() - publicRoomsCache.current.ts < 30000) {
+    if (Date.now() - publicRoomsCache.current.ts < 10000) {
       return publicRoomsCache.current.data;
     }
     const c = clientRef.current;
     if (!c) return [];
     try {
-      const resp = await c.publicRooms({ limit: 50 });
-      const result = (resp.chunk || []).map((r) => ({
-        id: r.room_id,
-        name: r.name || r.canonical_alias || "Unnamed",
-        avatar: getInitials(r.name || "??"),
-        avatarUrl: null,
-        type: "group" as const,
-        lastMessage: r.topic || "",
-        lastMessageTime: "",
-        unread: 0,
-        members: r.num_joined_members || 0,
-      }));
+      const resp = await c.publicRooms({ limit: 100 });
+      const result = (resp.chunk || []).map((r) => {
+        const alias = r.canonical_alias || "";
+        const roomType = alias.includes("channel-") ? "channel" as const : "group" as const;
+        return {
+          id: r.room_id,
+          name: r.name || r.canonical_alias || "Unnamed",
+          avatar: getInitials(r.name || "??"),
+          avatarUrl: null,
+          type: roomType,
+          lastMessage: r.topic || "",
+          lastMessageTime: "",
+          unread: 0,
+          members: r.num_joined_members || 0,
+          online: false,
+        };
+      });
       publicRoomsCache.current = { data: result, ts: Date.now() };
       return result;
     } catch {
