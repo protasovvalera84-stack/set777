@@ -299,9 +299,25 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
   }
 
   let name = room.name || "Unnamed";
+
   if (roomType === "dm") {
+    // For DMs: show the OTHER person's name
     const other = members.find((m) => m.userId !== myUserId);
-    if (other) name = other.name || other.userId;
+    if (other) name = other.name || other.userId.split(":")[0].replace("@", "");
+  } else {
+    // For groups/channels: get name from m.room.name state event (most reliable)
+    try {
+      const nameEvent = room.currentState.getStateEvents("m.room.name", "");
+      if (nameEvent) {
+        const stateName = nameEvent.getContent()?.name;
+        if (stateName) name = stateName;
+      }
+    } catch { /* use room.name fallback */ }
+
+    // If name still looks like a user ID or user list, mark as unnamed
+    if (name.startsWith("@") || (name.includes(",") && name.includes("@"))) {
+      name = "Unnamed Group";
+    }
   }
 
   // Get room avatar URL

@@ -330,36 +330,38 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
       const rooms = mesh.client.getRooms();
       for (const room of rooms) {
         if (room.getMyMembership() !== "join") continue;
-        const name = room.name || "";
-        // Match by room name
-        if (name.toLowerCase().includes(lowerQuery)) {
+        const members = room.getJoinedMembers();
+        const isDm = members.length <= 2 && room.getJoinRule?.() !== "public";
+
+        // Get proper display name
+        let displayName = "";
+        if (isDm) {
+          // DM: show other person's name
+          const other = members.find((m) => m.userId !== mesh.userId);
+          displayName = other?.name || other?.userId?.split(":")[0].replace("@", "") || room.name || "";
+        } else {
+          // Group/Channel: get from state event first, then room.name
+          try {
+            const nameEvent = room.currentState.getStateEvents("m.room.name", "");
+            if (nameEvent) displayName = nameEvent.getContent()?.name || "";
+          } catch {}
+          if (!displayName) displayName = room.name || "";
+          // Skip if name looks like user list
+          if (displayName.startsWith("@") || (displayName.includes(",") && displayName.includes("@"))) continue;
+        }
+
+        if (!displayName) continue;
+
+        // Match by name
+        if (displayName.toLowerCase().includes(lowerQuery)) {
           if (!results.find((r) => r.id === room.roomId)) {
             results.push({
               type: "room",
               id: room.roomId,
-              name: name,
-              avatar: name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
+              name: displayName,
+              avatar: displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
               members: room.getJoinedMemberCount(),
             });
-          }
-        }
-        // Also match DMs by member names
-        const members = room.getJoinedMembers();
-        if (members.length <= 2) {
-          for (const m of members) {
-            if (m.userId === mesh.userId) continue;
-            const memberName = m.name || m.userId;
-            if (memberName.toLowerCase().includes(lowerQuery)) {
-              if (!results.find((r) => r.id === room.roomId)) {
-                results.push({
-                  type: "room",
-                  id: room.roomId,
-                  name: memberName,
-                  avatar: memberName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "??",
-                  members: 2,
-                });
-              }
-            }
           }
         }
       }
