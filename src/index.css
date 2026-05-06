@@ -392,3 +392,61 @@ button, [role="button"] {
   outline-offset: 2px;
   border-radius: 8px;
 }
+
+/* ===== MINIMAL MODE ===== */
+/* When body has class 'minimal-mode', disable all heavy visual effects */
+
+body.minimal-mode .glass,
+body.minimal-mode .glass-strong {
+  background: hsl(var(--background)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.minimal-mode .gradient-primary {
+  background: hsl(var(--primary)) !important;
+}
+
+body.minimal-mode .gradient-text {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: hsl(var(--primary)) !important;
+}
+
+body.minimal-mode .shadow-glow,
+body.minimal-mode .shadow-elegant {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+body.minimal-mode .animate-pulse,
+body.minimal-mode .animate-bounce,
+body.minimal-mode .animate-fade-in-up {
+  animation: none !important;
+}
+
+body.minimal-mode [class*="blur-"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.minimal-mode .bg-gradient-to-br,
+body.minimal-mode .bg-gradient-to-r {
+  background: hsl(var(--secondary)) !important;
+}
+
+/* Minimal mode: bigger input */
+body.minimal-mode .chat-input input {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  font-size: 1rem !important;
+}
+
+/* Minimal mode: cleaner borders */
+body.minimal-mode [class*="border-border/"] {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Minimal mode: no decorative backgrounds */
+body.minimal-mode .pointer-events-none[class*="blur"] {
+  display: none !important;
+}

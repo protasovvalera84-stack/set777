@@ -17,8 +17,10 @@ type PaletteColors = {
 type ThemeContextType = {
   palette: string;
   mode: "dark" | "light";
+  minimalMode: boolean;
   setPalette: (id: string) => void;
   toggleMode: () => void;
+  toggleMinimalMode: () => void;
   palettes: PaletteInfo[];
 };
 
@@ -86,8 +88,10 @@ const defaultPalettes: PaletteInfo[] = [
 const ThemeContext = createContext<ThemeContextType>({
   palette: "violet",
   mode: "dark",
+  minimalMode: false,
   setPalette: () => {},
   toggleMode: () => {},
+  toggleMinimalMode: () => {},
   palettes: defaultPalettes,
 });
 
@@ -153,6 +157,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     typeof window !== "undefined" ? localStorage.getItem("meshlink-palette") || "violet" : "violet",
   );
   const [mode, setMode] = useState<"dark" | "light">(getInitialMode);
+  const [minimalMode, setMinimalMode] = useState(() => localStorage.getItem("meshlink-minimal") === "true");
 
   const setPalette = (id: string) => {
     setPaletteState(id);
@@ -166,6 +171,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
+
+  const toggleMinimalMode = () => {
+    setMinimalMode((prev) => {
+      const next = !prev;
+      localStorage.setItem("meshlink-minimal", String(next));
+      if (next) {
+        document.body.classList.add("minimal-mode");
+      } else {
+        document.body.classList.remove("minimal-mode");
+      }
+      return next;
+    });
+  };
+
+  // Apply minimal mode on mount
+  React.useEffect(() => {
+    if (minimalMode) document.body.classList.add("minimal-mode");
+    else document.body.classList.remove("minimal-mode");
+  }, [minimalMode]);
 
   // Auto-theme by time of day (if enabled)
   React.useEffect(() => {
@@ -196,7 +220,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [mode, palette]);
 
   return (
-    <ThemeContext.Provider value={{ palette, mode, setPalette, toggleMode, palettes: defaultPalettes }}>
+    <ThemeContext.Provider value={{ palette, mode, minimalMode, setPalette, toggleMode, toggleMinimalMode, palettes: defaultPalettes }}>
       {children}
     </ThemeContext.Provider>
   );
