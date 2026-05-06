@@ -1112,6 +1112,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
     <div
       ref={bubbleRef}
       className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-fade-in-up`}
+      data-msg-id={message.id}
       style={{ animationDelay: `${index * 30}ms`, transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.2s" : "none" }}
       onDoubleClick={() => { if (isOwn && message.text) setIsEditing(true); }}
       onTouchStart={(e) => {
@@ -1158,9 +1159,21 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         )}
         {/* Quote (replied-to message) */}
         {message.text?.startsWith("> ") && (
-          <div className={`rounded-lg px-2 py-1 mb-1 border-l-2 ${isOwn ? "border-white/40 bg-white/10" : "border-primary/40 bg-primary/5"}`}>
+          <div onClick={() => {
+            // Try to scroll to the original message
+            const quoteText = message.text?.split("\n")[0].replace(/^> /, "") || "";
+            const allMsgs = document.querySelectorAll("[data-msg-id]");
+            for (const el of allMsgs) {
+              if (el.textContent?.includes(quoteText.slice(0, 30))) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                (el as HTMLElement).style.background = "rgba(var(--primary), 0.1)";
+                setTimeout(() => { (el as HTMLElement).style.background = ""; }, 2000);
+                break;
+              }
+            }
+          }} className={`rounded-lg px-2 py-1 mb-1 border-l-2 cursor-pointer hover:opacity-80 ${isOwn ? "border-white/40 bg-white/10" : "border-primary/40 bg-primary/5"}`}>
             <p className={`text-[10px] truncate ${isOwn ? "text-white/60" : "text-muted-foreground"}`}>
-              {message.text.split("\n")[0].replace(/^> /, "")}
+              ↩ {message.text.split("\n")[0].replace(/^> /, "")}
             </p>
           </div>
         )}
