@@ -64,7 +64,7 @@ export function CreateChatDialog({ open, type, onClose, onCreate }: CreateChatDi
 
     const newChat: Chat = {
       id: `chat-${Date.now()}`,
-      name: type === "channel" ? `# ${name.trim()}` : name.trim(),
+      name: name.trim(),
       avatar: initials || "??",
       avatarUrl,
       type,
