@@ -87,6 +87,9 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const [docEditorOpen, setDocEditorOpen] = useState(false);
   const virtuosoRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isVideoRecording, setIsVideoRecording] = useState(false);
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -746,6 +749,36 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           <button onClick={isRecording ? stopRecording : startRecording} className={`flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover ${isRecording ? "text-destructive animate-pulse" : ""}`} title={isRecording ? `${recordingDuration}s` : "Voice"}>
             <Mic className={`h-4 w-4 ${isRecording ? "text-destructive" : "text-muted-foreground"}`} />
           </button>
+          {/* Video note (circular video) */}
+          <button onClick={async () => {
+            if (isVideoRecording) {
+              // Stop recording
+              videoRecorderRef.current?.stop();
+              setIsVideoRecording(false);
+            } else {
+              // Start recording
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 240, height: 240, facingMode: "user" }, audio: true });
+                videoStreamRef.current = stream;
+                const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+                const chunks: Blob[] = [];
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                recorder.onstop = () => {
+                  stream.getTracks().forEach((t) => t.stop());
+                  const blob = new Blob(chunks, { type: "video/webm" });
+                  const url = URL.createObjectURL(blob);
+                  onSendMessage(chat.id, "🎥 Video note", [{ id: `vn-${Date.now()}`, type: "video", name: "video-note.webm", url, size: blob.size, mimeType: "video/webm" }], activeTopic);
+                };
+                recorder.start();
+                videoRecorderRef.current = recorder;
+                setIsVideoRecording(true);
+                // Auto-stop after 60 seconds
+                setTimeout(() => { if (recorder.state === "recording") { recorder.stop(); setIsVideoRecording(false); } }, 60000);
+              } catch { /* camera not available */ }
+            }
+          }} className={`flex-shrink-0 rounded-full p-1.5 hover:bg-surface-hover ${isVideoRecording ? "text-destructive animate-pulse ring-2 ring-destructive" : ""}`} title="Video note">
+            <Video className={`h-4 w-4 ${isVideoRecording ? "text-destructive" : "text-muted-foreground"}`} />
+          </button>
           <button onClick={() => {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition((pos) => {
@@ -1212,6 +1245,12 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
           <div className={`message-actions mt-1 flex items-center gap-1 text-[10px] flex-wrap ${isOwn ? "text-white/40" : "text-muted-foreground/40"}`}>
             {onReply && (
               <button onClick={() => onReply(message)} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Reply">↩</button>
+            )}
+            {onReply && chatType === "group" && (
+              <button onClick={() => {
+                // Open thread view — reply with thread marker
+                if (onReply) onReply({ ...message, text: `[thread:${message.id}] ${message.text}` });
+              }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Thread">🧵</button>
             )}
             {onForward && (
               <button onClick={() => onForward(message)} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Forward">↪</button>
