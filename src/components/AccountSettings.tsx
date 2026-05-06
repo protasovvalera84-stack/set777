@@ -441,7 +441,7 @@ function PrivacyToggle({ icon, label, sub, checked, onChange }: {
 
 /* ===== Appearance Section (inside Edit Profile) ===== */
 function AppearanceSection() {
-  const { palette, mode, setPalette, toggleMode, palettes } = useTheme();
+  const { palette, mode, minimalMode, setPalette, toggleMode, toggleMinimalMode, palettes } = useTheme();
 
   return (
     <div className="border-t border-border/40 pt-4">
@@ -467,6 +467,18 @@ function AppearanceSection() {
           }`}
         >
           <Sun className="h-3.5 w-3.5" /> Light
+        </button>
+      </div>
+
+      {/* Interface Mode */}
+      <div className="flex items-center justify-between mt-4 mb-3">
+        <div>
+          <p className="text-xs font-medium text-foreground">Minimal Mode</p>
+          <p className="text-[10px] text-muted-foreground">Clean UI, no effects (faster)</p>
+        </div>
+        <button onClick={toggleMinimalMode}
+          className={`relative h-6 w-11 rounded-full transition-all ${minimalMode ? "bg-primary" : "bg-secondary"}`}>
+          <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${minimalMode ? "left-[22px]" : "left-0.5"}`} />
         </button>
       </div>
 
