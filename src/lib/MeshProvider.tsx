@@ -227,12 +227,20 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
 
   // Determine room type using multiple signals:
 
-  // 0. Check custom Meshlink room type (most reliable — set at creation)
+  // 0. Check custom Meshlink space type (most reliable — set at creation)
   let meshlinkType: string | null = null;
   try {
-    const typeEvent = room.currentState.getStateEvents("org.meshlink.room_type", "");
-    if (typeEvent) {
-      meshlinkType = typeEvent.getContent()?.type || null;
+    // New format: org.meshlink.space
+    const spaceEvent = room.currentState.getStateEvents("org.meshlink.space", "");
+    if (spaceEvent) {
+      meshlinkType = spaceEvent.getContent()?.type || null;
+    }
+    // Fallback: old format org.meshlink.room_type
+    if (!meshlinkType) {
+      const typeEvent = room.currentState.getStateEvents("org.meshlink.room_type", "");
+      if (typeEvent) {
+        meshlinkType = typeEvent.getContent()?.type || null;
+      }
     }
   } catch { /* ignore */ }
 
@@ -759,27 +767,38 @@ export function MeshProvider({ session, children }: Props) {
     async (name: string, userIds: string[]): Promise<string> => {
       const c = clientRef.current;
       if (!c) throw new Error("Not connected");
+      const serverName = session.userId.split(":")[1];
+      const slug = `group-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`;
+
       const resp = await c.createRoom({
         name,
         preset: "public_chat" as sdk.Preset,
         visibility: "public" as sdk.Visibility,
-        room_alias_name: `group-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
+        room_alias_name: slug,
         invite: userIds,
         initial_state: [
           { type: "m.room.history_visibility", content: { history_visibility: "shared" }, state_key: "" },
-          { type: "org.meshlink.room_type", content: { type: "group" }, state_key: "" },
+          { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
+          // Space model: type + visibility + access + metadata
+          { type: "org.meshlink.space", content: {
+            type: "group",
+            visibility: "public",
+            access: "open",
+            owner: session.userId,
+            slug,
+            created: Date.now(),
+          }, state_key: "" },
         ],
+        power_level_content_override: {
+          events_default: 0,  // Everyone can send messages
+          state_default: 50,  // Only admins change settings
+          ban: 50,
+          kick: 50,
+          invite: 0,          // Anyone can invite
+        },
       });
-      // Explicitly publish to room directory
-      try {
-        await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/list/room/${encodeURIComponent(resp.room_id)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
-          body: JSON.stringify({ visibility: "public" }),
-        });
-      } catch { /* non-critical */ }
+
       // Register in Meshlink registry for discoverability
-      const serverName = session.userId.split(":")[1];
       await registerInRegistry(c.getHomeserverUrl(), c.getAccessToken() || "", serverName, resp.room_id, name, "group");
       return resp.room_id;
     },
@@ -790,30 +809,37 @@ export function MeshProvider({ session, children }: Props) {
     async (name: string): Promise<string> => {
       const c = clientRef.current;
       if (!c) throw new Error("Not connected");
+      const serverName = session.userId.split(":")[1];
+      const slug = `channel-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`;
+
       const resp = await c.createRoom({
         name,
         preset: "public_chat" as sdk.Preset,
         visibility: "public" as sdk.Visibility,
-        room_alias_name: `channel-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).slice(-4)}`,
-        power_level_content_override: {
-          events_default: 50, // Only moderators+ can send messages
-          invite: 50,
-        },
+        room_alias_name: slug,
         initial_state: [
           { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
-          { type: "org.meshlink.room_type", content: { type: "channel" }, state_key: "" },
+          { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
+          // Space model: type + visibility + access + metadata
+          { type: "org.meshlink.space", content: {
+            type: "channel",
+            visibility: "public",
+            access: "open",
+            owner: session.userId,
+            slug,
+            created: Date.now(),
+          }, state_key: "" },
         ],
+        power_level_content_override: {
+          events_default: 50, // Only admins can post
+          state_default: 50,
+          ban: 50,
+          kick: 50,
+          invite: 50,
+        },
       });
-      // Explicitly publish to room directory
-      try {
-        await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/directory/list/room/${encodeURIComponent(resp.room_id)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` },
-          body: JSON.stringify({ visibility: "public" }),
-        });
-      } catch { /* non-critical */ }
+
       // Register in Meshlink registry
-      const serverName = session.userId.split(":")[1];
       await registerInRegistry(c.getHomeserverUrl(), c.getAccessToken() || "", serverName, resp.room_id, name, "channel");
       return resp.room_id;
     },
