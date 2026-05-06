@@ -1173,24 +1173,36 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             const question = lines[0]?.replace("📊 **", "").replace("**", "").replace("📊 ", "") || "Poll";
             const options = lines.slice(1).filter((l) => /^\d+\./.test(l.trim())).map((l) => l.replace(/^\d+\.\s*/, "").trim());
             if (options.length >= 2) {
+              // Count votes from reactions on this message
+              const voteEmojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
               return (
                 <div className="mt-1">
                   <p className={`text-sm font-semibold mb-2 ${isOwn ? "text-white" : "text-foreground"}`}>📊 {question}</p>
                   <div className="space-y-1.5">
-                    {options.map((opt, oi) => (
-                      <button key={oi} onClick={() => {
-                        if (mesh.client && roomId) {
-                          mesh.client.sendEvent(roomId, "m.room.message" as any, {
-                            msgtype: "m.text",
-                            body: `Vote: ${opt}`,
-                            "m.relates_to": { "m.in_reply_to": { event_id: message.id } },
-                          }).catch(() => {});
-                        }
-                      }} className={`w-full text-left rounded-xl px-3 py-2 text-xs border transition-all ${isOwn ? "border-white/20 hover:bg-white/10 text-white" : "border-border/30 hover:bg-surface-hover text-foreground"}`}>
-                        {oi + 1}. {opt}
-                      </button>
-                    ))}
+                    {options.map((opt, oi) => {
+                      const emoji = voteEmojis[oi] || `${oi + 1}`;
+                      const voted = reactions.includes(emoji);
+                      return (
+                        <button key={oi} onClick={() => {
+                          if (mesh.client && roomId) {
+                            // Use reaction instead of separate message
+                            mesh.client.sendEvent(roomId, "m.reaction" as any, {
+                              "m.relates_to": { rel_type: "m.annotation", event_id: message.id, key: emoji },
+                            }).catch(() => {});
+                            setReactions((prev) => prev.includes(emoji) ? prev : [...prev, emoji]);
+                          }
+                        }} className={`w-full text-left rounded-xl px-3 py-2 text-xs border transition-all ${voted ? (isOwn ? "border-white/60 bg-white/20 text-white" : "border-primary/60 bg-primary/10 text-foreground") : (isOwn ? "border-white/20 hover:bg-white/10 text-white" : "border-border/30 hover:bg-surface-hover text-foreground")}`}>
+                          <span className="mr-2">{emoji}</span> {opt}
+                          {voted && <span className="ml-2 text-[9px] opacity-60">✓ voted</span>}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {reactions.length > 0 && (
+                    <p className={`text-[9px] mt-2 ${isOwn ? "text-white/50" : "text-muted-foreground"}`}>
+                      {reactions.length} vote{reactions.length > 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
               );
             }
@@ -1262,11 +1274,25 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             <button onClick={() => {
               try { const saved = JSON.parse(localStorage.getItem("meshlink-bookmarks") || "[]"); saved.unshift({ text: message.text, timestamp: message.timestamp, id: message.id }); localStorage.setItem("meshlink-bookmarks", JSON.stringify(saved.slice(0, 100))); } catch {}
             }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Save">🔖</button>
-            <button onClick={() => {
+            <button onClick={async () => {
               const text = message.text;
-              const lang = navigator.language.startsWith("ru") ? "ru" : "en";
-              const target = lang === "ru" ? "en" : "ru";
-              window.open(`https://translate.google.com/?sl=auto&tl=${target}&text=${encodeURIComponent(text)}`, "_blank");
+              if (!text) return;
+              const userLang = navigator.language.startsWith("ru") ? "ru" : "en";
+              const target = userLang === "ru" ? "en" : "ru";
+              try {
+                // Use free MyMemory translation API (no key needed)
+                const resp = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=auto|${target}`);
+                const data = await resp.json();
+                const translated = data?.responseData?.translatedText;
+                if (translated) {
+                  // Show translation below the message
+                  const el = document.createElement("div");
+                  el.className = `mt-1 px-2 py-1 rounded-lg text-[11px] ${isOwn ? "bg-white/10 text-white/80" : "bg-primary/5 text-foreground/80"} border border-border/20`;
+                  el.innerHTML = `<span class="text-[9px] opacity-50">🌐 ${target.toUpperCase()}:</span> ${translated}`;
+                  const btn = document.querySelector(`[data-msg-id="${message.id}"]`);
+                  if (btn) btn.appendChild(el);
+                }
+              } catch { /* translation failed */ }
             }} className={`px-1.5 py-0.5 rounded ${isOwn ? "hover:text-white/80 hover:bg-white/10" : "hover:text-muted-foreground hover:bg-surface-hover"}`} title="Translate">🌐</button>
             {isOwn && (
               <>
@@ -1280,11 +1306,17 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         {/* Reactions display */}
         {reactions.length > 0 && (
           <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-            {reactions.map((r, i) => (
-              <span key={i} className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-xs">
-                {r}
-              </span>
-            ))}
+            {(() => {
+              // Aggregate reactions: count duplicates
+              const counts = new Map<string, number>();
+              for (const r of reactions) counts.set(r, (counts.get(r) || 0) + 1);
+              return Array.from(counts.entries()).map(([emoji, count]) => (
+                <span key={emoji} className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+                  onClick={() => sendReaction(emoji)}>
+                  {emoji} {count > 1 && <span className="text-[9px] font-medium text-primary">{count}</span>}
+                </span>
+              ));
+            })()}
           </div>
         )}
 
