@@ -338,11 +338,76 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
           {page === "privacy" && (
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">Control who can access this {isChannel ? "channel" : "group"}.</p>
-              <PrivacyRow label="Who can send messages" value={isChannel ? "Admins only" : "All members"} />
-              <PrivacyRow label="Who can add members" value="All members" />
-              <PrivacyRow label="Who can edit info" value="Admins only" />
-              <PrivacyRow label="Who can pin messages" value="Admins only" />
-              <PrivacyRow label="Content visibility" value="Members only" />
+
+              {/* Visibility */}
+              <div>
+                <p className="text-[9px] font-mono uppercase text-muted-foreground mb-2">Visibility</p>
+                <div className="space-y-1.5">
+                  {[
+                    { id: "public", label: "Public", desc: "Anyone can find and join" },
+                    { id: "private", label: "Private", desc: "Only via invite link" },
+                    { id: "hidden", label: "Hidden", desc: "Not visible in search" },
+                  ].map((opt) => (
+                    <button key={opt.id} onClick={() => {
+                      if (mesh.client) {
+                        const joinRule = opt.id === "public" ? "public" : "invite";
+                        mesh.client.sendStateEvent(chat.id, "m.room.join_rules", { join_rule: joinRule }, "").catch(() => {});
+                        mesh.client.sendStateEvent(chat.id, "org.meshlink.space", {
+                          type: isChannel ? "channel" : "group",
+                          visibility: opt.id,
+                          access: opt.id === "public" ? "open" : "invite-only",
+                        }, "").catch(() => {});
+                      }
+                    }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 border border-border/30 hover:bg-surface-hover text-left transition-all">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Access */}
+              <div>
+                <p className="text-[9px] font-mono uppercase text-muted-foreground mb-2">Who can join</p>
+                <div className="space-y-1.5">
+                  {[
+                    { id: "open", label: "Open", desc: "Anyone can join without approval" },
+                    { id: "approval", label: "Approval required", desc: "Admin must approve requests" },
+                    { id: "invite-only", label: "Invite only", desc: "Only invited users can join" },
+                  ].map((opt) => (
+                    <button key={opt.id} onClick={() => {
+                      if (mesh.client) {
+                        mesh.client.sendStateEvent(chat.id, "org.meshlink.space", {
+                          type: isChannel ? "channel" : "group",
+                          access: opt.id,
+                        }, "").catch(() => {});
+                        if (opt.id === "invite-only") {
+                          mesh.client.sendStateEvent(chat.id, "m.room.join_rules", { join_rule: "invite" }, "").catch(() => {});
+                        }
+                      }
+                    }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 border border-border/30 hover:bg-surface-hover text-left transition-all">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div>
+                <p className="text-[9px] font-mono uppercase text-muted-foreground mb-2">Permissions</p>
+                <div className="space-y-1.5">
+                  <PrivacyRow label="Who can send messages" value={isChannel ? "Admins only" : "All members"} />
+                  <PrivacyRow label="Who can add members" value="All members" />
+                  <PrivacyRow label="Who can edit info" value="Admins only" />
+                  <PrivacyRow label="Who can pin messages" value="Admins only" />
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 mt-4">
                 <Lock className="h-4 w-4 text-primary flex-shrink-0" />
                 <p className="text-[11px] text-muted-foreground">All messages are end-to-end encrypted</p>
