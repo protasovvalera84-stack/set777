@@ -1157,8 +1157,8 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             {message.senderId.charAt(0).toUpperCase() + message.senderId.slice(1)}
           </p>
         )}
-        {/* Quote (replied-to message) */}
-        {message.text?.startsWith("> ") && (
+        {/* Quote (replied-to message) — from replyToText OR from "> " prefix */}
+        {(message.replyToText || message.text?.startsWith("> ")) && (
           <div onClick={() => {
             // Try to scroll to the original message
             const quoteText = message.text?.split("\n")[0].replace(/^> /, "") || "";
@@ -1173,7 +1173,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             }
           }} className={`rounded-lg px-2 py-1 mb-1 border-l-2 cursor-pointer hover:opacity-80 ${isOwn ? "border-white/40 bg-white/10" : "border-primary/40 bg-primary/5"}`}>
             <p className={`text-[10px] truncate ${isOwn ? "text-white/60" : "text-muted-foreground"}`}>
-              ↩ {message.text.split("\n")[0].replace(/^> /, "")}
+              ↩ {message.replyToText || message.text?.split("\n")[0].replace(/^> /, "")}
             </p>
           </div>
         )}
@@ -1316,13 +1316,22 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
           </div>
         )}
 
-        {/* Reactions display */}
-        {reactions.length > 0 && (
+        {/* Reactions display (from server + local) */}
+        {(reactions.length > 0 || (message.reactions && Object.keys(message.reactions).length > 0)) && (
           <div className="flex items-center gap-1 mt-1.5 flex-wrap">
             {(() => {
-              // Aggregate reactions: count duplicates
+              // Merge server reactions + local reactions
               const counts = new Map<string, number>();
-              for (const r of reactions) counts.set(r, (counts.get(r) || 0) + 1);
+              // Server reactions (from Matrix m.reaction events)
+              if (message.reactions) {
+                for (const [emoji, count] of Object.entries(message.reactions)) {
+                  counts.set(emoji, count);
+                }
+              }
+              // Local reactions (added this session)
+              for (const r of reactions) {
+                if (!counts.has(r)) counts.set(r, 1);
+              }
               return Array.from(counts.entries()).map(([emoji, count]) => (
                 <span key={emoji} className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-xs cursor-pointer hover:bg-primary/20 transition-colors"
                   onClick={() => sendReaction(emoji)}>

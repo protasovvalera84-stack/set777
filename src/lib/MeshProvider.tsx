@@ -176,6 +176,9 @@ export interface MeshMessage {
   mediaUrl?: string;
   mediaType?: "image" | "video" | "audio";
   mediaName?: string;
+  replyToId?: string;
+  replyToText?: string;
+  reactions?: Record<string, number>; // emoji → count
 }
 
 /* ------------------------------------------------------------------ */
@@ -413,6 +416,24 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   // Read topic ID from custom field
   const topicId = (content as Record<string, unknown>)["org.meshlink.topic_id"] as string | undefined;
 
+  // Extract reply-to info
+  let replyToId: string | undefined;
+  let replyToText: string | undefined;
+  const relatesTo = content["m.relates_to"] as any;
+  if (relatesTo?.["m.in_reply_to"]?.event_id) {
+    replyToId = relatesTo["m.in_reply_to"].event_id;
+    // Try to get the original message text from the room timeline
+    try {
+      const room = client.getRoom(evt.getRoomId()!);
+      if (room) {
+        const origEvent = room.findEventById(replyToId!);
+        if (origEvent) {
+          replyToText = origEvent.getContent()?.body?.slice(0, 100) || "";
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
   return {
     id: evt.getId()!,
     senderId,
@@ -424,6 +445,8 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
     mediaUrl,
     mediaType,
     mediaName,
+    replyToId,
+    replyToText,
   };
 }
 
@@ -668,9 +691,33 @@ export function MeshProvider({ session, children }: Props) {
       const room = c.getRoom(roomId);
       if (!room) return [];
       const events = room.getLiveTimeline().getEvents();
-      return events
+
+      // Collect reactions (m.reaction events)
+      const reactionMap = new Map<string, Record<string, number>>(); // msgId → {emoji: count}
+      for (const e of events) {
+        if (e.getType() === "m.reaction") {
+          const rel = e.getContent()?.["m.relates_to"];
+          if (rel?.rel_type === "m.annotation" && rel.event_id && rel.key) {
+            const existing = reactionMap.get(rel.event_id) || {};
+            existing[rel.key] = (existing[rel.key] || 0) + 1;
+            reactionMap.set(rel.event_id, existing);
+          }
+        }
+      }
+
+      // Build messages (skip reaction events)
+      const messages = events
+        .filter((e) => e.getType() === "m.room.message")
         .map((e) => eventToMesh(e, c))
         .filter((m): m is MeshMessage => m !== null);
+
+      // Attach reactions to messages
+      for (const msg of messages) {
+        const reactions = reactionMap.get(msg.id);
+        if (reactions) msg.reactions = reactions;
+      }
+
+      return messages;
     },
     [],
   );
