@@ -427,7 +427,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                     </div>
                     {myChats.map((r) => (
                       <button key={r.id} onClick={() => { onJoinRoom?.(r.id); setSearch(""); }}
-                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-surface-hover active:scale-[0.98] transition-all">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary-glow/5 text-xs font-bold text-primary border border-primary/20">{r.avatar}</div>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
@@ -451,7 +451,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                     </div>
                     {publicRooms.map((r) => (
                       <button key={r.id} onClick={() => { onJoinRoom?.(r.id); setSearch(""); }}
-                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-surface-hover active:scale-[0.98] transition-all">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 text-xs font-bold text-accent border border-accent/20">{r.avatar}</div>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
@@ -476,7 +476,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                     </div>
                     {users.map((r) => (
                       <button key={r.id} onClick={() => { onStartDm?.(r.id); setSearch(""); }}
-                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-surface-hover transition-all">
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-surface-hover active:scale-[0.98] transition-all">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-primary-glow/10 text-xs font-bold text-primary border border-primary/20">{r.avatar}</div>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-foreground truncate block">{r.name}</span>
@@ -557,7 +557,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
 
         {/* Quick access toolbar (2 rows of 5) */}
         <div className="border-t border-border/40 px-2 py-1.5 glass">
-          <div className="grid grid-cols-5 gap-0.5">
+          <div className="grid grid-cols-5 gap-1">
             <button onClick={() => setContactsOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Contacts">
               <span className="text-sm">👥</span>
             </button>

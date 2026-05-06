@@ -331,3 +331,64 @@ html { scrollbar-gutter: stable; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 4px; }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.5); }
+
+/* ===== MOBILE UX IMPROVEMENTS ===== */
+
+/* Minimum touch target size (Apple HIG: 44px) */
+@media (pointer: coarse) {
+  button, [role="button"], a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Active state for touch (replaces hover) */
+  button:active, [role="button"]:active {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  
+  /* Disable hover effects on touch devices */
+  .hover\:bg-surface-hover:hover {
+    background: inherit;
+  }
+}
+
+/* Active feedback for ALL interactive elements */
+button:active, [role="button"]:active {
+  transition: transform 0.1s ease;
+}
+
+/* Prevent text selection on buttons */
+button, [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area for notched phones (iPhone X+) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (pointer: coarse) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth keyboard appearance */
+.chat-input {
+  transition: padding-bottom 0.3s ease;
+}
+
+/* Better focus indicators for accessibility */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
