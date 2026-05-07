@@ -424,6 +424,7 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   const relatesTo = wireContent["m.relates_to"] || content["m.relates_to"] as any;
   if (relatesTo?.["m.in_reply_to"]?.event_id) {
     replyToId = relatesTo["m.in_reply_to"].event_id;
+    console.log(`[MESHLINK DEBUG] Reply detected: msg="${text?.slice(0,30)}" replyTo=${replyToId?.slice(0,20)}`);
     // Try to get the original message text from the room timeline
     try {
       const room = client.getRoom(evt.getRoomId()!);
@@ -439,10 +440,13 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
           const origBody = origEvent.getContent()?.body;
           if (typeof origBody === "string") {
             replyToText = origBody.slice(0, 100);
+            console.log(`[MESHLINK DEBUG] Found original: "${replyToText?.slice(0,30)}"`);
           }
+        } else {
+          console.log(`[MESHLINK DEBUG] Original event NOT FOUND in timeline`);
         }
       }
-    } catch { /* ignore */ }
+    } catch (err) { console.warn("[MESHLINK DEBUG] Error finding original:", err); }
   }
 
   return {
@@ -723,6 +727,9 @@ export function MeshProvider({ session, children }: Props) {
         .filter((m): m is MeshMessage => m !== null);
 
       // Attach reactions to messages
+      if (reactionMap.size > 0) {
+        console.log(`[MESHLINK DEBUG] Reactions found: ${reactionMap.size} messages have reactions`);
+      }
       for (const msg of messages) {
         const reactions = reactionMap.get(msg.id);
         if (reactions) msg.reactions = reactions;
