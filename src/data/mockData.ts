@@ -15,6 +15,9 @@ export interface Message {
   read: boolean;
   media?: MediaAttachment[];
   topicId?: string | null;
+  replyToId?: string;
+  replyToText?: string;
+  reactions?: Record<string, number>;
 }
 
 export interface Topic {

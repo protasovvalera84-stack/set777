@@ -110,6 +110,9 @@ const Index = ({ initialProfile, onProfileChange, onLogout }: IndexProps = {}) =
         timestamp: m.timestamp,
         read: true,
         topicId: m.topicId || msgTopicMap[m.id] || undefined,
+        replyToId: m.replyToId,
+        replyToText: m.replyToText,
+        reactions: m.reactions,
         media: m.mediaUrl ? [{
           id: m.id + "-media",
           type: m.mediaType || "image" as const,
