@@ -1043,7 +1043,17 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
   const hasMedia = message.media && message.media.length > 0;
   const mesh = useMesh();
 
-  const [reactions, setReactions] = useState<string[]>([]);
+  const [reactions, setReactions] = useState<string[]>(() => {
+    // Initialize from server reactions
+    if (message.reactions) {
+      const initial: string[] = [];
+      for (const [emoji, count] of Object.entries(message.reactions)) {
+        for (let i = 0; i < count; i++) initial.push(emoji);
+      }
+      return initial;
+    }
+    return [];
+  });
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
