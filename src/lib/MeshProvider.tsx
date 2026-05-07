@@ -419,16 +419,27 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   // Extract reply-to info
   let replyToId: string | undefined;
   let replyToText: string | undefined;
-  const relatesTo = content["m.relates_to"] as any;
+  // Matrix SDK stores m.relates_to in wireContent, not always in getContent()
+  const wireContent = (evt as any).getWireContent?.() || content;
+  const relatesTo = wireContent["m.relates_to"] || content["m.relates_to"] as any;
   if (relatesTo?.["m.in_reply_to"]?.event_id) {
     replyToId = relatesTo["m.in_reply_to"].event_id;
     // Try to get the original message text from the room timeline
     try {
       const room = client.getRoom(evt.getRoomId()!);
       if (room) {
-        const origEvent = room.findEventById(replyToId!);
+        // Try findEventById first
+        let origEvent = room.findEventById(replyToId!);
+        // Fallback: search timeline manually
+        if (!origEvent) {
+          const tl = room.getLiveTimeline().getEvents();
+          origEvent = tl.find((e) => e.getId() === replyToId) || null;
+        }
         if (origEvent) {
-          replyToText = origEvent.getContent()?.body?.slice(0, 100) || "";
+          const origBody = origEvent.getContent()?.body;
+          if (typeof origBody === "string") {
+            replyToText = origBody.slice(0, 100);
+          }
         }
       }
     } catch { /* ignore */ }
@@ -696,7 +707,7 @@ export function MeshProvider({ session, children }: Props) {
       const reactionMap = new Map<string, Record<string, number>>(); // msgId → {emoji: count}
       for (const e of events) {
         if (e.getType() === "m.reaction") {
-          const rel = e.getContent()?.["m.relates_to"];
+          const rel = ((e as any).getWireContent?.() || e.getContent())?.["m.relates_to"] || e.getContent()?.["m.relates_to"];
           if (rel?.rel_type === "m.annotation" && rel.event_id && rel.key) {
             const existing = reactionMap.get(rel.event_id) || {};
             existing[rel.key] = (existing[rel.key] || 0) + 1;
