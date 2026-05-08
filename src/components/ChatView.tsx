@@ -717,7 +717,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           <div className="w-0.5 h-6 rounded-full bg-primary" />
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-primary font-medium">Reply to {replyTo.senderId === "me" ? "yourself" : replyTo.senderId}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{replyTo.text || "[media]"}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{(replyTo.text || "[media]").replace(/\[thread:[^\]]+\]\s*/g, "")}</p>
           </div>
           <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-surface-hover rounded-lg">
             <X className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1188,7 +1188,9 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
           </div>
         )}
         {message.text && !isEditing && (() => {
-          const displayText = message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text;
+          let displayText = message.text.startsWith("> ") ? message.text.split("\n").slice(1).join("\n").trim() : message.text;
+          // Hide thread markers from display
+          displayText = displayText.replace(/\[thread:[^\]]+\]\s*/g, "");
 
           // Interactive poll detection (📊 prefix)
           if (displayText.startsWith("📊")) {
