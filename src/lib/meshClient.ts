@@ -91,6 +91,7 @@ export async function createClientWithStore(session: MeshlinkSession): Promise<M
         deviceId: session.deviceId,
         store,
         timelineSupport: true,
+        pendingEventOrdering: "detached" as any,
       });
     }
   } catch (err) {
@@ -103,6 +104,7 @@ export async function createClientWithStore(session: MeshlinkSession): Promise<M
     accessToken: session.accessToken,
     userId: session.userId,
     deviceId: session.deviceId,
+    pendingEventOrdering: "detached" as any,
   });
 }
 

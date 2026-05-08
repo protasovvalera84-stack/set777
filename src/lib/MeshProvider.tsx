@@ -424,7 +424,6 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   const relatesTo = wireContent["m.relates_to"] || content["m.relates_to"] as any;
   if (relatesTo?.["m.in_reply_to"]?.event_id) {
     replyToId = relatesTo["m.in_reply_to"].event_id;
-    console.log(`[MESHLINK DEBUG] Reply detected: msg="${text?.slice(0,30)}" replyTo=${replyToId?.slice(0,20)}`);
     // Try to get the original message text from the room timeline
     try {
       const room = client.getRoom(evt.getRoomId()!);
@@ -447,10 +446,16 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
           else if (typeof origBody === "string" && origBody.length > 0) replyToText = origBody.slice(0, 100);
           else replyToText = "Message";
         } else {
-          console.log(`[MESHLINK DEBUG] Original event NOT FOUND in timeline`);
+          // Event not in timeline — use the reply fallback from message body
+          // Matrix protocol includes original text in reply body after "> "
+          if (text.startsWith("> ")) {
+            replyToText = text.split("\n")[0].replace(/^> /, "").slice(0, 100);
+          } else {
+            replyToText = "Message";
+          }
         }
       }
-    } catch (err) { console.warn("[MESHLINK DEBUG] Error finding original:", err); }
+    } catch { /* ignore */ }
   }
 
   return {
