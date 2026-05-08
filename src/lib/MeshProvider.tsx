@@ -437,11 +437,15 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
           origEvent = tl.find((e) => e.getId() === replyToId) || null;
         }
         if (origEvent) {
-          const origBody = origEvent.getContent()?.body;
-          if (typeof origBody === "string") {
-            replyToText = origBody.slice(0, 100);
-            console.log(`[MESHLINK DEBUG] Found original: "${replyToText?.slice(0,30)}"`);
-          }
+          const origContent = origEvent.getContent() || {};
+          const origBody = origContent.body;
+          const origMsgtype = origContent.msgtype;
+          if (origMsgtype === "m.image") replyToText = "📷 Photo";
+          else if (origMsgtype === "m.video") replyToText = "🎬 Video";
+          else if (origMsgtype === "m.audio") replyToText = "🎤 Voice";
+          else if (origMsgtype === "m.file") replyToText = "📎 File";
+          else if (typeof origBody === "string" && origBody.length > 0) replyToText = origBody.slice(0, 100);
+          else replyToText = "Message";
         } else {
           console.log(`[MESHLINK DEBUG] Original event NOT FOUND in timeline`);
         }
@@ -705,13 +709,23 @@ export function MeshProvider({ session, children }: Props) {
       if (!c) return [];
       const room = c.getRoom(roomId);
       if (!room) return [];
-      const events = room.getLiveTimeline().getEvents();
+
+      // Get ALL events including reactions (unfiltered timeline)
+      let allEvents = room.getLiveTimeline().getEvents();
+      // Also try unfiltered timeline set (reactions may be filtered out)
+      try {
+        const unfilteredTl = (room as any).getUnfilteredTimelineSet?.()?.getLiveTimeline?.()?.getEvents?.();
+        if (unfilteredTl && unfilteredTl.length > allEvents.length) {
+          allEvents = unfilteredTl;
+        }
+      } catch { /* use default */ }
 
       // Collect reactions (m.reaction events)
-      const reactionMap = new Map<string, Record<string, number>>(); // msgId → {emoji: count}
-      for (const e of events) {
+      const reactionMap = new Map<string, Record<string, number>>();
+      for (const e of allEvents) {
         if (e.getType() === "m.reaction") {
-          const rel = ((e as any).getWireContent?.() || e.getContent())?.["m.relates_to"] || e.getContent()?.["m.relates_to"];
+          const content = e.getContent() || {};
+          const rel = content["m.relates_to"];
           if (rel?.rel_type === "m.annotation" && rel.event_id && rel.key) {
             const existing = reactionMap.get(rel.event_id) || {};
             existing[rel.key] = (existing[rel.key] || 0) + 1;
@@ -720,16 +734,13 @@ export function MeshProvider({ session, children }: Props) {
         }
       }
 
-      // Build messages (skip reaction events)
-      const messages = events
+      // Build messages (only m.room.message, skip reactions)
+      const messages = allEvents
         .filter((e) => e.getType() === "m.room.message")
         .map((e) => eventToMesh(e, c))
         .filter((m): m is MeshMessage => m !== null);
 
       // Attach reactions to messages
-      if (reactionMap.size > 0) {
-        console.log(`[MESHLINK DEBUG] Reactions found: ${reactionMap.size} messages have reactions`);
-      }
       for (const msg of messages) {
         const reactions = reactionMap.get(msg.id);
         if (reactions) msg.reactions = reactions;
