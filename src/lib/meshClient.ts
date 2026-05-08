@@ -82,9 +82,8 @@ export async function createClientWithStore(session: MeshlinkSession): Promise<M
         dbName: "meshlink-sync-" + session.userId,
         localStorage: window.localStorage,
       });
-      await store.startup();
-      console.log("Using IndexedDB store for persistent sync");
-      return sdk.createClient({
+      // Create client first, then startup store (SDK requirement)
+      const client = sdk.createClient({
         baseUrl: session.homeserverUrl,
         accessToken: session.accessToken,
         userId: session.userId,
@@ -93,6 +92,9 @@ export async function createClientWithStore(session: MeshlinkSession): Promise<M
         timelineSupport: true,
         pendingEventOrdering: "detached" as any,
       });
+      await store.startup();
+      console.log("Using IndexedDB store for persistent sync");
+      return client;
     }
   } catch (err) {
     console.warn("IndexedDB store failed, using memory store:", err);
@@ -115,6 +117,7 @@ export function createClient(session: MeshlinkSession): MeshClient {
     accessToken: session.accessToken,
     userId: session.userId,
     deviceId: session.deviceId,
+    pendingEventOrdering: "detached" as any,
   });
 }
 
