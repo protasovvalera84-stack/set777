@@ -576,40 +576,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;
 
-            // Group replies under their parent messages (like VK/Slack comments)
-            const filtered = (() => {
-              const parentMessages: typeof rawFiltered = [];
-              const replyMap = new Map<string, typeof rawFiltered>(); // parentId → replies
-
-              for (const msg of rawFiltered) {
-                if (msg.replyToId) {
-                  const replies = replyMap.get(msg.replyToId) || [];
-                  replies.push(msg);
-                  replyMap.set(msg.replyToId, replies);
-                } else {
-                  parentMessages.push(msg);
-                }
-              }
-
-              // Build final list: parent → its replies → next parent → its replies
-              const result: typeof rawFiltered = [];
-              for (const parent of parentMessages) {
-                result.push(parent);
-                const replies = replyMap.get(parent.id);
-                if (replies) {
-                  for (const reply of replies) result.push(reply);
-                }
-              }
-
-              // Add orphan replies (whose parent is not in current view)
-              for (const [parentId, replies] of replyMap) {
-                if (!parentMessages.find((p) => p.id === parentId)) {
-                  for (const reply of replies) result.push(reply);
-                }
-              }
-
-              return result;
-            })();
+            // Keep chronological order, replies shown with indent
+            const filtered = rawFiltered;
             return filtered.length > 0 ? (
               <Virtuoso
                 ref={virtuosoRef}
