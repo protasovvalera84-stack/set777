@@ -428,6 +428,20 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   const contentReplyId = relatesTo?.["m.in_reply_to"]?.event_id;
   replyToId = sdkReplyId || contentReplyId;
 
+  // Debug: log what we found
+  if (sdkReplyId || contentReplyId || text.startsWith("> ")) {
+    console.log(`[REPLY DEBUG] msg="${text?.slice(0,20)}" sdkReplyId=${sdkReplyId} contentReplyId=${contentReplyId} final=${replyToId}`);
+  }
+
+  // Also check if body starts with "> " (Matrix reply format) — fallback
+  if (!replyToId && text.startsWith("> ")) {
+    // Extract event ID from the reply body format used by our sendMatrixEvent
+    // Our format: "> original text\n\nreply text"
+    // We can't get the event ID from body alone, but we know it's a reply
+    // Mark it with a special flag so grouping works
+    replyToId = "__reply_no_id__";
+  }
+
   if (replyToId) {
     // Try to get the original message text from the room timeline
     try {
