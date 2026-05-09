@@ -18,6 +18,24 @@ import { AiAssistant } from "@/components/AiAssistant";
 import { VoiceChannels } from "@/components/VoiceChannels";
 import { DocEditor } from "@/components/DocEditor";
 
+/** Send Matrix event via HTTP (bypasses SDK pendingEventOrdering bug) */
+async function sendMatrixEvent(client: any, roomId: string, eventType: string, content: Record<string, any>): Promise<void> {
+  const baseUrl = client.getHomeserverUrl();
+  const token = client.getAccessToken();
+  const txnId = `m${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+  const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/${encodeURIComponent(eventType)}/${txnId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(content),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    if ((err as any).errcode !== "M_DUPLICATE_ANNOTATION") {
+      throw new Error((err as any).error || `Send failed: ${resp.status}`);
+    }
+  }
+}
+
 // Lazy load heavy overlay components
 const MediaGallery = lazy(() => import("@/components/MediaGallery").then(m => ({ default: m.MediaGallery })));
 const FileManager = lazy(() => import("@/components/FileManager").then(m => ({ default: m.FileManager })));
@@ -176,7 +194,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
 
     // If replying, send with reply context
     if (replyTo && input.trim() && mesh.client) {
-      mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+      sendMatrixEvent(mesh.client, chat.id, "m.room.message", {
         msgtype: "m.text",
         body: `> ${replyTo.text}\n\n${input.trim()}`,
         "m.relates_to": { "m.in_reply_to": { event_id: replyTo.id } },
@@ -229,7 +247,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     if (!forwardingMsg || !mesh.client) return;
     const text = forwardingMsg.text ? `↪ ${forwardingMsg.text}` : "";
     if (text) {
-      mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+      sendMatrixEvent(mesh.client, roomId, "m.room.message", {
         msgtype: "m.text",
         body: text,
       }).catch(() => {});
@@ -681,7 +699,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           onSelect={(gifUrl) => {
             // Send GIF as image message
             if (mesh.client) {
-              mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+              sendMatrixEvent(mesh.client, chat.id, "m.room.message", {
                 msgtype: "m.image",
                 body: "GIF",
                 url: gifUrl,
@@ -700,7 +718,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
           onClose={() => setStickerOpen(false)}
           onSelect={(sticker) => {
             if (mesh.client) {
-              mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+              sendMatrixEvent(mesh.client, chat.id, "m.room.message", {
                 msgtype: "m.text",
                 body: sticker,
                 "org.meshlink.sticker": true,
@@ -886,7 +904,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         onCreate={(question, options) => {
           if (!mesh.client) return;
           const pollMsg = `📊 **${question}**\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}\n\n_Reply with the option number to vote_`;
-          mesh.client.sendEvent(chat.id, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+          sendMatrixEvent(mesh.client, chat.id, "m.room.message", {
             msgtype: "m.text",
             body: pollMsg,
             format: "org.matrix.custom.html",
@@ -1067,7 +1085,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   const sendReaction = (key: string) => {
     if (!mesh.client || !roomId) return;
-    mesh.client.sendEvent(roomId, "m.reaction" as Parameters<typeof mesh.client.sendEvent>[1], {
+    sendMatrixEvent(mesh.client, roomId, "m.reaction", {
       "m.relates_to": {
         rel_type: "m.annotation",
         event_id: message.id,
@@ -1080,7 +1098,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   const handleEdit = () => {
     if (!editText.trim() || !mesh.client || !roomId) return;
-    mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+    sendMatrixEvent(mesh.client, roomId, "m.room.message", {
       msgtype: "m.text",
       body: `* ${editText.trim()}`,
       "m.new_content": { msgtype: "m.text", body: editText.trim() },
@@ -1096,7 +1114,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   const handleReply = () => {
     if (!replyText.trim() || !mesh.client || !roomId) return;
-    mesh.client.sendEvent(roomId, "m.room.message" as Parameters<typeof mesh.client.sendEvent>[1], {
+    sendMatrixEvent(mesh.client, roomId, "m.room.message", {
       msgtype: "m.text",
       body: replyText.trim(),
       "m.relates_to": {
@@ -1211,7 +1229,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
                         <button key={oi} onClick={() => {
                           if (mesh.client && roomId) {
                             // Use reaction instead of separate message
-                            mesh.client.sendEvent(roomId, "m.reaction" as any, {
+                            sendMatrixEvent(mesh.client, roomId, "m.reaction", {
                               "m.relates_to": { rel_type: "m.annotation", event_id: message.id, key: emoji },
                             }).catch(() => {});
                             setReactions((prev) => prev.includes(emoji) ? prev : [...prev, emoji]);
