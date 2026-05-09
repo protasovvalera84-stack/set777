@@ -572,9 +572,44 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
         <div className="h-full">
           {(() => {
             const hasTopics = (chat.type === "group" || chat.type === "channel") && chat.topics && chat.topics.length > 0;
-            const filtered = hasTopics && activeTopic !== null
+            const rawFiltered = hasTopics && activeTopic !== null
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;
+
+            // Group replies under their parent messages (like VK/Slack comments)
+            const filtered = (() => {
+              const parentMessages: typeof rawFiltered = [];
+              const replyMap = new Map<string, typeof rawFiltered>(); // parentId → replies
+
+              for (const msg of rawFiltered) {
+                if (msg.replyToId) {
+                  const replies = replyMap.get(msg.replyToId) || [];
+                  replies.push(msg);
+                  replyMap.set(msg.replyToId, replies);
+                } else {
+                  parentMessages.push(msg);
+                }
+              }
+
+              // Build final list: parent → its replies → next parent → its replies
+              const result: typeof rawFiltered = [];
+              for (const parent of parentMessages) {
+                result.push(parent);
+                const replies = replyMap.get(parent.id);
+                if (replies) {
+                  for (const reply of replies) result.push(reply);
+                }
+              }
+
+              // Add orphan replies (whose parent is not in current view)
+              for (const [parentId, replies] of replyMap) {
+                if (!parentMessages.find((p) => p.id === parentId)) {
+                  for (const reply of replies) result.push(reply);
+                }
+              }
+
+              return result;
+            })();
             return filtered.length > 0 ? (
               <Virtuoso
                 ref={virtuosoRef}
@@ -601,7 +636,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                           <div className="flex-1 h-px bg-primary/50" />
                         </div>
                       )}
-                      <div className="py-1">
+                      <div className={`py-1 ${msg.replyToId ? "ml-6 md:ml-10 border-l-2 border-primary/20 pl-2" : ""}`}>
                         <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
                       </div>
                     </div>
