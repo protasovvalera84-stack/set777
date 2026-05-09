@@ -604,9 +604,10 @@ export function MeshProvider({ session, children }: Props) {
                       const sender = lastEvt.getSender() || "";
                       if (arSettings.replyOnce && repliedTo.includes(sender)) shouldReply = false;
                       if (shouldReply) {
-                        client.sendEvent(room.roomId, "m.room.message" as any, {
-                          msgtype: "m.text",
-                          body: arSettings.message,
+                        fetch(`${client.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(room.roomId)}/send/m.room.message/notif${Date.now()}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${client.getAccessToken()}` },
+                          body: JSON.stringify({ msgtype: "m.text", body: arSettings.message }),
                         }).catch(() => {});
                         repliedTo.push(sender);
                         localStorage.setItem("meshlink-autoreply", JSON.stringify({ ...arSettings, repliedTo }));
@@ -766,7 +767,7 @@ export function MeshProvider({ session, children }: Props) {
     if (topicId) {
       content["org.meshlink.topic_id"] = topicId;
     }
-    await c.sendEvent(roomId, "m.room.message" as Parameters<typeof c.sendEvent>[1], content);
+    const txn = `m${Date.now()}.${Math.random().toString(36).slice(2,6)}`; await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txn}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` }, body: JSON.stringify(content) });
   }, []);
 
   const sendMedia = useCallback(async (roomId: string, file: File, topicId?: string | null) => {
@@ -786,7 +787,7 @@ export function MeshProvider({ session, children }: Props) {
     if (topicId) {
       content["org.meshlink.topic_id"] = topicId;
     }
-    await c.sendEvent(roomId, "m.room.message" as Parameters<typeof c.sendEvent>[1], content);
+    const txn = `m${Date.now()}.${Math.random().toString(36).slice(2,6)}`; await fetch(`${c.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txn}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${c.getAccessToken()}` }, body: JSON.stringify(content) });
   }, [session.accessToken]);
 
   const deleteMessage = useCallback(async (roomId: string, eventId: string) => {
