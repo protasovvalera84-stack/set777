@@ -1,55 +1,56 @@
-/// <reference lib="webworker" />
+/**
+ * Meshlink Service Worker
+ * 
+ * Strategy: Network-first for everything.
+ * JS/CSS files have hashes in names (Vite) — browser HTTP cache handles them.
+ * SW only provides offline fallback for the HTML shell.
+ */
 
-const CACHE_NAME = "meshlink-v1";
-const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-];
+const CACHE_NAME = "meshlink-v2";
 
-// Install: cache shell
+// Install: cache only the HTML shell
 self.addEventListener("install", (event) => {
-  (event as ExtendableEvent).waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(["/", "/index.html", "/manifest.json"]))
   );
-  (self as unknown as ServiceWorkerGlobalScope).skipWaiting();
+  self.skipWaiting();
 });
 
-// Activate: clean old caches
+// Activate: delete ALL old caches immediately
 self.addEventListener("activate", (event) => {
-  (event as ExtendableEvent).waitUntil(
+  event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
-  (self as unknown as ServiceWorkerGlobalScope).clients.claim();
+  self.clients.claim();
 });
 
-// Fetch: network-first for API, cache-first for static
+// Fetch: network-first for everything, cache fallback only for HTML
 self.addEventListener("fetch", (event) => {
-  const req = (event as FetchEvent).request;
+  const req = event.request;
   const url = new URL(req.url);
 
-  // Skip non-GET and Matrix API calls (always network)
-  if (req.method !== "GET" || url.pathname.startsWith("/_matrix") || url.pathname.startsWith("/_synapse")) {
-    return;
-  }
+  // Skip non-GET requests
+  if (req.method !== "GET") return;
 
-  // Static assets: cache-first
-  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    (event as FetchEvent).respondWith(
-      caches.match(req).then((cached) => cached || fetch(req).then((resp) => {
+  // Skip Matrix API (always network, never cache)
+  if (url.pathname.startsWith("/_matrix") || url.pathname.startsWith("/_synapse")) return;
+
+  // JS/CSS/assets: ALWAYS network (Vite hashes handle caching via HTTP headers)
+  if (url.pathname.startsWith("/assets/")) return;
+
+  // HTML pages: network-first, fallback to cached shell
+  event.respondWith(
+    fetch(req).then((resp) => {
+      // Update cache with fresh HTML
+      if (resp.ok && req.url.includes(url.origin)) {
         const clone = resp.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-        return resp;
-      }))
-    );
-    return;
-  }
-
-  // HTML: network-first, fallback to cache
-  (event as FetchEvent).respondWith(
-    fetch(req).catch(() => caches.match(req).then((cached) => cached || caches.match("/index.html")))
-      .then((resp) => resp || new Response("Offline", { status: 503 }))
+      }
+      return resp;
+    }).catch(() => {
+      return caches.match(req).then((cached) => cached || caches.match("/index.html"));
+    }).then((resp) => resp || new Response("Offline", { status: 503 }))
   );
 });
