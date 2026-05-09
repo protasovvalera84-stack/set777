@@ -430,7 +430,6 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
 
   // Debug: log what we found
   if (sdkReplyId || contentReplyId || text.startsWith("> ")) {
-    console.log(`[REPLY DEBUG] msg="${text?.slice(0,20)}" sdkReplyId=${sdkReplyId} contentReplyId=${contentReplyId} final=${replyToId}`);
   }
 
   // Also check if body starts with "> " (Matrix reply format) — fallback
@@ -439,7 +438,7 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
     // Our format: "> original text\n\nreply text"
     // We can't get the event ID from body alone, but we know it's a reply
     // Mark it with a special flag so grouping works
-    replyToId = "__reply_no_id__";
+    // replyToId stays undefined - will show as normal message
   }
 
   if (replyToId) {
