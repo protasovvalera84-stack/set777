@@ -419,11 +419,16 @@ function eventToMesh(evt: MeshEvent, client: MeshClient): MeshMessage | null {
   // Extract reply-to info
   let replyToId: string | undefined;
   let replyToText: string | undefined;
-  // Matrix SDK stores m.relates_to in wireContent, not always in getContent()
+  // Try multiple ways to get replyToId (SDK handles m.relates_to differently across versions)
   const wireContent = (evt as any).getWireContent?.() || content;
   const relatesTo = wireContent["m.relates_to"] || content["m.relates_to"] as any;
-  if (relatesTo?.["m.in_reply_to"]?.event_id) {
-    replyToId = relatesTo["m.in_reply_to"].event_id;
+  // Method 1: SDK getter (most reliable in v41+)
+  const sdkReplyId = (evt as any).replyEventId;
+  // Method 2: from content/wireContent
+  const contentReplyId = relatesTo?.["m.in_reply_to"]?.event_id;
+  replyToId = sdkReplyId || contentReplyId;
+
+  if (replyToId) {
     // Try to get the original message text from the room timeline
     try {
       const room = client.getRoom(evt.getRoomId()!);
