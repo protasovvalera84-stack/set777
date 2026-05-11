@@ -139,7 +139,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     const baseUrl = mesh.client.getHomeserverUrl();
     const token = mesh.client.getAccessToken();
     try {
-      const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages?dir=b&limit=200`, {
+      const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages?dir=b&limit=50`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;
@@ -194,11 +194,13 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     } catch { /* ignore */ }
   };
 
-  // Load shorts on ready
+  // Load shorts on ready (delayed to not block initial render)
   useEffect(() => {
     if (!mesh.client || !mesh.ready || shortsLoadedRef.current) return;
     shortsLoadedRef.current = true;
-    loadAllShorts();
+    // Delay shorts loading to prioritize chat list rendering
+    const timer = setTimeout(() => { loadAllShorts(); }, 2000);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesh.client, mesh.ready]);
 

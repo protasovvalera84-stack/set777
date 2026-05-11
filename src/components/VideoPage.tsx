@@ -30,6 +30,7 @@ interface Video {
   timestamp: string;
   views: number;
   likes: number;
+  liked?: boolean;
   dislikes: number;
   comments: VideoComment[];
   duration?: string;
@@ -112,15 +113,41 @@ export function VideoPage({ open, onClose }: VideoPageProps) {
     const baseUrl = mesh.client.getHomeserverUrl();
     const token = mesh.client.getAccessToken();
     try {
-      const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages?dir=b&limit=100`, {
+      const resp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages?dir=b&limit=200`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;
       const data = await resp.json() as any;
       const vids: Video[] = [];
+      // Collect likes and comments
+      const likesMap = new Map<string, { count: number; myLike: boolean }>();
+      const commentsMap = new Map<string, VideoComment[]>();
+      for (const evt of (data.chunk || [])) {
+        if (evt.type === "org.meshlink.video_like") {
+          const c = evt.content;
+          const existing = likesMap.get(c.video_id) || { count: 0, myLike: false };
+          if (c.liked) existing.count++;
+          if (evt.sender === mesh.userId) existing.myLike = c.liked;
+          likesMap.set(c.video_id, existing);
+        } else if (evt.type === "org.meshlink.video_comment") {
+          const c = evt.content;
+          const existing = commentsMap.get(c.video_id) || [];
+          existing.push({
+            id: evt.event_id,
+            author: c.author || evt.sender?.split(":")[0].replace("@", "") || "User",
+            authorId: evt.sender || "",
+            text: c.text || "",
+            timestamp: new Date(evt.origin_server_ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            likes: 0,
+          });
+          commentsMap.set(c.video_id, existing);
+        }
+      }
       for (const evt of (data.chunk || [])) {
         if (evt.type === "org.meshlink.video") {
           const c = evt.content;
+          const likeData = likesMap.get(evt.event_id);
+          const videoComments = commentsMap.get(evt.event_id) || [];
           vids.push({
             id: evt.event_id,
             title: c.title || "Untitled",
@@ -131,9 +158,10 @@ export function VideoPage({ open, onClose }: VideoPageProps) {
             authorId: evt.sender || "",
             timestamp: new Date(evt.origin_server_ts).toLocaleDateString(),
             views: c.views || 0,
-            likes: c.likes || 0,
+            likes: likeData?.count || 0,
+            liked: likeData?.myLike || false,
             dislikes: c.dislikes || 0,
-            comments: c.comments || [],
+            comments: videoComments,
             duration: c.duration,
           });
         }
@@ -262,12 +290,42 @@ export function VideoPage({ open, onClose }: VideoPageProps) {
 
 /* ===== Video Player ===== */
 function VideoPlayer({ video, onClose, myUserId }: { video: Video; onClose: () => void; myUserId: string }) {
-  const [liked, setLiked] = useState(false);
+  const mesh = useMesh();
+  const [liked, setLiked] = useState(video.liked || false);
   const [likeCount, setLikeCount] = useState(video.likes);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState(video.comments);
 
-  const handleComment = () => {
+  // Save like to server
+  const handleLike = async () => {
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount((c) => newLiked ? c + 1 : c - 1);
+    // Persist via reaction event on the video's event ID
+    if (mesh.client && video.id) {
+      const baseUrl = mesh.client.getHomeserverUrl();
+      const token = mesh.client.getAccessToken();
+      try {
+        // Find video room
+        const serverName = mesh.userId?.split(":")[1] || "";
+        const aliasResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(`#meshlink-videos:${serverName}`)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (aliasResp.ok) {
+          const { room_id } = await aliasResp.json() as any;
+          const txn = `vl${Date.now()}`;
+          await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(room_id)}/send/org.meshlink.video_like/${txn}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ video_id: video.id, liked: newLiked }),
+          }).catch(() => {});
+        }
+      } catch { /* non-critical */ }
+    }
+  };
+
+  // Save comment to server
+  const handleComment = async () => {
     if (!commentText.trim()) return;
     const c: VideoComment = {
       id: `vc-${Date.now()}`,
@@ -279,6 +337,26 @@ function VideoPlayer({ video, onClose, myUserId }: { video: Video; onClose: () =
     };
     setComments((prev) => [...prev, c]);
     setCommentText("");
+    // Persist comment to server
+    if (mesh.client) {
+      const baseUrl = mesh.client.getHomeserverUrl();
+      const token = mesh.client.getAccessToken();
+      try {
+        const serverName = mesh.userId?.split(":")[1] || "";
+        const aliasResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(`#meshlink-videos:${serverName}`)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (aliasResp.ok) {
+          const { room_id } = await aliasResp.json() as any;
+          const txn = `vc${Date.now()}`;
+          await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(room_id)}/send/org.meshlink.video_comment/${txn}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ video_id: video.id, text: c.text, author: c.author }),
+          }).catch(() => {});
+        }
+      } catch { /* non-critical */ }
+    }
   };
 
   return (
@@ -306,7 +384,7 @@ function VideoPlayer({ video, onClose, myUserId }: { video: Video; onClose: () =
 
           {/* Action buttons */}
           <div className="flex items-center gap-3 mt-3">
-            <button onClick={() => { setLiked(!liked); setLikeCount((c) => liked ? c - 1 : c + 1); }}
+            <button onClick={handleLike}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${liked ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
               <ThumbsUp className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} /> {likeCount}
             </button>
