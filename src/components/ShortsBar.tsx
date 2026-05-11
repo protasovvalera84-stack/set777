@@ -126,6 +126,22 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
           <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{myShort && myShort.items.length > 0 ? "My Short" : "Add"}</span>
         </button>
 
+        {/* PUBLIC SHORTS — all public shorts from all users */}
+        {allItems.filter((a) => a.item.visibility === "everyone" && a.short.userId !== myUserId).length > 0 && (
+          <button
+            onClick={() => {
+              const publicIdx = allItems.findIndex((a) => a.item.visibility === "everyone" && a.short.userId !== myUserId);
+              if (publicIdx >= 0) openFeed(publicIdx);
+            }}
+            className="flex-shrink-0 flex flex-col items-center gap-1"
+          >
+            <div className="h-14 w-14 rounded-xl overflow-hidden border-2 border-accent shadow-[0_0_12px_hsl(var(--accent)/0.4)] bg-gradient-to-br from-accent/30 to-primary/20 flex items-center justify-center">
+              <Globe className="h-6 w-6 text-accent" />
+            </div>
+            <span className="text-[9px] text-accent font-medium truncate w-14 text-center">All Shorts</span>
+          </button>
+        )}
+
         {/* Add new (always visible when user has shorts) */}
         {myShort && myShort.items.length > 0 && (
           <button onClick={() => setAddOpen(true)} className="flex-shrink-0 flex flex-col items-center gap-1">
@@ -136,7 +152,7 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
           </button>
         )}
 
-        {/* Other users */}
+        {/* Other users' shorts */}
         {otherShorts.map((s) => {
           const globalIdx = allItems.findIndex((a) => a.short.id === s.id);
           return (
