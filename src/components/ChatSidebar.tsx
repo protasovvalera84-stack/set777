@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown } from "lucide-react";
+import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown, LayoutGrid } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
@@ -72,6 +72,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     } catch { return new Set(); }
   });
   const [showArchived, setShowArchived] = useState(false);
+  const [appsMenuOpen, setAppsMenuOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoReplyOpen, setAutoReplyOpen] = useState(false);
@@ -251,6 +252,9 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
               <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">self-hosted</span>
             </div>
             <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${logoMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+          <button onClick={() => setAppsMenuOpen((v) => !v)} className="rounded-xl p-2 hover:bg-surface-hover transition-all" title="Apps">
+            <LayoutGrid className="h-4 w-4 text-muted-foreground" />
           </button>
 
           {/* Dropdown menu */}
@@ -555,44 +559,31 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           </div>
         </div>
 
-        {/* Quick access toolbar (2 rows of 5) */}
-        <div className="border-t border-border/40 px-2 py-1.5 glass">
-          <div className="grid grid-cols-5 gap-1">
-            <button onClick={() => setContactsOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Contacts">
-              <span className="text-sm">👥</span>
-            </button>
-            <button onClick={() => setFeedOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Feed">
-              <span className="text-sm">📢</span>
-            </button>
-            <button onClick={() => setWalletOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Wallet">
-              <span className="text-sm">👛</span>
-            </button>
-            <button onClick={() => setSchedulerOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Scheduler">
-              <span className="text-sm">📅</span>
-            </button>
-            <button onClick={() => setAutoReplyOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Auto-Reply">
-              <span className="text-sm">💬</span>
-            </button>
-            <button onClick={() => setBotApiOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Bots">
-              <span className="text-sm">🤖</span>
-            </button>
-            <button onClick={() => setRssOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="RSS">
-              <span className="text-sm">📰</span>
-            </button>
-            <button onClick={() => setGameOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Games">
-              <span className="text-sm">🎮</span>
-            </button>
-            <button onClick={() => setQrLoginOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="QR Login">
-              <span className="text-sm">📱</span>
-            </button>
-            <button onClick={() => setHelpOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Help">
-              <span className="text-sm">❓</span>
-            </button>
-            <button onClick={() => setNotificationsOpen(true)} className="flex flex-col items-center p-1 rounded-lg hover:bg-surface-hover" title="Notifications">
-              <span className="text-sm">🔔</span>
-            </button>
+        {/* Apps menu button (replaces grid toolbar) */}
+        {appsMenuOpen && (
+          <div className="fixed inset-0 z-[9999] bg-black/30" onClick={() => setAppsMenuOpen(false)}>
+            <div className="absolute right-3 top-12 w-48 rounded-2xl bg-background border border-border shadow-2xl p-2 space-y-0.5" onClick={(e) => e.stopPropagation()}>
+              {[
+                { icon: "👥", label: "Contacts", action: () => setContactsOpen(true) },
+                { icon: "📢", label: "Feed", action: () => setFeedOpen(true) },
+                { icon: "👛", label: "Wallet", action: () => setWalletOpen(true) },
+                { icon: "📅", label: "Scheduler", action: () => setSchedulerOpen(true) },
+                { icon: "💬", label: "Auto-Reply", action: () => setAutoReplyOpen(true) },
+                { icon: "🤖", label: "Bot API", action: () => setBotApiOpen(true) },
+                { icon: "📰", label: "RSS Reader", action: () => setRssOpen(true) },
+                { icon: "🎮", label: "Games", action: () => setGameOpen(true) },
+                { icon: "📱", label: "QR Login", action: () => setQrLoginOpen(true) },
+                { icon: "❓", label: "Help Center", action: () => setHelpOpen(true) },
+                { icon: "🔔", label: "Notifications", action: () => setNotificationsOpen(true) },
+              ].map((item) => (
+                <button key={item.label} onClick={() => { item.action(); setAppsMenuOpen(false); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors">
+                  <span>{item.icon}</span> {item.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer — compact */}
         <button onClick={onOpenSettings} className="relative border-t border-border/40 px-3 py-2 glass w-full text-left hover:bg-surface-hover transition-all">
