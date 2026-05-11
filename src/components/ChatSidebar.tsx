@@ -188,62 +188,71 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   };
 
   // Load friends' shorts from DM rooms (org.meshlink.short_update events)
+  // Runs once when ready, then listens for real-time updates
+  const friendsLoadedRef = useRef(false);
   useEffect(() => {
     if (!mesh.client || !mesh.ready) return;
+    if (mesh.friends.length === 0) return;
 
     const loadFriendsShorts = () => {
       const friendSet = new Set(mesh.friends);
-      if (friendSet.size === 0) return;
-
       const friendShorts: Short[] = [];
       const rooms = mesh.client!.getRooms();
 
       for (const room of rooms) {
         if (room.getMyMembership() !== "join") continue;
         const members = room.getJoinedMembers();
-        // Find DM rooms (2 members, one is a friend)
         const other = members.find((m) => m.userId !== mesh.userId && friendSet.has(m.userId));
         if (!other) continue;
 
-        // Search timeline from END (newest first) for latest short_update
         const events = room.getLiveTimeline().getEvents();
         for (let i = events.length - 1; i >= 0; i--) {
           const evt = events[i];
           if (evt.getType() === "org.meshlink.short_update" && evt.getSender() === other.userId) {
-            const content = evt.getContent() as any;
-            if (content.items && Array.isArray(content.items) && content.items.length > 0) {
-              friendShorts.push({
-                id: `friend-${other.userId}`,
-                userId: other.userId,
-                userName: other.name || other.userId.split(":")[0].replace("@", ""),
-                avatar: (other.name || "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2),
-                items: content.items,
-                viewed: false,
-              });
-            }
-            break; // Found latest, stop searching this room
+            try {
+              const content = evt.getContent() as any;
+              if (content.items && Array.isArray(content.items) && content.items.length > 0) {
+                friendShorts.push({
+                  id: `friend-${other.userId}`,
+                  userId: other.userId,
+                  userName: other.name || other.userId.split(":")[0].replace("@", ""),
+                  avatar: (other.name || "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2),
+                  items: content.items,
+                  viewed: false,
+                });
+              }
+            } catch { /* skip malformed */ }
+            break;
           }
         }
       }
 
-      setShorts((prev) => {
-        const mine = prev.filter((s) => s.userId === "me");
-        return [...mine, ...friendShorts];
-      });
+      if (friendShorts.length > 0) {
+        setShorts((prev) => {
+          const mine = prev.filter((s) => s.userId === "me");
+          return [...mine, ...friendShorts];
+        });
+      }
     };
 
-    loadFriendsShorts();
+    // Load once
+    if (!friendsLoadedRef.current) {
+      friendsLoadedRef.current = true;
+      loadFriendsShorts();
+    }
 
-    // Also listen for new short_update events in real-time
+    // Listen for new short_update events only
     const handleTimelineEvent = (event: any) => {
-      if (event.getType() === "org.meshlink.short_update" && event.getSender() !== mesh.userId) {
-        // Reload all friends' shorts when any update arrives
-        setTimeout(loadFriendsShorts, 500);
-      }
+      try {
+        if (event.getType?.() === "org.meshlink.short_update" && event.getSender?.() !== mesh.userId) {
+          loadFriendsShorts();
+        }
+      } catch { /* ignore */ }
     };
     mesh.client.on("Room.timeline" as any, handleTimelineEvent);
     return () => { mesh.client?.removeListener("Room.timeline" as any, handleTimelineEvent); };
-  }, [mesh.client, mesh.ready, mesh.friends, mesh.userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesh.client, mesh.ready]);
 
   const handleDeleteShort = (shortId: string, itemId: string) => {
     setShorts((prev) => prev.map((s) => {
