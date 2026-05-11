@@ -4,6 +4,7 @@ import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
 import { useMesh } from "@/lib/MeshProvider";
+import { uploadMedia, mxcToUrl } from "@/lib/meshClient";
 
 // Lazy load heavy dialog pages
 const ContactsPage = lazy(() => import("@/components/ContactsPage").then(m => ({ default: m.ContactsPage })));
@@ -111,15 +112,135 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     } catch { setShorts([]); }
   }, [shortsKey]);
 
-  const handleAddShort = (items: ShortItem[]) => {
+  const handleAddShort = async (items: ShortItem[]) => {
+    // Upload media files to Matrix server (replace blob URLs with mxc URLs)
+    const uploadedItems: ShortItem[] = [];
+    for (const item of items) {
+      let url = item.url;
+      // If it's a blob URL, we need to upload the file
+      if (url.startsWith("blob:")) {
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const file = new File([blob], `short-${Date.now()}.${item.type === "video" ? "mp4" : "jpg"}`, { type: blob.type });
+          const mxcUri = await uploadMedia(mesh.client?.getAccessToken() || "", file);
+          url = mxcToUrl(mxcUri);
+          URL.revokeObjectURL(item.url); // Free blob memory
+        } catch (err) {
+          console.warn("Failed to upload short media:", err);
+          url = item.url; // Keep blob as fallback
+        }
+      }
+      uploadedItems.push({ ...item, url });
+    }
+
     setShorts((prev) => {
       const existing = prev.find((s) => s.userId === "me");
       if (existing) {
-        return prev.map((s) => s.userId === "me" ? { ...s, items: [...s.items, ...items] } : s);
+        return prev.map((s) => s.userId === "me" ? { ...s, items: [...s.items, ...uploadedItems] } : s);
       }
-      return [{ id: `short-${Date.now()}`, userId: "me", userName: profile.name, avatar: profile.avatarInitials, items, viewed: true }, ...prev];
+      return [{ id: `short-${Date.now()}`, userId: "me", userName: profile.name, avatar: profile.avatarInitials, items: uploadedItems, viewed: true }, ...prev];
     });
+
+    // Save to Matrix account_data so friends can see
+    try {
+      const c = mesh.client;
+      if (c) {
+        const myShortItems = [...(shorts.find((s) => s.userId === "me")?.items || []), ...uploadedItems];
+        await c.setAccountData("org.meshlink.shorts", {
+          items: myShortItems.map((i) => ({ id: i.id, type: i.type, url: i.url, caption: i.caption, textOverlay: i.textOverlay, timestamp: i.timestamp, visibility: i.visibility })),
+          userName: profile.name,
+          avatar: profile.avatarInitials,
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to save shorts to account_data:", err);
+    }
+
+    // Broadcast to friends via DM events (so they can see our shorts)
+    if (uploadedItems.some((i) => i.visibility === "friends")) {
+      try {
+        const c = mesh.client;
+        if (c && mesh.client) {
+          const allMyItems = [...(shorts.find((s) => s.userId === "me")?.items || []), ...uploadedItems];
+          const friendItems = allMyItems.filter((i) => i.visibility === "friends" || i.visibility === "everyone");
+          for (const friendId of mesh.friends) {
+            // Find DM room with this friend
+            const rooms = c.getRooms();
+            for (const room of rooms) {
+              if (room.getMyMembership() !== "join") continue;
+              const members = room.getJoinedMembers();
+              if (members.length === 2 && members.some((m) => m.userId === friendId)) {
+                // Send short_update event
+                const txn = `su${Date.now()}.${Math.random().toString(36).slice(2,5)}`;
+                await fetch(`${mesh.client.getHomeserverUrl()}/_matrix/client/v3/rooms/${encodeURIComponent(room.roomId)}/send/org.meshlink.short_update/${txn}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${mesh.client.getAccessToken()}` },
+                  body: JSON.stringify({ items: friendItems.map((i) => ({ id: i.id, type: i.type, url: i.url, caption: i.caption, textOverlay: i.textOverlay, timestamp: i.timestamp, visibility: i.visibility })) }),
+                }).catch(() => {});
+                break;
+              }
+            }
+          }
+        }
+      } catch { /* non-critical */ }
+    }
   };
+
+  // Load friends' shorts from their account_data
+  useEffect(() => {
+    if (!mesh.client || !mesh.ready || mesh.friends.length === 0) return;
+    const loadFriendsShorts = async () => {
+      const friendShorts: Short[] = [];
+      for (const friendId of mesh.friends) {
+        try {
+          // Get friend's shorts from their profile (via room state or presence)
+          // Matrix doesn't allow reading other users' account_data directly
+          // So we use a workaround: check DM rooms for org.meshlink.short_update events
+          const rooms = mesh.client!.getRooms();
+          for (const room of rooms) {
+            if (room.getMyMembership() !== "join") continue;
+            const members = room.getJoinedMembers();
+            if (members.length !== 2) continue;
+            const other = members.find((m) => m.userId === friendId);
+            if (!other) continue;
+            // Look for short_update events in this DM
+            const events = room.getLiveTimeline().getEvents();
+            for (const evt of events) {
+              if (evt.getType() === "org.meshlink.short_update" && evt.getSender() === friendId) {
+                const content = evt.getContent() as any;
+                if (content.items && Array.isArray(content.items)) {
+                  const items: ShortItem[] = content.items
+                    .filter((i: any) => i.visibility === "friends" || i.visibility === "everyone")
+                    .map((i: any) => ({ ...i }));
+                  if (items.length > 0) {
+                    friendShorts.push({
+                      id: `friend-${friendId}`,
+                      userId: friendId,
+                      userName: other.name || friendId.split(":")[0].replace("@", ""),
+                      avatar: (other.name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2),
+                      items,
+                      viewed: false,
+                    });
+                  }
+                }
+                break; // Only need latest
+              }
+            }
+            break; // Found the DM
+          }
+        } catch { /* ignore individual friend errors */ }
+      }
+      if (friendShorts.length > 0) {
+        setShorts((prev) => {
+          // Keep my shorts, replace friend shorts
+          const mine = prev.filter((s) => s.userId === "me");
+          return [...mine, ...friendShorts];
+        });
+      }
+    };
+    loadFriendsShorts();
+  }, [mesh.client, mesh.ready, mesh.friends]);
 
   const handleDeleteShort = (shortId: string, itemId: string) => {
     setShorts((prev) => prev.map((s) => {
