@@ -88,18 +88,28 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
   // Shorts state (persisted in localStorage)
+  const shortsKey = `meshlink-shorts-${mesh.userId || "anon"}`;
   const [shorts, setShorts] = useState<Short[]>(() => {
     try {
-      const saved = localStorage.getItem("meshlink-shorts");
+      const saved = localStorage.getItem(shortsKey);
       if (saved) return JSON.parse(saved);
     } catch { /* ignore */ }
     return [];
   });
 
-  // Persist shorts
+  // Persist shorts (per user)
   useEffect(() => {
-    localStorage.setItem("meshlink-shorts", JSON.stringify(shorts));
-  }, [shorts]);
+    localStorage.setItem(shortsKey, JSON.stringify(shorts));
+  }, [shorts, shortsKey]);
+
+  // Reset shorts when user changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(shortsKey);
+      if (saved) setShorts(JSON.parse(saved));
+      else setShorts([]);
+    } catch { setShorts([]); }
+  }, [shortsKey]);
 
   const handleAddShort = (items: ShortItem[]) => {
     setShorts((prev) => {

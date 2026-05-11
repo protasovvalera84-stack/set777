@@ -23,7 +23,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Plus, X, Image, Film, Trash2, Send, Eye, Share2, Bookmark,
   Type, Heart, MessageCircle, Volume2, VolumeX, ChevronUp, ChevronDown,
-  Music, Play,
+  Music, Play, Users, Globe,
 } from "lucide-react";
 
 /* ===== Types ===== */
@@ -40,6 +40,7 @@ export interface ShortItem {
   likes?: number;
   liked?: boolean;
   comments?: ShortComment[];
+  visibility?: "friends" | "everyone";
 }
 
 export interface ShortComment {
@@ -635,6 +636,7 @@ function AddShortDialog({ onClose, onAdd }: {
   const [caption, setCaption] = useState("");
   const [textOverlay, setTextOverlay] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
+  const [visibility, setVisibility] = useState<"friends" | "everyone">("friends");
   const [previews, setPreviews] = useState<{ url: string; type: "image" | "video"; file: File }[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -663,6 +665,7 @@ function AddShortDialog({ onClose, onAdd }: {
       caption: i === 0 ? caption.trim() || undefined : undefined,
       textOverlay: i === 0 && textOverlay.trim() ? textOverlay.trim() : undefined,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      visibility,
     }));
     onAdd(items);
   };
@@ -730,6 +733,25 @@ function AddShortDialog({ onClose, onAdd }: {
         <div className="mb-4">
           <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Add a caption..."
             className="w-full rounded-2xl glass border border-border/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent" />
+        </div>
+
+        {/* Visibility selector */}
+        <div className="mb-4">
+          <p className="text-xs text-muted-foreground mb-2">Who can see this?</p>
+          <div className="flex gap-2">
+            <button onClick={() => setVisibility("friends")}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-medium transition-all border ${
+                visibility === "friends" ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:bg-surface-hover"
+              }`}>
+              <Users className="h-3.5 w-3.5" /> My Friends
+            </button>
+            <button onClick={() => setVisibility("everyone")}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-medium transition-all border ${
+                visibility === "everyone" ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:bg-surface-hover"
+              }`}>
+              <Globe className="h-3.5 w-3.5" /> Everyone
+            </button>
+          </div>
         </div>
 
         <button onClick={handleAdd} disabled={previews.length === 0}
