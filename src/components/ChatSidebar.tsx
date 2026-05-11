@@ -187,60 +187,63 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     }
   };
 
-  // Load friends' shorts from their account_data
+  // Load friends' shorts from DM rooms (org.meshlink.short_update events)
   useEffect(() => {
-    if (!mesh.client || !mesh.ready || mesh.friends.length === 0) return;
-    const loadFriendsShorts = async () => {
+    if (!mesh.client || !mesh.ready) return;
+
+    const loadFriendsShorts = () => {
+      const friendSet = new Set(mesh.friends);
+      if (friendSet.size === 0) return;
+
       const friendShorts: Short[] = [];
-      for (const friendId of mesh.friends) {
-        try {
-          // Get friend's shorts from their profile (via room state or presence)
-          // Matrix doesn't allow reading other users' account_data directly
-          // So we use a workaround: check DM rooms for org.meshlink.short_update events
-          const rooms = mesh.client!.getRooms();
-          for (const room of rooms) {
-            if (room.getMyMembership() !== "join") continue;
-            const members = room.getJoinedMembers();
-            if (members.length !== 2) continue;
-            const other = members.find((m) => m.userId === friendId);
-            if (!other) continue;
-            // Look for short_update events in this DM
-            const events = room.getLiveTimeline().getEvents();
-            for (const evt of events) {
-              if (evt.getType() === "org.meshlink.short_update" && evt.getSender() === friendId) {
-                const content = evt.getContent() as any;
-                if (content.items && Array.isArray(content.items)) {
-                  const items: ShortItem[] = content.items
-                    .filter((i: any) => i.visibility === "friends" || i.visibility === "everyone")
-                    .map((i: any) => ({ ...i }));
-                  if (items.length > 0) {
-                    friendShorts.push({
-                      id: `friend-${friendId}`,
-                      userId: friendId,
-                      userName: other.name || friendId.split(":")[0].replace("@", ""),
-                      avatar: (other.name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2),
-                      items,
-                      viewed: false,
-                    });
-                  }
-                }
-                break; // Only need latest
-              }
+      const rooms = mesh.client!.getRooms();
+
+      for (const room of rooms) {
+        if (room.getMyMembership() !== "join") continue;
+        const members = room.getJoinedMembers();
+        // Find DM rooms (2 members, one is a friend)
+        const other = members.find((m) => m.userId !== mesh.userId && friendSet.has(m.userId));
+        if (!other) continue;
+
+        // Search timeline from END (newest first) for latest short_update
+        const events = room.getLiveTimeline().getEvents();
+        for (let i = events.length - 1; i >= 0; i--) {
+          const evt = events[i];
+          if (evt.getType() === "org.meshlink.short_update" && evt.getSender() === other.userId) {
+            const content = evt.getContent() as any;
+            if (content.items && Array.isArray(content.items) && content.items.length > 0) {
+              friendShorts.push({
+                id: `friend-${other.userId}`,
+                userId: other.userId,
+                userName: other.name || other.userId.split(":")[0].replace("@", ""),
+                avatar: (other.name || "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2),
+                items: content.items,
+                viewed: false,
+              });
             }
-            break; // Found the DM
+            break; // Found latest, stop searching this room
           }
-        } catch { /* ignore individual friend errors */ }
+        }
       }
-      if (friendShorts.length > 0) {
-        setShorts((prev) => {
-          // Keep my shorts, replace friend shorts
-          const mine = prev.filter((s) => s.userId === "me");
-          return [...mine, ...friendShorts];
-        });
+
+      setShorts((prev) => {
+        const mine = prev.filter((s) => s.userId === "me");
+        return [...mine, ...friendShorts];
+      });
+    };
+
+    loadFriendsShorts();
+
+    // Also listen for new short_update events in real-time
+    const handleTimelineEvent = (event: any) => {
+      if (event.getType() === "org.meshlink.short_update" && event.getSender() !== mesh.userId) {
+        // Reload all friends' shorts when any update arrives
+        setTimeout(loadFriendsShorts, 500);
       }
     };
-    loadFriendsShorts();
-  }, [mesh.client, mesh.ready, mesh.friends]);
+    mesh.client.on("Room.timeline" as any, handleTimelineEvent);
+    return () => { mesh.client?.removeListener("Room.timeline" as any, handleTimelineEvent); };
+  }, [mesh.client, mesh.ready, mesh.friends, mesh.userId]);
 
   const handleDeleteShort = (shortId: string, itemId: string) => {
     setShorts((prev) => prev.map((s) => {
