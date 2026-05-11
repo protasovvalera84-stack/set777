@@ -103,7 +103,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     const baseUrl = c.getHomeserverUrl();
     const token = c.getAccessToken();
     const serverName = mesh.userId?.split(":")[1] || "";
-    const fullAlias = `#meshlink-shorts:${serverName}`;
+    const fullAlias = `#meshlink-shorts-v3:${serverName}`;
     try {
       // Check if room exists
       const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
@@ -126,16 +126,24 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          name: "Meshlink Shorts", preset: "public_chat", room_alias_name: "meshlink-shorts",
+          name: "Meshlink Shorts", preset: "public_chat", room_alias_name: "meshlink-shorts-v3",
           initial_state: [
             { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
             { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
-            { type: "m.room.power_levels", content: { events_default: 0 }, state_key: "" },
           ],
         }),
       });
-      if (createResp.ok) return ((await createResp.json()) as any).room_id;
-      // If alias still taken, try without alias
+      if (createResp.ok) {
+        const newRoom = ((await createResp.json()) as any).room_id;
+        // Set power levels so everyone can post
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(newRoom)}/state/m.room.power_levels/`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ events_default: 0, state_default: 50, users_default: 0 }),
+        }).catch(() => {});
+        return newRoom;
+      }
+      // If alias taken, create without alias
       const noAliasResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -144,11 +152,18 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           initial_state: [
             { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
             { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
-            { type: "m.room.power_levels", content: { events_default: 0 }, state_key: "" },
           ],
         }),
       });
-      if (noAliasResp.ok) return ((await noAliasResp.json()) as any).room_id;
+      if (noAliasResp.ok) {
+        const newRoom = ((await noAliasResp.json()) as any).room_id;
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(newRoom)}/state/m.room.power_levels/`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ events_default: 0, state_default: 50, users_default: 0 }),
+        }).catch(() => {});
+        return newRoom;
+      }
     } catch { /* ignore */ }
     return null;
   };
