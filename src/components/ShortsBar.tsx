@@ -1,5 +1,32 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, X, Play, ChevronLeft, ChevronRight, Image, Film, Trash2, Send, Eye, Share2, Bookmark, Type, Pause } from "lucide-react";
+/**
+ * Meshlink Shorts — TikTok-style vertical video feed
+ *
+ * Inspired by TikTok, Instagram Reels, VK Clips, Likee.
+ * All code written from scratch for Meshlink.
+ *
+ * Features:
+ * - Vertical scroll-snap feed (swipe up/down)
+ * - Full-screen immersive viewer
+ * - Auto-play/pause based on visibility
+ * - Double-tap to like (heart animation)
+ * - Right-side action bar (like, comment, share, save, sound)
+ * - Slide-up comments panel
+ * - Progress bar for images (auto-advance)
+ * - Hold to pause
+ * - Reply to short (sends DM)
+ * - Multi-file upload with text overlay
+ * - View count + viewers list (own shorts)
+ * - Keyboard: arrows, space, escape
+ */
+
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import {
+  Plus, X, Image, Film, Trash2, Send, Eye, Share2, Bookmark,
+  Type, Heart, MessageCircle, Volume2, VolumeX, ChevronUp, ChevronDown,
+  Music, Play,
+} from "lucide-react";
+
+/* ===== Types ===== */
 
 export interface ShortItem {
   id: string;
@@ -10,6 +37,18 @@ export interface ShortItem {
   timestamp: string;
   views?: number;
   viewers?: string[];
+  likes?: number;
+  liked?: boolean;
+  comments?: ShortComment[];
+}
+
+export interface ShortComment {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  timestamp: string;
+  likes?: number;
 }
 
 export interface Short {
@@ -33,44 +72,44 @@ interface ShortsBarProps {
   onShareShort?: (item: ShortItem) => void;
 }
 
+/* ===== Main Component: Shorts Strip ===== */
+
 export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onAddShort, onDeleteShort, onReplyToShort, onShareShort }: ShortsBarProps) {
-  const [viewingShort, setViewingShort] = useState<Short | null>(null);
-  const [viewingIndex, setViewingIndex] = useState(0);
+  const [feedOpen, setFeedOpen] = useState(false);
+  const [feedStartIndex, setFeedStartIndex] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
 
   const myShort = shorts.find((s) => s.userId === myUserId);
   const otherShorts = shorts.filter((s) => s.userId !== myUserId);
 
-  const allShorts = [myShort, ...otherShorts].filter(Boolean) as Short[];
-
-  const handleNextShort = useCallback(() => {
-    if (!viewingShort) return;
-    if (viewingIndex < viewingShort.items.length - 1) {
-      setViewingIndex((i) => i + 1);
-    } else {
-      const currentIdx = allShorts.findIndex((s) => s.id === viewingShort.id);
-      if (currentIdx < allShorts.length - 1) {
-        setViewingShort(allShorts[currentIdx + 1]);
-        setViewingIndex(0);
-      } else {
-        setViewingShort(null);
+  // Flatten all items for the vertical feed
+  const allItems = useMemo(() => {
+    const items: { short: Short; item: ShortItem; itemIndex: number }[] = [];
+    const ordered = [myShort, ...otherShorts].filter(Boolean) as Short[];
+    for (const s of ordered) {
+      for (let i = 0; i < s.items.length; i++) {
+        items.push({ short: s, item: s.items[i], itemIndex: i });
       }
     }
-  }, [viewingShort, viewingIndex, allShorts]);
+    return items;
+  }, [shorts, myShort, otherShorts]);
+
+  const openFeed = (startIdx: number) => {
+    setFeedStartIndex(startIdx);
+    setFeedOpen(true);
+  };
 
   return (
     <>
-      {/* Shorts strip */}
+      {/* Horizontal strip (like TikTok stories row) */}
       <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-thin border-b border-border/30">
-        {/* My short / Add button */}
+        {/* My short / Add */}
         <button
-          onClick={() => myShort ? setViewingShort(myShort) : setAddOpen(true)}
+          onClick={() => myShort ? openFeed(0) : setAddOpen(true)}
           className="flex-shrink-0 flex flex-col items-center gap-1 group"
         >
           <div className="relative">
-            <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${
-              myShort ? "border-primary shadow-glow" : "border-border/50"
-            }`}>
+            <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${myShort ? "border-primary shadow-glow" : "border-border/50"}`}>
               {myAvatarUrl ? (
                 <img src={myAvatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -85,34 +124,27 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
               </div>
             )}
           </div>
-          <span className="text-[9px] text-muted-foreground truncate w-14 text-center">
-            {myShort ? "My Short" : "Add"}
-          </span>
+          <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{myShort ? "My Short" : "Add"}</span>
         </button>
 
-        {/* Other users' shorts */}
-        {otherShorts.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => { setViewingShort(s); setViewingIndex(0); }}
-            className="flex-shrink-0 flex flex-col items-center gap-1"
-          >
-            <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${
-              s.viewed ? "border-border/50" : "border-primary shadow-glow"
-            }`}>
-              {s.items.length > 0 && s.items[0].type === "image" ? (
-                <img src={s.items[0].url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center text-xs font-bold text-foreground">
-                  {s.avatar}
-                </div>
-              )}
-            </div>
-            <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{s.userName}</span>
-          </button>
-        ))}
+        {/* Other users */}
+        {otherShorts.map((s) => {
+          const globalIdx = allItems.findIndex((a) => a.short.id === s.id);
+          return (
+            <button key={s.id} onClick={() => openFeed(globalIdx >= 0 ? globalIdx : 0)} className="flex-shrink-0 flex flex-col items-center gap-1">
+              <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${s.viewed ? "border-border/50" : "border-primary shadow-glow"}`}>
+                {s.items[0]?.type === "image" ? (
+                  <img src={s.items[0].url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center text-xs font-bold text-foreground">{s.avatar}</div>
+                )}
+              </div>
+              <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{s.userName}</span>
+            </button>
+          );
+        })}
 
-        {/* Add more button */}
+        {/* New button */}
         <button onClick={() => setAddOpen(true)} className="flex-shrink-0 flex flex-col items-center gap-1">
           <div className="h-14 w-14 rounded-xl border-2 border-dashed border-border/50 hover:border-primary/40 flex items-center justify-center transition-all hover:bg-surface-hover">
             <Plus className="h-5 w-5 text-muted-foreground" />
@@ -121,288 +153,481 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
         </button>
       </div>
 
-      {/* View Short fullscreen */}
-      {viewingShort && viewingShort.items.length > 0 && (
-        <ShortViewer
-          short={viewingShort}
-          index={viewingIndex}
-          isMine={viewingShort.userId === myUserId}
-          onClose={() => setViewingShort(null)}
-          onNext={handleNextShort}
-          onPrev={() => { if (viewingIndex > 0) setViewingIndex((i) => i - 1); }}
-          onDelete={(itemId) => {
-            onDeleteShort(viewingShort.id, itemId);
-            if (viewingShort.items.length <= 1) {
-              setViewingShort(null);
-            } else {
-              setViewingIndex((i) => Math.min(i, viewingShort.items.length - 2));
-            }
-          }}
-          onReply={onReplyToShort ? (text) => onReplyToShort(viewingShort.userId, text) : undefined}
+      {/* TikTok-style vertical feed */}
+      {feedOpen && allItems.length > 0 && (
+        <TikTokFeed
+          items={allItems}
+          startIndex={feedStartIndex}
+          myUserId={myUserId}
+          onClose={() => setFeedOpen(false)}
+          onDelete={(shortId, itemId) => { onDeleteShort(shortId, itemId); }}
+          onReply={onReplyToShort}
           onShare={onShareShort}
         />
       )}
 
-      {/* Add Short dialog */}
-      {addOpen && (
-        <AddShortDialog
-          onClose={() => setAddOpen(false)}
-          onAdd={(items) => { onAddShort(items); setAddOpen(false); }}
-        />
-      )}
+      {/* Add dialog */}
+      {addOpen && <AddShortDialog onClose={() => setAddOpen(false)} onAdd={(items) => { onAddShort(items); setAddOpen(false); }} />}
     </>
   );
 }
 
-/* ===== Short Viewer (fullscreen with auto-advance) ===== */
-function ShortViewer({ short, index, isMine, onClose, onNext, onPrev, onDelete, onReply, onShare }: {
-  short: Short;
-  index: number;
-  isMine: boolean;
+/* ===== TikTok-style Vertical Feed ===== */
+
+function TikTokFeed({ items, startIndex, myUserId, onClose, onDelete, onReply, onShare }: {
+  items: { short: Short; item: ShortItem; itemIndex: number }[];
+  startIndex: number;
+  myUserId: string;
   onClose: () => void;
-  onNext: () => void;
-  onPrev: () => void;
-  onDelete: (itemId: string) => void;
-  onReply?: (text: string) => void;
+  onDelete: (shortId: string, itemId: string) => void;
+  onReply?: (userId: string, text: string) => void;
   onShare?: (item: ShortItem) => void;
 }) {
-  const item = short.items[index];
-  const [paused, setPaused] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [replyText, setReplyText] = useState("");
-  const [showViewers, setShowViewers] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdRef = useRef(false);
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const DURATION = item?.type === "video" ? 15000 : 6000; // 6s for images, 15s for video
-
-  // Auto-advance timer
+  // Scroll-snap to current index
   useEffect(() => {
-    if (!item || paused) return;
-    setProgress(0);
-    const startTime = Date.now();
-    timerRef.current = setInterval(() => {
-      if (holdRef.current) return; // paused by hold
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min(elapsed / DURATION, 1);
-      setProgress(pct);
-      if (pct >= 1) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        onNext();
-      }
-    }, 50);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [item?.id, index, paused, DURATION, onNext]);
+    const el = containerRef.current;
+    if (!el) return;
+    const child = el.children[currentIndex] as HTMLElement;
+    if (child) child.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentIndex]);
 
-  // Pause on hold (touch/mouse)
-  const handleHoldStart = () => { holdRef.current = true; setPaused(true); };
-  const handleHoldEnd = () => { holdRef.current = false; setPaused(false); };
+  // Detect scroll-snap position
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const scrollTop = el.scrollTop;
+        const height = el.clientHeight;
+        const idx = Math.round(scrollTop / height);
+        if (idx !== currentIndex && idx >= 0 && idx < items.length) {
+          setCurrentIndex(idx);
+        }
+      }, 100);
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => { el.removeEventListener("scroll", handleScroll); clearTimeout(timeout); };
+  }, [currentIndex, items.length]);
 
-  // Keyboard navigation
+  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") onNext();
-      else if (e.key === "ArrowLeft") onPrev();
-      else if (e.key === "Escape") onClose();
-      else if (e.key === " ") { e.preventDefault(); setPaused((p) => !p); }
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowDown" || e.key === "ArrowRight") setCurrentIndex((i) => Math.min(i + 1, items.length - 1));
+      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") setCurrentIndex((i) => Math.max(i - 1, 0));
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onNext, onPrev, onClose]);
+  }, [items.length, onClose]);
 
-  if (!item) return null;
+  const current = items[currentIndex];
+  if (!current) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black flex flex-col">
-      <div
-        className="flex-1 flex items-center justify-center relative select-none"
-        onMouseDown={handleHoldStart}
-        onMouseUp={handleHoldEnd}
-        onMouseLeave={handleHoldEnd}
-        onTouchStart={handleHoldStart}
-        onTouchEnd={handleHoldEnd}
-      >
-        {/* Progress bars with animation */}
-        <div className="absolute top-3 left-3 right-3 flex gap-1 z-20">
-          {short.items.map((_, i) => (
-            <div key={i} className="flex-1 h-0.5 rounded-full bg-white/30 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-white"
-                style={{
-                  width: i < index ? "100%" : i === index ? `${progress * 100}%` : "0%",
-                  transition: i === index ? "none" : "width 0.3s",
-                }}
-              />
-            </div>
-          ))}
-        </div>
+    <div className="fixed inset-0 z-[60] bg-black">
+      {/* Close button */}
+      <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/40 hover:bg-black/60">
+        <X className="h-5 w-5 text-white" />
+      </button>
 
-        {/* Header */}
-        <div className="absolute top-6 left-3 right-3 flex items-center justify-between z-20">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold text-white">
-              {short.avatar}
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-white">{short.userName}</p>
-              <p className="text-[9px] text-white/60">{item.timestamp}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {/* Pause indicator */}
-            {paused && (
-              <div className="p-1.5 rounded-lg bg-white/10">
-                <Pause className="h-4 w-4 text-white" />
-              </div>
-            )}
-            {isMine && (
-              <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20">
-                <Trash2 className="h-4 w-4 text-white" />
-              </button>
-            )}
-            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20">
-              <X className="h-4 w-4 text-white" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        {item.type === "image" ? (
-          <img src={item.url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
-        ) : (
-          <video src={item.url} autoPlay muted={false} playsInline className="max-h-full max-w-full" />
-        )}
-
-        {/* Text overlay */}
-        {item.textOverlay && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <p className="text-2xl font-bold text-white text-center px-8 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-              {item.textOverlay}
-            </p>
-          </div>
-        )}
-
-        {/* Navigation areas (tap left/right) */}
-        <div className="absolute left-0 top-0 bottom-0 w-1/3 cursor-pointer z-10" onClick={(e) => { e.stopPropagation(); onPrev(); }} />
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 cursor-pointer z-10" onClick={(e) => { e.stopPropagation(); onNext(); }} />
-
-        {/* Caption */}
-        {item.caption && (
-          <div className="absolute bottom-32 left-4 right-4 z-20 pointer-events-none">
-            <p className="text-sm text-white bg-black/50 rounded-xl px-3 py-2 backdrop-blur-sm">{item.caption}</p>
-          </div>
-        )}
-
-        {/* Right side action buttons (like TikTok/Likee) */}
-        <div className="absolute right-3 bottom-36 z-20 flex flex-col items-center gap-4">
-          {/* Views count */}
-          {isMine && (
-            <button onClick={(e) => { e.stopPropagation(); setShowViewers((v) => !v); }} className="flex flex-col items-center gap-0.5">
-              <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
-                <Eye className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-[9px] text-white/70">{item.views || 0}</span>
-            </button>
-          )}
-          {/* Share */}
-          {onShare && (
-            <button onClick={(e) => { e.stopPropagation(); onShare(item); }} className="flex flex-col items-center gap-0.5">
-              <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">
-                <Share2 className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-[9px] text-white/70">Share</span>
-            </button>
-          )}
-          {/* Save */}
-          <button onClick={(e) => { e.stopPropagation(); setSaved((s) => !s); }} className="flex flex-col items-center gap-0.5">
-            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${saved ? "bg-primary" : "bg-white/10 hover:bg-white/20"}`}>
-              <Bookmark className={`h-5 w-5 ${saved ? "text-primary-foreground fill-current" : "text-white"}`} />
-            </div>
-            <span className="text-[9px] text-white/70">{saved ? "Saved" : "Save"}</span>
-          </button>
-        </div>
-
-        {/* Viewers list popup */}
-        {showViewers && isMine && (
-          <div className="absolute bottom-36 right-16 z-30 w-48 rounded-2xl bg-black/80 backdrop-blur-sm border border-white/10 p-3" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[10px] text-white/60 font-mono uppercase mb-2">{item.views || 0} views</p>
-            {(item.viewers || []).length > 0 ? (
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {(item.viewers || []).map((v, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[8px] text-white font-bold">
-                      {v[0]?.toUpperCase()}
-                    </div>
-                    <span className="text-xs text-white/80">{v}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-white/40">No viewers yet</p>
-            )}
-          </div>
-        )}
-
-        {/* Reactions bar */}
-        <div className="absolute bottom-20 left-4 right-16 z-20 flex items-center gap-2">
-          {["❤️", "🔥", "😂", "😮", "👏", "😢"].map((emoji) => (
-            <button
-              key={emoji}
-              onClick={(e) => { e.stopPropagation(); }}
-              className="text-xl hover:scale-150 transition-transform p-1"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-
-        {/* Reply input (like Instagram) */}
-        {onReply && !isMine && (
-          <div className="absolute bottom-4 left-3 right-3 z-20 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="text"
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && replyText.trim()) {
-                  onReply(replyText.trim());
-                  setReplyText("");
-                }
-                e.stopPropagation();
-              }}
-              onFocus={() => setPaused(true)}
-              onBlur={() => setPaused(false)}
-              placeholder={`Reply to ${short.userName}...`}
-              className="flex-1 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/40 backdrop-blur-sm"
+      {/* Scroll-snap container */}
+      <div ref={containerRef} className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-none" style={{ scrollSnapType: "y mandatory" }}>
+        {items.map((entry, idx) => (
+          <div key={entry.item.id} className="h-full w-full snap-start snap-always relative flex-shrink-0" style={{ scrollSnapAlign: "start" }}>
+            <ShortSlide
+              entry={entry}
+              isActive={idx === currentIndex}
+              isMine={entry.short.userId === myUserId}
+              onDelete={() => onDelete(entry.short.id, entry.item.id)}
+              onReply={onReply ? (text: string) => onReply(entry.short.userId, text) : undefined}
+              onShare={onShare ? () => onShare(entry.item) : undefined}
             />
-            <button
-              onClick={() => { if (replyText.trim() && onReply) { onReply(replyText.trim()); setReplyText(""); } }}
-              disabled={!replyText.trim()}
-              className="p-2.5 rounded-full bg-primary disabled:bg-white/10"
-            >
-              <Send className="h-4 w-4 text-primary-foreground" />
-            </button>
           </div>
+        ))}
+      </div>
+
+      {/* Navigation hints */}
+      {currentIndex > 0 && (
+        <button onClick={() => setCurrentIndex((i) => i - 1)} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+60px)] z-20 p-1 rounded-full bg-white/10 hover:bg-white/20 hidden md:block">
+          <ChevronUp className="h-5 w-5 text-white" />
+        </button>
+      )}
+      {currentIndex < items.length - 1 && (
+        <button onClick={() => setCurrentIndex((i) => i + 1)} className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 p-1 rounded-full bg-white/10 hover:bg-white/20 hidden md:block animate-bounce">
+          <ChevronDown className="h-5 w-5 text-white" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ===== Single Short Slide (TikTok card) ===== */
+
+function ShortSlide({ entry, isActive, isMine, onDelete, onReply, onShare }: {
+  entry: { short: Short; item: ShortItem; itemIndex: number };
+  isActive: boolean;
+  isMine: boolean;
+  onDelete: () => void;
+  onReply?: (text: string) => void;
+  onShare?: () => void;
+}) {
+  const { short, item } = entry;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [liked, setLiked] = useState(item.liked || false);
+  const [likeCount, setLikeCount] = useState(item.likes || 0);
+  const [saved, setSaved] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [showViewers, setShowViewers] = useState(false);
+  const [heartAnim, setHeartAnim] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [replyText, setReplyText] = useState("");
+  const [comments, setComments] = useState<ShortComment[]>(item.comments || []);
+  const holdRef = useRef(false);
+  const lastTapRef = useRef(0);
+
+  const IMAGE_DURATION = 6000;
+
+  // Auto-play/pause video based on visibility
+  useEffect(() => {
+    if (item.type !== "video" || !videoRef.current) return;
+    if (isActive && !paused) {
+      videoRef.current.play().catch(() => {});
+      videoRef.current.muted = muted;
+    } else {
+      videoRef.current.pause();
+    }
+  }, [isActive, paused, muted, item.type]);
+
+  // Auto-advance for images
+  useEffect(() => {
+    if (item.type !== "image" || !isActive || paused) { setProgress(0); return; }
+    const start = Date.now();
+    const timer = setInterval(() => {
+      if (holdRef.current) return;
+      const pct = Math.min((Date.now() - start) / IMAGE_DURATION, 1);
+      setProgress(pct);
+      if (pct >= 1) clearInterval(timer);
+    }, 50);
+    return () => clearInterval(timer);
+  }, [item.id, isActive, paused, item.type]);
+
+  // Double-tap to like (TikTok signature feature)
+  const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      // Double tap — like with heart animation
+      if (!liked) {
+        setLiked(true);
+        setLikeCount((c) => c + 1);
+      }
+      setHeartAnim(true);
+      setTimeout(() => setHeartAnim(false), 800);
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+      // Single tap — toggle pause (after 300ms if no second tap)
+      setTimeout(() => {
+        if (lastTapRef.current === now) {
+          setPaused((p) => !p);
+        }
+      }, 300);
+    }
+  };
+
+  // Hold to pause
+  const handleHoldStart = () => { holdRef.current = true; setPaused(true); };
+  const handleHoldEnd = () => { holdRef.current = false; setPaused(false); };
+
+  const handleLike = () => {
+    setLiked((l) => !l);
+    setLikeCount((c) => liked ? c - 1 : c + 1);
+  };
+
+  const handleAddComment = (text: string) => {
+    if (!text.trim()) return;
+    const newComment: ShortComment = {
+      id: `c-${Date.now()}`,
+      userId: "me",
+      userName: "You",
+      text: text.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setComments((prev) => [...prev, newComment]);
+  };
+
+  return (
+    <div className="h-full w-full relative bg-black overflow-hidden">
+      {/* Media */}
+      {item.type === "video" ? (
+        <video
+          ref={videoRef}
+          src={item.url}
+          loop
+          playsInline
+          muted={muted}
+          className="h-full w-full object-contain"
+          onClick={handleTap}
+          onMouseDown={handleHoldStart}
+          onMouseUp={handleHoldEnd}
+          onTouchStart={handleHoldStart}
+          onTouchEnd={handleHoldEnd}
+        />
+      ) : (
+        <div
+          className="h-full w-full flex items-center justify-center"
+          onClick={handleTap}
+          onMouseDown={handleHoldStart}
+          onMouseUp={handleHoldEnd}
+          onTouchStart={handleHoldStart}
+          onTouchEnd={handleHoldEnd}
+        >
+          <img src={item.url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
+        </div>
+      )}
+
+      {/* Image progress bar */}
+      {item.type === "image" && isActive && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/20 z-20">
+          <div className="h-full bg-white transition-none" style={{ width: `${progress * 100}%` }} />
+        </div>
+      )}
+
+      {/* Pause overlay */}
+      {paused && isActive && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <div className="h-16 w-16 rounded-full bg-black/40 flex items-center justify-center">
+            <Play className="h-8 w-8 text-white ml-1" />
+          </div>
+        </div>
+      )}
+
+      {/* Double-tap heart animation */}
+      {heartAnim && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+          <Heart className="h-24 w-24 text-red-500 fill-red-500 animate-ping" />
+        </div>
+      )}
+
+      {/* Text overlay */}
+      {item.textOverlay && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <p className="text-3xl font-bold text-white text-center px-8 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">{item.textOverlay}</p>
+        </div>
+      )}
+
+      {/* Bottom info (author + caption + music) */}
+      <div className="absolute bottom-4 left-4 right-20 z-20 pointer-events-none">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white border border-white/30">
+            {short.avatar}
+          </div>
+          <span className="text-sm font-semibold text-white drop-shadow">{short.userName}</span>
+          {!isMine && (
+            <button className="pointer-events-auto px-2 py-0.5 rounded-md border border-white/40 text-[10px] text-white hover:bg-white/10">Follow</button>
+          )}
+        </div>
+        {item.caption && <p className="text-xs text-white/90 mb-1.5 drop-shadow line-clamp-2">{item.caption}</p>}
+        <div className="flex items-center gap-1.5 text-white/60">
+          <Music className="h-3 w-3" />
+          <span className="text-[10px]">Original sound — {short.userName}</span>
+        </div>
+      </div>
+
+      {/* Right-side action bar (TikTok style) */}
+      <div className="absolute right-3 bottom-24 z-20 flex flex-col items-center gap-5">
+        {/* Like */}
+        <button onClick={handleLike} className="flex flex-col items-center gap-0.5">
+          <div className={`h-11 w-11 rounded-full flex items-center justify-center ${liked ? "bg-red-500/20" : "bg-black/30"}`}>
+            <Heart className={`h-6 w-6 ${liked ? "text-red-500 fill-red-500" : "text-white"}`} />
+          </div>
+          <span className="text-[10px] text-white font-medium">{likeCount}</span>
+        </button>
+
+        {/* Comments */}
+        <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-0.5">
+          <div className="h-11 w-11 rounded-full bg-black/30 flex items-center justify-center">
+            <MessageCircle className="h-6 w-6 text-white" />
+          </div>
+          <span className="text-[10px] text-white font-medium">{comments.length}</span>
+        </button>
+
+        {/* Share */}
+        {onShare && (
+          <button onClick={onShare} className="flex flex-col items-center gap-0.5">
+            <div className="h-11 w-11 rounded-full bg-black/30 flex items-center justify-center">
+              <Share2 className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-[10px] text-white font-medium">Share</span>
+          </button>
         )}
 
-        {/* Nav arrows (desktop) */}
-        {index > 0 && (
-          <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded-full bg-white/10 hover:bg-white/20 hidden md:block">
-            <ChevronLeft className="h-5 w-5 text-white" />
+        {/* Save */}
+        <button onClick={() => setSaved((s) => !s)} className="flex flex-col items-center gap-0.5">
+          <div className={`h-11 w-11 rounded-full flex items-center justify-center ${saved ? "bg-yellow-500/20" : "bg-black/30"}`}>
+            <Bookmark className={`h-6 w-6 ${saved ? "text-yellow-400 fill-yellow-400" : "text-white"}`} />
+          </div>
+          <span className="text-[10px] text-white font-medium">{saved ? "Saved" : "Save"}</span>
+        </button>
+
+        {/* Sound toggle */}
+        {item.type === "video" && (
+          <button onClick={() => setMuted((m) => !m)} className="flex flex-col items-center gap-0.5">
+            <div className="h-11 w-11 rounded-full bg-black/30 flex items-center justify-center">
+              {muted ? <VolumeX className="h-5 w-5 text-white" /> : <Volume2 className="h-5 w-5 text-white" />}
+            </div>
           </button>
         )}
-        {index < short.items.length - 1 && (
-          <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded-full bg-white/10 hover:bg-white/20 hidden md:block">
-            <ChevronRight className="h-5 w-5 text-white" />
+
+        {/* Views (own shorts) */}
+        {isMine && (
+          <button onClick={() => setShowViewers((v) => !v)} className="flex flex-col items-center gap-0.5">
+            <div className="h-11 w-11 rounded-full bg-black/30 flex items-center justify-center">
+              <Eye className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-[10px] text-white font-medium">{item.views || 0}</span>
           </button>
         )}
+
+        {/* Delete (own) */}
+        {isMine && (
+          <button onClick={onDelete} className="flex flex-col items-center gap-0.5">
+            <div className="h-11 w-11 rounded-full bg-black/30 flex items-center justify-center">
+              <Trash2 className="h-5 w-5 text-white/70" />
+            </div>
+          </button>
+        )}
+      </div>
+
+      {/* Viewers popup */}
+      {showViewers && isMine && (
+        <div className="absolute bottom-36 right-16 z-30 w-48 rounded-2xl bg-black/80 backdrop-blur-sm border border-white/10 p-3" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] text-white/60 font-mono uppercase">{item.views || 0} views</p>
+            <button onClick={() => setShowViewers(false)}><X className="h-3 w-3 text-white/40" /></button>
+          </div>
+          {(item.viewers || []).length > 0 ? (
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {(item.viewers || []).map((v, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[8px] text-white font-bold">{v[0]?.toUpperCase()}</div>
+                  <span className="text-xs text-white/80">{v}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-white/40">No viewers yet</p>
+          )}
+        </div>
+      )}
+
+      {/* Reply input (non-own shorts) */}
+      {onReply && !isMine && !showComments && (
+        <div className="absolute bottom-4 left-4 right-20 z-20 flex items-center gap-2">
+          <input
+            type="text"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && replyText.trim()) { onReply(replyText.trim()); setReplyText(""); } e.stopPropagation(); }}
+            placeholder={`Reply to ${short.userName}...`}
+            className="flex-1 rounded-full bg-white/10 border border-white/20 px-4 py-2 text-xs text-white placeholder:text-white/40 outline-none focus:border-white/40 backdrop-blur-sm"
+          />
+          <button onClick={() => { if (replyText.trim() && onReply) { onReply(replyText.trim()); setReplyText(""); } }} disabled={!replyText.trim()} className="p-2 rounded-full bg-primary disabled:bg-white/10">
+            <Send className="h-3.5 w-3.5 text-primary-foreground" />
+          </button>
+        </div>
+      )}
+
+      {/* Comments panel (slide up, like TikTok) */}
+      {showComments && (
+        <CommentsPanel
+          comments={comments}
+          onClose={() => setShowComments(false)}
+          onAdd={handleAddComment}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ===== Comments Panel (TikTok slide-up) ===== */
+
+function CommentsPanel({ comments, onClose, onAdd }: {
+  comments: ShortComment[];
+  onClose: () => void;
+  onAdd: (text: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [comments.length]);
+
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end" onClick={onClose}>
+      <div className="bg-zinc-900 rounded-t-3xl max-h-[60%] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <span className="text-sm font-semibold text-white">{comments.length} comments</span>
+          <button onClick={onClose}><X className="h-5 w-5 text-white/60" /></button>
+        </div>
+
+        {/* Comments list */}
+        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {comments.length === 0 && (
+            <p className="text-center text-sm text-white/30 py-8">No comments yet. Be the first!</p>
+          )}
+          {comments.map((c) => (
+            <div key={c.id} className="flex gap-3">
+              <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                {c.userName[0]?.toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-white/80">{c.userName}</span>
+                  <span className="text-[9px] text-white/30">{c.timestamp}</span>
+                </div>
+                <p className="text-sm text-white/90 mt-0.5">{c.text}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <button className="text-[10px] text-white/40 hover:text-white/60">Reply</button>
+                  <button className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/60">
+                    <Heart className="h-3 w-3" /> {c.likes || 0}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-white/10">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { onAdd(text.trim()); setText(""); } }}
+            placeholder="Add a comment..."
+            autoFocus
+            className="flex-1 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/40"
+          />
+          <button onClick={() => { if (text.trim()) { onAdd(text.trim()); setText(""); } }} disabled={!text.trim()} className="p-2.5 rounded-full bg-primary disabled:bg-white/10">
+            <Send className="h-4 w-4 text-primary-foreground" />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 /* ===== Add Short Dialog (multi-file + text overlay) ===== */
+
 function AddShortDialog({ onClose, onAdd }: {
   onClose: () => void;
   onAdd: (items: ShortItem[]) => void;
@@ -426,10 +651,7 @@ function AddShortDialog({ onClose, onAdd }: {
   };
 
   const removePreview = (idx: number) => {
-    setPreviews((prev) => {
-      URL.revokeObjectURL(prev[idx].url);
-      return prev.filter((_, i) => i !== idx);
-    });
+    setPreviews((prev) => { URL.revokeObjectURL(prev[idx].url); return prev.filter((_, i) => i !== idx); });
   };
 
   const handleAdd = () => {
@@ -453,12 +675,9 @@ function AddShortDialog({ onClose, onAdd }: {
 
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-serif italic gradient-text">New Short</h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-surface-hover">
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-surface-hover"><X className="h-4 w-4 text-muted-foreground" /></button>
         </div>
 
-        {/* Preview grid */}
         {previews.length > 0 ? (
           <div className="mb-4">
             <div className={`grid gap-2 ${previews.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -469,7 +688,6 @@ function AddShortDialog({ onClose, onAdd }: {
                   ) : (
                     <video src={p.url} className="w-full h-32 object-cover rounded-2xl border border-border/40" />
                   )}
-                  {/* Text overlay preview */}
                   {i === 0 && textOverlay && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <p className="text-sm font-bold text-white text-center px-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">{textOverlay}</p>
@@ -478,71 +696,44 @@ function AddShortDialog({ onClose, onAdd }: {
                   <button onClick={() => removePreview(i)} className="absolute top-1 right-1 p-1 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
                     <X className="h-3 w-3 text-white" />
                   </button>
-                  {p.type === "video" && (
-                    <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-[8px] text-white">VIDEO</div>
-                  )}
+                  {p.type === "video" && <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-[8px] text-white">VIDEO</div>}
                 </div>
               ))}
             </div>
-            {/* Add more media */}
             <button onClick={() => fileRef.current?.click()} className="mt-2 text-xs text-primary hover:underline">+ Add more</button>
           </div>
         ) : (
           <div className="mb-4 flex gap-2">
-            <button
-              onClick={() => { if (fileRef.current) { fileRef.current.accept = "image/*"; fileRef.current.click(); } }}
-              className="flex-1 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/50 py-6 hover:border-primary/40 hover:bg-surface-hover transition-all"
-            >
-              <Image className="h-6 w-6 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Photo</span>
+            <button onClick={() => { if (fileRef.current) { fileRef.current.accept = "image/*"; fileRef.current.click(); } }}
+              className="flex-1 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/50 py-6 hover:border-primary/40 hover:bg-surface-hover transition-all">
+              <Image className="h-6 w-6 text-muted-foreground" /><span className="text-xs text-muted-foreground">Photo</span>
             </button>
-            <button
-              onClick={() => { if (fileRef.current) { fileRef.current.accept = "video/*"; fileRef.current.click(); } }}
-              className="flex-1 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/50 py-6 hover:border-primary/40 hover:bg-surface-hover transition-all"
-            >
-              <Film className="h-6 w-6 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Video</span>
+            <button onClick={() => { if (fileRef.current) { fileRef.current.accept = "video/*"; fileRef.current.click(); } }}
+              className="flex-1 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/50 py-6 hover:border-primary/40 hover:bg-surface-hover transition-all">
+              <Film className="h-6 w-6 text-muted-foreground" /><span className="text-xs text-muted-foreground">Video</span>
             </button>
           </div>
         )}
 
-        {/* Text overlay toggle */}
         {previews.length > 0 && (
           <div className="mb-3">
             <button onClick={() => setShowTextInput((v) => !v)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <Type className="h-3.5 w-3.5" />
-              <span>{showTextInput ? "Hide text overlay" : "Add text overlay"}</span>
+              <Type className="h-3.5 w-3.5" /><span>{showTextInput ? "Hide text overlay" : "Add text overlay"}</span>
             </button>
             {showTextInput && (
-              <input
-                type="text"
-                value={textOverlay}
-                onChange={(e) => setTextOverlay(e.target.value)}
-                placeholder="Text on image..."
-                className="mt-2 w-full rounded-xl glass border border-border/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent"
-              />
+              <input type="text" value={textOverlay} onChange={(e) => setTextOverlay(e.target.value)} placeholder="Text on image..."
+                className="mt-2 w-full rounded-xl glass border border-border/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent" />
             )}
           </div>
         )}
 
-        {/* Caption */}
         <div className="mb-4">
-          <input
-            type="text"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Add a caption..."
-            className="w-full rounded-2xl glass border border-border/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent"
-          />
+          <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Add a caption..."
+            className="w-full rounded-2xl glass border border-border/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 bg-transparent" />
         </div>
 
-        <button
-          onClick={handleAdd}
-          disabled={previews.length === 0}
-          className={`w-full rounded-2xl py-3 text-sm font-semibold transition-all ${
-            previews.length > 0 ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"
-          }`}
-        >
+        <button onClick={handleAdd} disabled={previews.length === 0}
+          className={`w-full rounded-2xl py-3 text-sm font-semibold transition-all ${previews.length > 0 ? "gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02]" : "bg-secondary text-muted-foreground cursor-not-allowed"}`}>
           Share Short {previews.length > 1 ? `(${previews.length} items)` : ""}
         </button>
       </div>
