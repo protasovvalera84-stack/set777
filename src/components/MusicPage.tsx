@@ -123,10 +123,22 @@ export function MusicPage({ open, onClose }: MusicPageProps) {
       });
       if (!resp.ok) return;
       const data = await resp.json() as any;
+      // Collect likes per track
+      const likesMap = new Map<string, { count: number; myLike: boolean }>();
+      for (const evt of (data.chunk || [])) {
+        if (evt.type === "org.meshlink.track_like") {
+          const c = evt.content;
+          const existing = likesMap.get(c.track_id) || { count: 0, myLike: false };
+          if (c.liked) existing.count++;
+          if (evt.sender === mesh.userId) existing.myLike = c.liked;
+          likesMap.set(c.track_id, existing);
+        }
+      }
       const t: Track[] = [];
       for (const evt of (data.chunk || [])) {
         if (evt.type === "org.meshlink.track") {
           const c = evt.content;
+          const likeData = likesMap.get(evt.event_id);
           t.push({
             id: evt.event_id,
             title: c.title || "Untitled",
@@ -136,7 +148,8 @@ export function MusicPage({ open, onClose }: MusicPageProps) {
             authorId: evt.sender || "",
             timestamp: new Date(evt.origin_server_ts).toLocaleDateString(),
             duration: c.duration,
-            likes: c.likes || 0,
+            likes: likeData?.count || 0,
+            liked: likeData?.myLike || false,
           });
         }
       }
@@ -220,8 +233,25 @@ export function MusicPage({ open, onClose }: MusicPageProps) {
     return () => { audio.removeEventListener("timeupdate", onTime); audio.removeEventListener("ended", onEnd); };
   }, [repeatMode, playNext]);
 
-  const toggleLike = (trackId: string) => {
-    setTracks((prev) => prev.map((t) => t.id === trackId ? { ...t, liked: !t.liked, likes: t.liked ? t.likes - 1 : t.likes + 1 } : t));
+  const toggleLike = async (trackId: string) => {
+    const track = tracks.find((t) => t.id === trackId);
+    if (!track) return;
+    const newLiked = !track.liked;
+    setTracks((prev) => prev.map((t) => t.id === trackId ? { ...t, liked: newLiked, likes: newLiked ? t.likes + 1 : t.likes - 1 } : t));
+    // Save to server
+    if (mesh.client) {
+      const baseUrl = mesh.client.getHomeserverUrl();
+      const token = mesh.client.getAccessToken();
+      const roomId = await getMusicRoomId();
+      if (roomId) {
+        const txn = `tl${Date.now()}`;
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/org.meshlink.track_like/${txn}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ track_id: trackId, liked: newLiked }),
+        }).catch(() => {});
+      }
+    }
   };
 
   const createPlaylist = (name: string) => {
