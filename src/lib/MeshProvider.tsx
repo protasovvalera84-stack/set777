@@ -207,6 +207,14 @@ interface MeshContextValue {
   searchUsers: (term: string) => Promise<{ userId: string; displayName: string }[]>;
   getPublicRooms: () => Promise<MeshRoom[]>;
   searchRooms: (query: string) => Promise<MeshRoom[]>;
+  // Friends system
+  friends: string[];
+  friendRequests: { from: string; displayName: string }[];
+  addFriend: (userId: string) => Promise<void>;
+  acceptFriend: (userId: string) => Promise<void>;
+  rejectFriend: (userId: string) => Promise<void>;
+  removeFriend: (userId: string) => Promise<void>;
+  isFriend: (userId: string) => boolean;
 }
 
 const MeshContext = createContext<MeshContextValue | null>(null);
@@ -1192,6 +1200,121 @@ export function MeshProvider({ session, children }: Props) {
     return results;
   }, [session.homeserverUrl, session.userId]);
 
+  // ===== Friends System =====
+  // Stored in Matrix account_data as org.meshlink.friends
+  const [friends, setFriends] = useState<string[]>([]);
+  const [friendRequests, setFriendRequests] = useState<{ from: string; displayName: string }[]>([]);
+
+  // Load friends from account_data on sync ready
+  useEffect(() => {
+    const c = clientRef.current;
+    if (!c || !ready) return;
+    try {
+      const data = c.getAccountData("org.meshlink.friends");
+      if (data) {
+        const content = data.getContent() as { friends?: string[]; requests?: { from: string; displayName: string }[] };
+        setFriends(content.friends || []);
+        setFriendRequests(content.requests || []);
+      }
+    } catch { /* no friends data yet */ }
+  }, [ready]);
+
+  const saveFriendsData = useCallback(async (newFriends: string[], newRequests: { from: string; displayName: string }[]) => {
+    const c = clientRef.current;
+    if (!c) return;
+    try {
+      await c.setAccountData("org.meshlink.friends", { friends: newFriends, requests: newRequests });
+    } catch (err) {
+      console.warn("Failed to save friends data:", err);
+    }
+  }, []);
+
+  const addFriend = useCallback(async (userId: string) => {
+    const c = clientRef.current;
+    if (!c) return;
+    // Send friend request via DM (create DM if needed, send custom event)
+    try {
+      // First ensure DM exists
+      const dmRoomId = await createDm(userId);
+      // Send friend request as custom message
+      const txn = `fr${Date.now()}`;
+      await fetch(`${session.homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(dmRoomId)}/send/org.meshlink.friend_request/${txn}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.accessToken}` },
+        body: JSON.stringify({ action: "request", from: session.userId }),
+      });
+      // Also send a visible message
+      const txn2 = `fm${Date.now()}`;
+      await fetch(`${session.homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(dmRoomId)}/send/m.room.message/${txn2}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.accessToken}` },
+        body: JSON.stringify({ msgtype: "m.text", body: "sent you a friend request" }),
+      });
+    } catch (err) {
+      console.warn("Failed to send friend request:", err);
+    }
+  }, [session.homeserverUrl, session.accessToken, session.userId, createDm]);
+
+  const acceptFriend = useCallback(async (userId: string) => {
+    const newFriends = [...friends, userId];
+    const newRequests = friendRequests.filter((r) => r.from !== userId);
+    setFriends(newFriends);
+    setFriendRequests(newRequests);
+    await saveFriendsData(newFriends, newRequests);
+    // Notify the other user by sending accept event
+    try {
+      const dmRoomId = await createDm(userId);
+      const txn = `fa${Date.now()}`;
+      await fetch(`${session.homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(dmRoomId)}/send/org.meshlink.friend_request/${txn}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.accessToken}` },
+        body: JSON.stringify({ action: "accepted", from: session.userId }),
+      });
+    } catch { /* non-critical */ }
+  }, [friends, friendRequests, saveFriendsData, session, createDm]);
+
+  const rejectFriend = useCallback(async (userId: string) => {
+    const newRequests = friendRequests.filter((r) => r.from !== userId);
+    setFriendRequests(newRequests);
+    await saveFriendsData(friends, newRequests);
+  }, [friends, friendRequests, saveFriendsData]);
+
+  const removeFriend = useCallback(async (userId: string) => {
+    const newFriends = friends.filter((f) => f !== userId);
+    setFriends(newFriends);
+    await saveFriendsData(newFriends, friendRequests);
+  }, [friends, friendRequests, saveFriendsData]);
+
+  const isFriend = useCallback((userId: string) => friends.includes(userId), [friends]);
+
+  // Listen for incoming friend requests via sync
+  useEffect(() => {
+    const c = clientRef.current;
+    if (!c || !ready) return;
+    const handleEvent = (event: any) => {
+      if (event.getType() === "org.meshlink.friend_request") {
+        const content = event.getContent();
+        if (content.action === "request" && content.from && content.from !== session.userId) {
+          setFriendRequests((prev) => {
+            if (prev.find((r) => r.from === content.from)) return prev;
+            const name = content.from.split(":")[0].replace("@", "");
+            return [...prev, { from: content.from, displayName: name }];
+          });
+        } else if (content.action === "accepted" && content.from) {
+          // Other user accepted our request — add them as friend
+          setFriends((prev) => {
+            if (prev.includes(content.from)) return prev;
+            const updated = [...prev, content.from];
+            saveFriendsData(updated, friendRequests);
+            return updated;
+          });
+        }
+      }
+    };
+    c.on("Room.timeline" as any, handleEvent);
+    return () => { c.removeListener("Room.timeline" as any, handleEvent); };
+  }, [ready, session.userId, saveFriendsData, friendRequests]);
+
 
   const value: MeshContextValue = {
     client: clientRef.current,
@@ -1215,6 +1338,13 @@ export function MeshProvider({ session, children }: Props) {
     searchUsers,
     getPublicRooms,
     searchRooms,
+    friends,
+    friendRequests,
+    addFriend,
+    acceptFriend,
+    rejectFriend,
+    removeFriend,
+    isFriend,
   };
 
   return (
