@@ -545,6 +545,13 @@ export function MeshProvider({ session, children }: Props) {
     const allRooms = c.getRooms();
     const meshRooms = allRooms
       .filter((r) => r.getMyMembership() === "join")
+      .filter((r) => {
+        // Hide Meshlink Registry room from chat list
+        const alias = r.getCanonicalAlias() || "";
+        if (alias.includes("meshlink-registry")) return false;
+        if (r.name === "Meshlink Room Registry") return false;
+        return true;
+      })
       .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl, c))
       .sort((a, b) => {
         if (!a.lastMessageTime && b.lastMessageTime) return 1;
