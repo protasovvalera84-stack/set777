@@ -18,6 +18,8 @@ const FeedPage = lazy(() => import("@/components/FeedPage").then(m => ({ default
 const BotApiPage = lazy(() => import("@/components/BotApiPage").then(m => ({ default: m.BotApiPage })));
 const HelpPage = lazy(() => import("@/components/HelpPage").then(m => ({ default: m.HelpPage })));
 const NotificationsPage = lazy(() => import("@/components/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
+const VideoPage = lazy(() => import("@/components/VideoPage").then(m => ({ default: m.VideoPage })));
+const MusicPage = lazy(() => import("@/components/MusicPage").then(m => ({ default: m.MusicPage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -85,6 +87,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [botApiOpen, setBotApiOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -708,6 +712,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <div className="absolute right-3 top-12 w-48 rounded-2xl bg-background border border-border shadow-2xl p-2 space-y-0.5" onClick={(e) => e.stopPropagation()}>
               {[
                 { icon: "👥", label: "Contacts", action: () => setContactsOpen(true) },
+                { icon: "🎬", label: "Video", action: () => setVideoOpen(true) },
+                { icon: "🎵", label: "Music", action: () => setMusicOpen(true) },
                 { icon: "📢", label: "Feed", action: () => setFeedOpen(true) },
                 { icon: "👛", label: "Wallet", action: () => setWalletOpen(true) },
                 { icon: "📅", label: "Scheduler", action: () => setSchedulerOpen(true) },
@@ -764,6 +770,8 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => setBotApiOpen(false)} />}
         {helpOpen && <HelpPage open={helpOpen} onClose={() => setHelpOpen(false)} />}
         {notificationsOpen && <NotificationsPage open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />}
+        {videoOpen && <VideoPage open={videoOpen} onClose={() => setVideoOpen(false)} />}
+        {musicOpen && <MusicPage open={musicOpen} onClose={() => setMusicOpen(false)} />}
       </Suspense>
     </>
   );
