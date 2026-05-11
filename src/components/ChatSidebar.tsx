@@ -105,16 +105,23 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     const serverName = mesh.userId?.split(":")[1] || "";
     const fullAlias = `#meshlink-shorts:${serverName}`;
     try {
+      // Check if room exists
       const resp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (resp.ok) {
         const data = await resp.json() as any;
-        await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(fullAlias)}`, {
+        // Try to join
+        const joinResp = await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(fullAlias)}`, {
           method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+        });
+        if (joinResp.ok) return data.room_id;
+        // Join failed (room not public) — delete alias and recreate
+        await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
+          method: "DELETE", headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {});
-        return data.room_id;
       }
+      // Create new public room
       const createResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -128,6 +135,20 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         }),
       });
       if (createResp.ok) return ((await createResp.json()) as any).room_id;
+      // If alias still taken, try without alias
+      const noAliasResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: "Meshlink Shorts", preset: "public_chat",
+          initial_state: [
+            { type: "m.room.join_rules", content: { join_rule: "public" }, state_key: "" },
+            { type: "m.room.history_visibility", content: { history_visibility: "world_readable" }, state_key: "" },
+            { type: "m.room.power_levels", content: { events_default: 0 }, state_key: "" },
+          ],
+        }),
+      });
+      if (noAliasResp.ok) return ((await noAliasResp.json()) as any).room_id;
     } catch { /* ignore */ }
     return null;
   };
@@ -167,7 +188,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           const name = authorId.split(":")[0].replace("@", "");
           authorMap.set(authorId, {
             id: `short-${authorId}`,
-            userId: isMe ? "me" : authorId,
+            userId: authorId,
             userName: isMe ? profile.name : name,
             avatar: isMe ? profile.avatarInitials : name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "??",
             items: [item],
@@ -404,7 +425,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {/* Shorts */}
         <ShortsBar
           shorts={shorts}
-          myUserId="me"
+          myUserId={mesh.userId || "me"}
           myName={profile.name}
           myAvatar={profile.avatarInitials}
           myAvatarUrl={profile.avatarUrl}

@@ -104,13 +104,13 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
     <>
       {/* Horizontal strip (like TikTok stories row) */}
       <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-thin border-b border-border/30">
-        {/* My short / Add */}
+        {/* My short — always shows + icon, click opens feed or add */}
         <button
-          onClick={() => myShort ? openFeed(0) : setAddOpen(true)}
+          onClick={() => myShort && myShort.items.length > 0 ? openFeed(0) : setAddOpen(true)}
           className="flex-shrink-0 flex flex-col items-center gap-1 group"
         >
           <div className="relative">
-            <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${myShort ? "border-primary shadow-glow" : "border-border/50"}`}>
+            <div className={`h-14 w-14 rounded-xl overflow-hidden border-2 transition-all ${myShort && myShort.items.length > 0 ? "border-primary shadow-glow" : "border-border/50"}`}>
               {myAvatarUrl ? (
                 <img src={myAvatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -119,14 +119,22 @@ export function ShortsBar({ shorts, myUserId, myName, myAvatar, myAvatarUrl, onA
                 </div>
               )}
             </div>
-            {!myShort && (
-              <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-md bg-primary flex items-center justify-center border-2 border-card">
-                <Plus className="h-3 w-3 text-primary-foreground" />
-              </div>
-            )}
+            <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-md bg-primary flex items-center justify-center border-2 border-card">
+              <Plus className="h-3 w-3 text-primary-foreground" />
+            </div>
           </div>
-          <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{myShort ? "My Short" : "Add"}</span>
+          <span className="text-[9px] text-muted-foreground truncate w-14 text-center">{myShort && myShort.items.length > 0 ? "My Short" : "Add"}</span>
         </button>
+
+        {/* Add new (always visible when user has shorts) */}
+        {myShort && myShort.items.length > 0 && (
+          <button onClick={() => setAddOpen(true)} className="flex-shrink-0 flex flex-col items-center gap-1">
+            <div className="h-14 w-14 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary flex items-center justify-center transition-all hover:bg-primary/5">
+              <Plus className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-[9px] text-primary">New</span>
+          </button>
+        )}
 
         {/* Other users */}
         {otherShorts.map((s) => {
