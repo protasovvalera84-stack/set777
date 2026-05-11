@@ -576,8 +576,8 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
               ? chat.messages.filter((m) => m.topicId === activeTopic || m.senderId === "system")
               : chat.messages;
 
-            // Keep chronological order, replies shown with indent
-            const filtered = rawFiltered;
+            // Hide replies from main list — they show as inline comments inside parent
+            const filtered = rawFiltered.filter((m) => !m.replyToId);
             return filtered.length > 0 ? (
               <Virtuoso
                 ref={virtuosoRef}
@@ -605,7 +605,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
                         </div>
                       )}
                       <div className={`py-1 ${msg.replyToId ? "ml-6 md:ml-10 border-l-2 border-primary/20 pl-2" : ""}`}>
-                        <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} />
+                        <MessageBubble message={msg} index={i} chatType={chat.type} roomId={chat.id} onForward={handleForward} onPin={(text) => { setPinnedMsg(text); localStorage.setItem(`meshlink-pin-${chat.id}`, text); }} onReply={setReplyTo} allMessages={rawFiltered} />
                       </div>
                     </div>
                   );
@@ -1057,7 +1057,7 @@ function MediaDisplay({ attachment }: { attachment: MediaAttachment }) {
   return null;
 }
 
-function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onReply }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void; onPin?: (text: string) => void; onReply?: (msg: Message) => void }) {
+function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onReply, allMessages }: { message: Message; index: number; chatType?: string; roomId?: string; onForward?: (msg: Message) => void; onPin?: (text: string) => void; onReply?: (msg: Message) => void; allMessages?: Message[] }) {
   const isOwn = message.senderId === "me";
   const isSystem = message.senderId === "system";
   const isGroup = chatType === "group" || chatType === "channel";
@@ -1428,6 +1428,32 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
             </button>
           </div>
         )}
+
+        {/* Inline comments (replies to this message shown inside the card) */}
+        {allMessages && (() => {
+          const replies = allMessages.filter((m) => m.replyToId === message.id);
+          if (replies.length === 0) return null;
+          return (
+            <div className="mt-2 pt-2 border-t border-border/20 space-y-1.5">
+              <p className="text-[9px] text-muted-foreground font-mono uppercase">{replies.length} comment{replies.length > 1 ? "s" : ""}</p>
+              {replies.map((reply) => {
+                const replyDisplayText = reply.text?.replace(/\[thread:[^\]]+\]\s*/g, "").replace(/^> .*\n\n/, "") || "";
+                return (
+                  <div key={reply.id} className="flex items-start gap-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[8px] font-bold text-foreground flex-shrink-0 mt-0.5">
+                      {reply.senderId === "me" ? "Y" : (reply.senderId?.[0] || "?").toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-medium text-foreground">{reply.senderId === "me" ? "You" : reply.senderId?.split(":")[0].replace("@", "") || "User"}</span>
+                      <p className="text-[11px] text-foreground/80">{replyDisplayText}</p>
+                    </div>
+                    <span className="text-[8px] text-muted-foreground/50 flex-shrink-0">{reply.timestamp}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
