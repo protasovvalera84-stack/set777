@@ -510,16 +510,54 @@ log "Platform installers generated."
 # =============================================================================
 # Step 7: Generate server signing key
 # =============================================================================
-# Clean up any Docker volume artifacts (signing.key as directory)
-if [ -d "$SERVER_DIR/synapse/signing.key" ]; then
-    rm -rf "$SERVER_DIR/synapse/signing.key"
-fi
+# CRITICAL: Clean up Docker volume artifacts
+# Docker creates DIRECTORIES instead of files when mounting non-existent paths
+# This happens after failed installs or docker compose up before files exist
+log "Cleaning Docker volume artifacts..."
+for f in signing.key homeserver.yaml log.config; do
+    if [ -d "$SERVER_DIR/synapse/$f" ]; then
+        log "  Removing directory artifact: synapse/$f"
+        rm -rf "$SERVER_DIR/synapse/$f"
+    fi
+done
 if [ -d "/data/signing.key" ]; then
     rm -rf "/data/signing.key"
 fi
+for f in turnserver.conf; do
+    if [ -d "$SERVER_DIR/coturn/$f" ]; then
+        rm -rf "$SERVER_DIR/coturn/$f"
+    fi
+done
+for f in config.json; do
+    if [ -d "$SERVER_DIR/element/$f" ]; then
+        rm -rf "$SERVER_DIR/element/$f"
+    fi
+done
 
 # Stop containers before volume operations
 docker compose -f "$SERVER_DIR/docker-compose.yml" down 2>/dev/null || true
+docker volume rm server_synapse_data 2>/dev/null || true
+
+# Restore config files if they were deleted by artifact cleanup
+if [ ! -f "$SERVER_DIR/synapse/homeserver.yaml" ]; then
+    log "Restoring homeserver.yaml..."
+    git -C "$REPO_DIR" checkout -- server/synapse/homeserver.yaml 2>/dev/null || true
+    template_file "$SERVER_DIR/synapse/homeserver.yaml"
+fi
+if [ ! -f "$SERVER_DIR/synapse/log.config" ]; then
+    log "Restoring log.config..."
+    git -C "$REPO_DIR" checkout -- server/synapse/log.config 2>/dev/null || true
+fi
+if [ ! -f "$SERVER_DIR/coturn/turnserver.conf" ]; then
+    log "Restoring turnserver.conf..."
+    git -C "$REPO_DIR" checkout -- server/coturn/turnserver.conf 2>/dev/null || true
+    template_file "$SERVER_DIR/coturn/turnserver.conf"
+fi
+if [ ! -f "$SERVER_DIR/element/config.json" ]; then
+    log "Restoring config.json..."
+    git -C "$REPO_DIR" checkout -- server/element/config.json 2>/dev/null || true
+    template_file "$SERVER_DIR/element/config.json"
+fi
 
 if [ ! -f "$SERVER_DIR/synapse/signing.key" ]; then
     log "Generating server signing key..."
@@ -536,6 +574,21 @@ if [ ! -f "$SERVER_DIR/synapse/signing.key" ]; then
 else
     log "Signing key already exists, skipping generation."
 fi
+
+# Verify all required files exist before proceeding
+log "Verifying config files..."
+MISSING=false
+for f in "$SERVER_DIR/synapse/homeserver.yaml" "$SERVER_DIR/synapse/signing.key" "$SERVER_DIR/synapse/log.config" "$SERVER_DIR/coturn/turnserver.conf" "$SERVER_DIR/element/config.json"; do
+    if [ ! -f "$f" ]; then
+        err "MISSING: $f"
+        MISSING=true
+    fi
+done
+if [ "$MISSING" = "true" ]; then
+    err "Required config files are missing. Cannot start server."
+    exit 1
+fi
+log "All config files verified."
 
 # Fix permissions: Synapse runs as UID 991 inside the container
 log "Fixing file permissions..."
