@@ -633,8 +633,17 @@ while [ $RETRIES -gt 0 ]; do
     sleep 3
 done
 
-# Ensure nginx is running regardless of healthcheck status
-docker compose up -d --no-deps nginx 2>/dev/null || true
+# Ensure nginx and admin are running
+docker compose up -d --no-deps nginx synapse-admin 2>/dev/null || true
+sleep 5
+# Verify synapse-admin is running
+if docker compose ps synapse-admin 2>/dev/null | grep -q "Up"; then
+    log "Synapse Admin panel is running."
+else
+    log "Restarting Synapse Admin..."
+    docker compose restart synapse-admin 2>/dev/null || true
+    sleep 5
+fi
 
 if [ "$HEALTHY" = "false" ]; then
     warn "Server is still starting up. It may need a few more seconds."
