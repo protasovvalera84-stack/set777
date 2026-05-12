@@ -67,8 +67,12 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
       for (const room of rooms) {
         const members = room.getJoinedMembers();
         const alias = room.getCanonicalAlias() || "";
+        const roomName = room.name || "";
         const joinRule = (() => { try { return room.getJoinRule(); } catch { return "invite"; } })();
         const isPublic = joinRule === "public";
+
+        // Skip internal Meshlink rooms
+        if (alias.includes("meshlink-") || roomName.includes("Meshlink Shorts") || roomName.includes("Meshlink Videos") || roomName.includes("Meshlink Music") || roomName.includes("Meshlink Room Registry") || roomName === "__meshlink_test__") continue;
 
         // Check meshlink type
         let meshlinkType: string | null = null;
