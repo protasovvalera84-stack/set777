@@ -20,6 +20,7 @@ const HelpPage = lazy(() => import("@/components/HelpPage").then(m => ({ default
 const NotificationsPage = lazy(() => import("@/components/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const VideoPage = lazy(() => import("@/components/VideoPage").then(m => ({ default: m.VideoPage })));
 const MusicPage = lazy(() => import("@/components/MusicPage").then(m => ({ default: m.MusicPage })));
+const MarketplacePage = lazy(() => import("@/components/MarketplacePage").then(m => ({ default: m.MarketplacePage })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -89,6 +90,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
+  const [marketOpen, setMarketOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -756,6 +758,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
                 { icon: "🤖", label: "Bot API", action: () => setBotApiOpen(true) },
                 { icon: "📰", label: "RSS Reader", action: () => setRssOpen(true) },
                 { icon: "🎮", label: "Games", action: () => setGameOpen(true) },
+                { icon: "🛒", label: "Marketplace", action: () => setMarketOpen(true) },
                 { icon: "📱", label: "QR Login", action: () => setQrLoginOpen(true) },
                 { icon: "❓", label: "Help Center", action: () => setHelpOpen(true) },
                 { icon: "🔔", label: "Notifications", action: () => setNotificationsOpen(true) },
@@ -807,6 +810,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {notificationsOpen && <NotificationsPage open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />}
         {videoOpen && <VideoPage open={videoOpen} onClose={() => setVideoOpen(false)} />}
         {musicOpen && <MusicPage open={musicOpen} onClose={() => setMusicOpen(false)} />}
+        {marketOpen && <MarketplacePage open={marketOpen} onClose={() => setMarketOpen(false)} onStartDm={onStartDm} />}
       </Suspense>
     </>
   );
