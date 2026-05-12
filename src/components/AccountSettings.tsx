@@ -166,7 +166,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onLogout={onLogout} setPinSetupOpen={setPinSetupOpen} setSecurityOpen={setSecurityOpen} setSessionsOpen={setSessionsOpen} setExportOpen={setExportOpen} />}
+          {page === "main" && <MainPage profile={profile} avatarPreview={avatarPreview} setPage={setPage} onLogout={onLogout} setPinSetupOpen={setPinSetupOpen} setSecurityOpen={setSecurityOpen} setSessionsOpen={setSessionsOpen} setExportOpen={setExportOpen} setAdminOpen={setAdminOpen} />}
           {page === "editProfile" && (
             <EditProfilePage
               draft={draft}
@@ -199,6 +199,7 @@ function MainPage({
   setSecurityOpen,
   setSessionsOpen,
   setExportOpen,
+  setAdminOpen,
 }: {
   profile: UserProfile;
   avatarPreview: string | null;
@@ -208,6 +209,7 @@ function MainPage({
   setSecurityOpen: (v: boolean) => void;
   setSessionsOpen: (v: boolean) => void;
   setExportOpen: (v: boolean) => void;
+  setAdminOpen: (v: boolean) => void;
 }) {
   return (
     <div className="space-y-5">
