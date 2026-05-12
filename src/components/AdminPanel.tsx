@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { X, Shield, Play, Loader2, AlertTriangle, CheckCircle, Bug, Zap, Server, Wifi, Database, Eye } from "lucide-react";
+import { X, Shield, Play, Loader2, AlertTriangle, CheckCircle, Bug, Zap, Server, Wifi, Database, Eye, Trash2 } from "lucide-react";
 import { useMesh } from "@/lib/MeshProvider";
+import { errorCollector } from "@/lib/errorCollector";
 
 interface ScanResult {
   id: string;
@@ -342,8 +343,37 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
       }
     } catch {}
 
-    // Collect browser errors from console
+    // Collect browser errors from error collector
     setProgress(98);
+    const collectedErrors = errorCollector.getErrors();
+    const errorSummary = errorCollector.getSummary();
+
+    if (collectedErrors.length > 0) {
+      findings.push({
+        id: "err-summary",
+        severity: errorSummary.js > 0 ? "critical" : errorSummary.network > 3 ? "warning" : "info",
+        category: "Error Log",
+        title: `${errorSummary.total} errors collected (${collectedErrors.length} unique)`,
+        description: `JS: ${errorSummary.js}, Promise: ${errorSummary.promise}, Network: ${errorSummary.network}, Manual: ${errorSummary.manual}`,
+        solution: errorSummary.js > 0 ? "JavaScript errors detected — check details below." : "Mostly network errors — may be normal during startup.",
+      });
+
+      // Add top 10 most frequent errors
+      const sorted = [...collectedErrors].sort((a, b) => b.count - a.count).slice(0, 10);
+      for (const err of sorted) {
+        findings.push({
+          id: `err-${err.id.slice(0, 20)}`,
+          severity: err.type === "js" ? "critical" : err.type === "promise" ? "warning" : err.count > 5 ? "warning" : "info",
+          category: "Error Log",
+          title: `[${err.type.toUpperCase()}] ${err.message.slice(0, 60)}${err.message.length > 60 ? "..." : ""}`,
+          description: `${err.count}x | ${err.url || err.source || ""} ${err.line ? `line ${err.line}` : ""} | ${new Date(err.timestamp).toLocaleTimeString()}`,
+          solution: err.stack ? err.stack.split("\n")[0]?.slice(0, 100) || "" : "",
+        });
+      }
+    } else {
+      findings.push({ id: "err-none", severity: "ok", category: "Error Log", title: "No errors collected", description: "No JavaScript, promise, or network errors detected during this session.", solution: "" });
+    }
+
     findings.push({ id: "func-11", severity: "info", category: "Browser", title: `JS bundle: index-${document.querySelector('script[src*="index-"]')?.getAttribute("src")?.match(/index-([^.]+)/)?.[1] || "?"}`, description: `User agent: ${navigator.userAgent.slice(0, 60)}...`, solution: "" });
 
     setProgress(100);
@@ -384,6 +414,14 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
           {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bug className="h-4 w-4" />}
           {scanning ? `Scanning... ${progress}%` : "Run System Scan"}
         </button>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="flex-1 text-[10px] text-muted-foreground">
+            {(() => { const s = errorCollector.getSummary(); return s.total > 0 ? `${s.total} errors collected this session` : "No errors"; })()}
+          </div>
+          <button onClick={() => { errorCollector.clear(); }} className="text-[10px] text-destructive hover:underline flex items-center gap-1">
+            <Trash2 className="h-3 w-3" /> Clear errors
+          </button>
+        </div>
         {scanning && (
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
