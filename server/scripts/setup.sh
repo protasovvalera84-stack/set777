@@ -295,9 +295,13 @@ server {
         proxy_pass http://\$up_synapse; proxy_set_header Host \$host; }
     location /_synapse { set \$up_synapse synapse:8008;
         proxy_pass http://\$up_synapse; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; }
-    location /admin/ { set \$up_admin synapse-admin:80;
-        proxy_pass http://\$up_admin/; proxy_set_header Host \$host; }
-    location = /admin { return 301 /admin/; }
+    location /admin {
+        rewrite ^/admin\$ /admin/ permanent;
+        rewrite ^/admin/(.*)\$ /\$1 break;
+        proxy_pass http://synapse-admin:8080;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
 
     location /_matrix/client/v3/login {
         limit_req zone=synapse_login burst=10 nodelay;
