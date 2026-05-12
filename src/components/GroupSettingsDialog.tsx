@@ -240,7 +240,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
               {/* Danger */}
               <div className="pt-3 border-t border-border/40 space-y-1">
                 <MenuItem icon={<LogOut className="h-4 w-4 text-destructive" />} label={isChannel ? "Leave Channel" : "Leave Group"} labelClass="text-destructive" onClick={onClose} />
-                <MenuItem icon={<Trash2 className="h-4 w-4 text-destructive" />} label={isChannel ? "Delete Channel" : "Delete Group"} labelClass="text-destructive" onClick={() => { onDeleteChat(chat.id); onClose(); }} />
+                <MenuItem icon={<Trash2 className="h-4 w-4 text-destructive" />} label={isChannel ? "Delete Channel" : "Delete Group"} labelClass="text-destructive" onClick={() => { if (window.confirm(`Are you sure you want to delete "${chat.name}"? This cannot be undone.`)) { onDeleteChat(chat.id); onClose(); } }} />
               </div>
             </div>
           )}
