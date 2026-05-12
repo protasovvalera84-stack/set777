@@ -510,15 +510,16 @@ log "Platform installers generated."
 # =============================================================================
 # Step 7: Generate server signing key
 # =============================================================================
-# Clean up any Docker volume artifacts
+# Clean up any Docker volume artifacts (signing.key as directory)
 if [ -d "$SERVER_DIR/synapse/signing.key" ]; then
     rm -rf "$SERVER_DIR/synapse/signing.key"
 fi
 if [ -d "/data/signing.key" ]; then
     rm -rf "/data/signing.key"
 fi
-# Also clean synapse_data volume if it has a bad signing.key
-docker volume rm server_synapse_data 2>/dev/null || true
+
+# Stop containers before volume operations
+docker compose -f "$SERVER_DIR/docker-compose.yml" down 2>/dev/null || true
 
 if [ ! -f "$SERVER_DIR/synapse/signing.key" ]; then
     log "Generating server signing key..."
@@ -576,12 +577,13 @@ echo "$BASE_URL" > "$SERVER_DIR/nginx/www/installers/meshlink.conf"
 log "Starting Meshlink server stack..."
 cd "$SERVER_DIR"
 
-# CRITICAL: Remove old volumes if password changed (prevents auth mismatch)
-# This ensures PostgreSQL starts with the password from current .env
-if docker volume ls -q | grep -q "server_postgres_data"; then
-    log "Cleaning old database volume to sync passwords..."
-    docker compose down -v 2>/dev/null || true
-    docker volume rm server_postgres_data server_synapse_data 2>/dev/null || true
+# Stop everything cleanly first
+docker compose down 2>/dev/null || true
+
+# Remove postgres volume ONLY on fresh install (password sync)
+if [ ! -f "$SERVER_DIR/.installed" ]; then
+    log "Fresh install — cleaning old volumes..."
+    docker volume rm server_postgres_data 2>/dev/null || true
 fi
 
 docker compose pull
@@ -640,6 +642,9 @@ if [ "$HEALTHY" = "false" ]; then
 fi
 
 log "Server is running."
+
+# Mark as installed (prevents volume wipe on re-run)
+touch "$SERVER_DIR/.installed"
 
 # =============================================================================
 # Step 9b: Get Let's Encrypt certificate (trusted by all browsers)
