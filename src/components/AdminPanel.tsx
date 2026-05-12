@@ -186,6 +186,166 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
       }
     } catch {}
 
+    // === SCAN 9: Client-side functional tests ===
+    setProgress(80);
+
+    // Test: Send message to self (create test room, send, verify)
+    try {
+      const testRoomResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preset: "private_chat", name: "__meshlink_test__", initial_state: [] }),
+      });
+      if (testRoomResp.ok) {
+        const testRoom = ((await testRoomResp.json()) as any).room_id;
+        // Send message
+        const txn = `test${Date.now()}`;
+        const sendResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(testRoom)}/send/m.room.message/${txn}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ msgtype: "m.text", body: "__test__" }),
+        });
+        if (sendResp.ok) {
+          findings.push({ id: "func-1", severity: "ok", category: "Functions", title: "Send message: works", description: "Successfully sent a test message.", solution: "" });
+        } else {
+          findings.push({ id: "func-1", severity: "critical", category: "Functions", title: "Send message: FAILED", description: `Server returned ${sendResp.status}`, solution: "Check pendingEventOrdering setting and Matrix SDK version." });
+        }
+
+        // Test: Reply
+        const msgData = sendResp.ok ? await sendResp.json() as any : null;
+        if (msgData?.event_id) {
+          const replyResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(testRoom)}/send/m.room.message/reply${Date.now()}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ msgtype: "m.text", body: "__reply__", "m.relates_to": { "m.in_reply_to": { event_id: msgData.event_id } } }),
+          });
+          findings.push({ id: "func-2", severity: replyResp.ok ? "ok" : "critical", category: "Functions", title: `Reply: ${replyResp.ok ? "works" : "FAILED"}`, description: replyResp.ok ? "Reply with m.relates_to works." : `Status ${replyResp.status}`, solution: replyResp.ok ? "" : "Check reply handling in ChatView." });
+
+          // Test: Reaction
+          const reactResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(testRoom)}/send/m.reaction/react${Date.now()}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ "m.relates_to": { rel_type: "m.annotation", event_id: msgData.event_id, key: "✅" } }),
+          });
+          findings.push({ id: "func-3", severity: reactResp.ok ? "ok" : "warning", category: "Functions", title: `Reaction: ${reactResp.ok ? "works" : "FAILED"}`, description: reactResp.ok ? "Emoji reaction sent successfully." : `Status ${reactResp.status}`, solution: reactResp.ok ? "" : "Check sendMatrixEvent in ChatView." });
+        }
+
+        // Test: Read messages back
+        const readResp = await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(testRoom)}/messages?dir=b&limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (readResp.ok) {
+          const readData = await readResp.json() as any;
+          const msgs = (readData.chunk || []).filter((e: any) => e.type === "m.room.message");
+          findings.push({ id: "func-4", severity: msgs.length >= 2 ? "ok" : "warning", category: "Functions", title: `Read messages: ${msgs.length} found`, description: `Retrieved ${msgs.length} messages from test room.`, solution: msgs.length < 2 ? "Messages may not be syncing correctly." : "" });
+        }
+
+        // Cleanup: leave test room
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(testRoom)}/leave`, {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+        }).catch(() => {});
+      }
+    } catch (err) {
+      findings.push({ id: "func-1", severity: "warning", category: "Functions", title: "Message test failed", description: `Error: ${err}`, solution: "Check server connectivity." });
+    }
+
+    // Test: Media upload
+    setProgress(85);
+    try {
+      const testBlob = new Blob(["test"], { type: "text/plain" });
+      const uploadResp = await fetch(`${baseUrl}/_matrix/media/v3/upload?filename=test.txt`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain", Authorization: `Bearer ${token}` },
+        body: testBlob,
+      });
+      if (uploadResp.ok) {
+        const uploadData = await uploadResp.json() as any;
+        const mxcUri = uploadData.content_uri || "";
+        if (mxcUri.startsWith("mxc://")) {
+          // Verify download
+          const parts = mxcUri.replace("mxc://", "").split("/");
+          const dlResp = await fetch(`${baseUrl}/_matrix/media/v3/download/${parts[0]}/${parts[1]}`);
+          findings.push({ id: "func-5", severity: dlResp.ok ? "ok" : "warning", category: "Functions", title: `Media upload+download: ${dlResp.ok ? "works" : "download failed"}`, description: dlResp.ok ? `Uploaded and downloaded test file (${mxcUri})` : `Upload OK but download returned ${dlResp.status}`, solution: dlResp.ok ? "" : "Check nginx media proxy configuration." });
+        }
+      } else {
+        findings.push({ id: "func-5", severity: "critical", category: "Functions", title: "Media upload: FAILED", description: `Server returned ${uploadResp.status}`, solution: "Check Synapse media_store configuration and disk space." });
+      }
+    } catch (err) {
+      findings.push({ id: "func-5", severity: "warning", category: "Functions", title: "Media test failed", description: `${err}`, solution: "" });
+    }
+
+    // Test: Shorts room
+    setProgress(88);
+    try {
+      const serverName = mesh.userId?.split(":")[1] || "";
+      const shortsResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(`#meshlink-shorts-v3:${serverName}`)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (shortsResp.ok) {
+        const shortsData = await shortsResp.json() as any;
+        const joinResp = await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(`#meshlink-shorts-v3:${serverName}`)}`, {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+        });
+        findings.push({ id: "func-6", severity: joinResp.ok ? "ok" : "warning", category: "Functions", title: `Shorts room: ${joinResp.ok ? "joinable" : "NOT joinable"}`, description: joinResp.ok ? `Room ${shortsData.room_id?.slice(0, 15)}... is public and joinable.` : "Room exists but cannot be joined.", solution: joinResp.ok ? "" : "Recreate shorts room with public join rules." });
+      } else {
+        findings.push({ id: "func-6", severity: "info", category: "Functions", title: "Shorts room: not created yet", description: "Will be created when first short is posted.", solution: "" });
+      }
+    } catch {}
+
+    // Test: Video room
+    try {
+      const serverName = mesh.userId?.split(":")[1] || "";
+      const vidResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(`#meshlink-videos:${serverName}`)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      findings.push({ id: "func-7", severity: vidResp.ok ? "ok" : "info", category: "Functions", title: `Video room: ${vidResp.ok ? "exists" : "not created"}`, description: vidResp.ok ? "Video room is available." : "Will be created when first video is uploaded.", solution: "" });
+    } catch {}
+
+    // Test: Music room
+    try {
+      const serverName = mesh.userId?.split(":")[1] || "";
+      const musResp = await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(`#meshlink-music:${serverName}`)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      findings.push({ id: "func-8", severity: musResp.ok ? "ok" : "info", category: "Functions", title: `Music room: ${musResp.ok ? "exists" : "not created"}`, description: musResp.ok ? "Music room is available." : "Will be created when first track is uploaded.", solution: "" });
+    } catch {}
+
+    // Test: User search
+    setProgress(92);
+    try {
+      const searchResp = await fetch(`${baseUrl}/_matrix/client/v3/user_directory/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ search_term: "a", limit: 5 }),
+      });
+      if (searchResp.ok) {
+        const searchData = await searchResp.json() as any;
+        const count = (searchData.results || []).length;
+        findings.push({ id: "func-9", severity: "ok", category: "Functions", title: `User search: ${count} results`, description: "User directory search is working.", solution: "" });
+      } else {
+        findings.push({ id: "func-9", severity: "warning", category: "Functions", title: "User search: FAILED", description: `Status ${searchResp.status}`, solution: "Check user_directory in homeserver.yaml" });
+      }
+    } catch {}
+
+    // Test: Friends system
+    setProgress(95);
+    try {
+      const friendsResp = await fetch(`${baseUrl}/_matrix/client/v3/user/${encodeURIComponent(mesh.userId || "")}/account_data/org.meshlink.friends`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (friendsResp.ok) {
+        const friendsData = await friendsResp.json() as any;
+        const count = (friendsData.friends || []).length;
+        findings.push({ id: "func-10", severity: "ok", category: "Functions", title: `Friends: ${count} friends`, description: "Friends system is working.", solution: "" });
+      } else {
+        findings.push({ id: "func-10", severity: "info", category: "Functions", title: "Friends: no data yet", description: "No friends added yet. Add friends via Contacts.", solution: "" });
+      }
+    } catch {}
+
+    // Collect browser errors from console
+    setProgress(98);
+    findings.push({ id: "func-11", severity: "info", category: "Browser", title: `JS bundle: index-${document.querySelector('script[src*="index-"]')?.getAttribute("src")?.match(/index-([^.]+)/)?.[1] || "?"}`, description: `User agent: ${navigator.userAgent.slice(0, 60)}...`, solution: "" });
+
     setProgress(100);
     setResults(findings);
     setScanning(false);
