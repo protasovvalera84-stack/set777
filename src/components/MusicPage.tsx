@@ -91,10 +91,13 @@ export function MusicPage({ open, onClose }: MusicPageProps) {
       });
       if (resp.ok) {
         const data = await resp.json() as any;
-        await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(fullAlias)}`, {
+        const joinResp = await fetch(`${baseUrl}/_matrix/client/v3/join/${encodeURIComponent(fullAlias)}`, {
           method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: "{}",
+        });
+        if (joinResp.ok) return data.room_id;
+        await fetch(`${baseUrl}/_matrix/client/v3/directory/room/${encodeURIComponent(fullAlias)}`, {
+          method: "DELETE", headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {});
-        return data.room_id;
       }
       const createResp = await fetch(`${baseUrl}/_matrix/client/v3/createRoom`, {
         method: "POST",
@@ -107,7 +110,14 @@ export function MusicPage({ open, onClose }: MusicPageProps) {
           ],
         }),
       });
-      if (createResp.ok) return ((await createResp.json()) as any).room_id;
+      if (createResp.ok) {
+        const newRoom = ((await createResp.json()) as any).room_id;
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(newRoom)}/state/m.room.power_levels/`, {
+          method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ events_default: 0, state_default: 50, users_default: 0 }),
+        }).catch(() => {});
+        return newRoom;
+      }
     } catch { /* ignore */ }
     return null;
   };
