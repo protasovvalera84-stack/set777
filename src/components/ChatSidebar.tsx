@@ -279,12 +279,26 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
     await loadAllShorts();
   };
 
-  const handleDeleteShort = (shortId: string, itemId: string) => {
+  const handleDeleteShort = async (shortId: string, itemId: string) => {
     setShorts((prev) => prev.map((s) => {
       if (s.id !== shortId) return s;
       const filtered = s.items.filter((i) => i.id !== itemId);
       return filtered.length > 0 ? { ...s, items: filtered } : s;
     }).filter((s) => s.items.length > 0));
+    // Redact event on server
+    if (mesh.client && itemId.startsWith("$")) {
+      try {
+        const roomId = await getShortsRoomId();
+        if (roomId) {
+          const baseUrl = mesh.client.getHomeserverUrl();
+          const token = mesh.client.getAccessToken();
+          await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/redact/${encodeURIComponent(itemId)}/del${Date.now()}`, {
+            method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ reason: "deleted by user" }),
+          }).catch(() => {});
+        }
+      } catch { /* non-critical */ }
+    }
   };
 
   const toggleMute = (chatId: string) => {

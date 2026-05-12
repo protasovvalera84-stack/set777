@@ -1088,6 +1088,12 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   const sendReaction = (key: string) => {
     if (!mesh.client || !roomId) return;
+    // Toggle: if already reacted with this emoji, don't send again
+    if (reactions.includes(key)) {
+      setReactions((prev) => prev.filter((r) => r !== key));
+      setShowReactionPicker(false);
+      return;
+    }
     sendMatrixEvent(mesh.client, roomId, "m.reaction", {
       "m.relates_to": {
         rel_type: "m.annotation",
@@ -1095,7 +1101,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
         key,
       },
     }).catch(() => {});
-    setReactions((prev) => prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]);
+    setReactions((prev) => [...prev, key]);
     setShowReactionPicker(false);
   };
 

@@ -302,7 +302,7 @@ function roomToMesh(room: SdkRoom, myUserId: string, directRoomIds: Set<string>,
     roomType = "group";
   }
 
-  console.debug(`Room "${room.name || room.roomId}": joinRule=${joinRule}, alias=${alias}, markedDirect=${isMarkedDirect}, members=${members.length}, channelByPower=${isChannelByPower} -> type=${roomType}`);
+  // console.debug(`Room "${room.name || room.roomId}": joinRule=${joinRule}, alias=${alias}, markedDirect=${isMarkedDirect}, members=${members.length}, channelByPower=${isChannelByPower} -> type=${roomType}`);
 
   const timeline = room.getLiveTimeline().getEvents();
   const lastEvt = [...timeline].reverse().find(
