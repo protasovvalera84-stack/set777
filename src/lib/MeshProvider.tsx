@@ -565,6 +565,7 @@ export function MeshProvider({ session, children }: Props) {
         if (roomName === "Meshlink Shorts") return false;
         if (roomName === "Meshlink Videos") return false;
         if (roomName === "Meshlink Music") return false;
+        if (roomName === "__meshlink_test__") return false;
         return true;
       })
       .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl, c))
@@ -704,6 +705,9 @@ export function MeshProvider({ session, children }: Props) {
       if (!cancelled) {
         setReady(true);
         refreshRooms();
+        // Auto-create registry room if it doesn't exist
+        const serverName = session.userId.split(":")[1] || "";
+        ensureRegistry(session.homeserverUrl, session.accessToken, serverName).catch(() => {});
       }
 
       // Reconnect on connection loss
