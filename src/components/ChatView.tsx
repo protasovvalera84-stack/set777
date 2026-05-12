@@ -760,7 +760,7 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
       )}
 
       {/* Input */}
-      <div className="chat-input relative z-10 border-t border-border/40 px-2 md:px-6 py-1.5 md:py-3 glass-strong">
+      <div className="chat-input relative z-10 border-t border-border/40 px-2 md:px-6 py-2 md:py-3 glass-strong">
         {/* Media buttons row (scrollable on mobile) */}
         <div className="flex items-center gap-1 mb-1 mx-auto max-w-3xl overflow-x-auto scrollbar-thin pb-0.5">
           <button onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 rounded-lg p-1.5 hover:bg-surface-hover" title="Attach file">
