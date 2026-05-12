@@ -565,6 +565,8 @@ export function MeshProvider({ session, children }: Props) {
         if (roomName === "Meshlink Shorts") return false;
         if (roomName === "Meshlink Videos") return false;
         if (roomName === "Meshlink Music") return false;
+        if (roomName === "Meshlink Marketplace") return false;
+        if (alias.includes("meshlink-market")) return false;
         if (roomName === "__meshlink_test__") return false;
         return true;
       })
