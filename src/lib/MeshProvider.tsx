@@ -554,10 +554,17 @@ export function MeshProvider({ session, children }: Props) {
     const meshRooms = allRooms
       .filter((r) => r.getMyMembership() === "join")
       .filter((r) => {
-        // Hide Meshlink Registry room from chat list
+        // Hide internal Meshlink rooms from chat list
         const alias = r.getCanonicalAlias() || "";
+        const roomName = r.name || "";
         if (alias.includes("meshlink-registry")) return false;
-        if (r.name === "Meshlink Room Registry") return false;
+        if (alias.includes("meshlink-shorts")) return false;
+        if (alias.includes("meshlink-videos")) return false;
+        if (alias.includes("meshlink-music")) return false;
+        if (roomName === "Meshlink Room Registry") return false;
+        if (roomName === "Meshlink Shorts") return false;
+        if (roomName === "Meshlink Videos") return false;
+        if (roomName === "Meshlink Music") return false;
         return true;
       })
       .map((r) => roomToMesh(r, session.userId, directRoomIds, session.homeserverUrl, c))
