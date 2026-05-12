@@ -1131,6 +1131,7 @@ function MessageBubble({ message, index, chatType, roomId, onForward, onPin, onR
 
   const handleDeleteForEveryone = () => {
     if (!mesh.client || !roomId) return;
+    if (!window.confirm("Delete this message for everyone?")) return;
     mesh.client.redactEvent(roomId, message.id).catch(() => {});
   };
 

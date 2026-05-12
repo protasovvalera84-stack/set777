@@ -93,6 +93,7 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    if (!window.confirm("Are you sure you want to log out?")) return;
     if (session) {
       logoutAccount(session).catch(() => {});
     }
