@@ -122,6 +122,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
   };
 
   const handleClose = () => {
+    if (adminOpen) return; // Don't close settings while admin panel is open
     onClose();
   };
 
@@ -375,7 +376,7 @@ function MenuItem({ icon, label, sub, labelClass, onClick }: {
   icon: React.ReactNode; label: string; sub?: string; labelClass?: string; onClick?: () => void;
 }) {
   return (
-    <button onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-surface-hover transition-all">
+    <button onClick={(e) => { e.stopPropagation(); onClick?.(); }} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-surface-hover transition-all">
       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/80 text-muted-foreground">{icon}</div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${labelClass || "text-foreground"}`}>{label}</p>
