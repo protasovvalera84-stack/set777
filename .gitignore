@@ -32,3 +32,4 @@ public/installers/*.deb
 *.njsproj
 *.sln
 *.sw?
+server/.installed
