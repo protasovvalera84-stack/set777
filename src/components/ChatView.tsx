@@ -116,6 +116,14 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup typing on unmount or chat change
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      mesh.sendTyping(chat.id, false);
+    };
+  }, [chat.id, mesh]);
+
   // Get typing users for this chat
   const typingNames = mesh.typingUsers[chat.id] || [];
 
@@ -291,7 +299,12 @@ export function ChatView({ chat, onSendMessage, onBack, onCall, onCreateTopic, o
     const files = e.target.files;
     if (!files) return;
 
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
     Array.from(files).forEach((file) => {
+      if (file.size > MAX_SIZE) {
+        alert(`File "${file.name}" is too large (max 100MB)`);
+        return;
+      }
       let type: MediaAttachment["type"] = "image";
       if (file.type.startsWith("video/")) type = "video";
       else if (file.type.startsWith("audio/")) type = "audio";

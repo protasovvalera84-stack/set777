@@ -356,6 +356,7 @@ function AddStoryDialog({ onClose, onAdd }: {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    if (file.size > 50 * 1024 * 1024) { alert("File too large (max 50MB)"); return; }
     setPreview({ url: URL.createObjectURL(file), type: file.type.startsWith("video/") ? "video" : "image", file });
   };
 
