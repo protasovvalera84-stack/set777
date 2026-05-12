@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown, LayoutGrid } from "lucide-react";
+import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown, LayoutGrid, Film, ChevronRight } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
 import { ShortsBar, type Short, type ShortItem } from "@/components/ShortsBar";
@@ -21,6 +21,7 @@ const NotificationsPage = lazy(() => import("@/components/NotificationsPage").th
 const VideoPage = lazy(() => import("@/components/VideoPage").then(m => ({ default: m.VideoPage })));
 const MusicPage = lazy(() => import("@/components/MusicPage").then(m => ({ default: m.MusicPage })));
 const MarketplacePage = lazy(() => import("@/components/MarketplacePage").then(m => ({ default: m.MarketplacePage })));
+const ShortsPlatform = lazy(() => import("@/components/ShortsPlatform").then(m => ({ default: m.ShortsPlatform })));
 
 export interface SearchResult {
   type: "user" | "room";
@@ -91,6 +92,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   const [videoOpen, setVideoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);
+  const [shortsOpen, setShortsOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -453,16 +455,18 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           )}
         </div>
 
-        {/* Shorts */}
-        <ShortsBar
-          shorts={shorts}
-          myUserId={mesh.userId || "me"}
-          myName={profile.name}
-          myAvatar={profile.avatarInitials}
-          myAvatarUrl={profile.avatarUrl}
-          onAddShort={handleAddShort}
-          onDeleteShort={handleDeleteShort}
-        />
+        {/* Shorts — opens full TikTok-style platform */}
+        <button onClick={() => setShortsOpen(true)}
+          className="flex items-center gap-3 mx-4 my-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 hover:border-primary/40 transition-all">
+          <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+            <Film className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-foreground">Shorts</p>
+            <p className="text-[10px] text-muted-foreground">Watch & create short videos</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
 
         {/* Search */}
         <div className="relative px-4 py-3">
@@ -811,6 +815,7 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
         {videoOpen && <VideoPage open={videoOpen} onClose={() => setVideoOpen(false)} />}
         {musicOpen && <MusicPage open={musicOpen} onClose={() => setMusicOpen(false)} />}
         {marketOpen && <MarketplacePage open={marketOpen} onClose={() => setMarketOpen(false)} onStartDm={onStartDm} />}
+        {shortsOpen && <ShortsPlatform open={shortsOpen} onClose={() => setShortsOpen(false)} />}
       </Suspense>
     </>
   );
