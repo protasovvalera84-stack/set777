@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { errorCollector } from "./lib/errorCollector";
+
+// Start collecting errors immediately
+errorCollector.init();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
