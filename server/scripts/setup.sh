@@ -668,10 +668,12 @@ cd "$SERVER_DIR"
 # Stop everything cleanly first
 docker compose down 2>/dev/null || true
 
-# Remove postgres volume ONLY on fresh install (password sync)
+# Fresh install: remove ALL volumes to prevent DB conflicts
+# (e.g. DuplicateTable errors when old postgres data meets new Synapse)
 if [ ! -f "$SERVER_DIR/.installed" ]; then
-    log "Fresh install — cleaning old volumes..."
-    docker volume rm server_postgres_data 2>/dev/null || true
+    log "Fresh install — cleaning ALL old volumes..."
+    docker compose down -v 2>/dev/null || true
+    docker volume rm server_postgres_data server_synapse_data server_certbot_certs 2>/dev/null || true
 fi
 
 docker compose pull
@@ -709,8 +711,8 @@ docker run --rm -v server_synapse_data:/data alpine sh -c "chown -R 991:991 /dat
 docker compose restart synapse 2>/dev/null || true
 sleep 5
 
-log "Waiting for server to become healthy (this may take up to 2 minutes)..."
-RETRIES=60
+log "Waiting for server to become healthy (this may take up to 4 minutes on first install)..."
+RETRIES=120
 HEALTHY=false
 while [ $RETRIES -gt 0 ]; do
     if docker compose exec -T synapse python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8008/health')" 2>/dev/null; then
