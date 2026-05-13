@@ -230,14 +230,15 @@ export function ShortsPlatform({ open, onClose }: ShortsPlatformProps) {
         <button onClick={() => setShowUpload(true)} className="p-1.5 rounded-full bg-black/40"><Plus className="h-5 w-5 text-white" /></button>
       </div>
 
-      {/* Search bar (when search tab active) */}
+      {/* Search bar — inside sidebar on desktop, top on mobile */}
       {tab === "search" && (
-        <div className="absolute top-16 left-0 right-0 md:left-[220px] z-20 px-4">
-          <div className="flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 max-w-lg mx-auto">
+        <div className="absolute top-14 md:top-auto md:bottom-0 left-0 right-0 md:left-0 md:right-auto md:w-[220px] z-20 px-3 py-2 md:border-t md:border-white/10 md:bg-zinc-950">
+          <div className="flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2.5">
             <Search className="h-4 w-4 text-white/50" />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search shorts..." autoFocus
               className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none" />
+            {searchQuery && <button onClick={() => setSearchQuery("")}><X className="h-3 w-3 text-white/40" /></button>}
           </div>
         </div>
       )}
