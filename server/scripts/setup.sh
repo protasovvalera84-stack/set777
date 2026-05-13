@@ -1074,6 +1074,11 @@ else
     log "Database backup cron job already exists."
 fi
 
+# Final nginx restart to pick up all installer files
+cd "$SERVER_DIR"
+docker compose restart nginx 2>/dev/null || true
+sleep 3
+
 # =============================================================================
 # Done!
 # =============================================================================
@@ -1089,11 +1094,10 @@ echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
 echo ""
 echo -e "  Installers:"
-echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/Meshlink-Install.bat${NC}"
-echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/meshlink-install.sh${NC}"
-echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink-Android.html${NC} (PWA)"
+echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/desktop/Meshlink-Setup-1.0.0.exe${NC}"
+echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/desktop/Meshlink-1.0.0.AppImage${NC}"
+echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink.apk${NC}"
 echo -e "    iOS:         ${CYAN}${BASE_URL}/installers/Meshlink-iOS.html${NC} (PWA)"
-echo -e "    Linux App:   ${CYAN}https://github.com/protasovvalera84-stack/set777/releases${NC}"
 echo ""
 echo -e "  Config file:   ${CYAN}${SERVER_DIR}/.env${NC}"
 echo -e "  Logs:          ${CYAN}cd ${SERVER_DIR} && docker compose logs -f${NC}"

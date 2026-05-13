@@ -92,7 +92,7 @@ services:
       - "0.0.0.0:443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/www:/usr/share/nginx/www:ro
+      - ./nginx/www:/usr/share/nginx/www
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx/certbot:/var/www/certbot:ro
       - certbot_certs:/etc/letsencrypt:ro
