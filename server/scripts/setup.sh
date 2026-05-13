@@ -681,6 +681,11 @@ docker compose pull
 # Start PostgreSQL first and wait for it
 log "Starting PostgreSQL..."
 docker compose up -d postgres
+
+# Pre-create synapse_data volume and fix permissions BEFORE Synapse starts
+log "Preparing Synapse data volume..."
+docker volume create server_synapse_data 2>/dev/null || true
+docker run --rm -v server_synapse_data:/data alpine sh -c "mkdir -p /data/media_store /data/uploads && chown -R 991:991 /data" 2>/dev/null || true
 sleep 10
 
 # Verify PostgreSQL is healthy
@@ -698,14 +703,14 @@ if [ "$PG_HEALTHY" = "false" ]; then
     docker compose logs postgres --tail 10
 fi
 
+# CRITICAL: Fix synapse_data volume permissions BEFORE starting Synapse
+# Synapse runs as UID 991 inside container — volume must be owned by 991
+log "Fixing Synapse data permissions..."
+docker run --rm -v server_synapse_data:/data alpine sh -c "mkdir -p /data/media_store /data/uploads && chown -R 991:991 /data" 2>/dev/null || true
+
 # Now start everything else
 log "Starting all services..."
 docker compose up -d
-
-# CRITICAL: Fix synapse_data volume permissions AFTER volume is created
-# Synapse runs as UID 991 inside container — volume must be owned by 991
-log "Fixing Synapse data permissions..."
-docker run --rm -v server_synapse_data:/data alpine sh -c "chown -R 991:991 /data && mkdir -p /data/media_store && chown 991:991 /data/media_store" 2>/dev/null || true
 
 # Restart Synapse after permission fix
 docker compose restart synapse 2>/dev/null || true
