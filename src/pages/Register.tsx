@@ -48,9 +48,13 @@ function detectPlatform(): PlatformId {
 }
 
 export default function RegisterPage({ onComplete }: RegisterPageProps) {
-  // Skip welcome/platform screens on desktop app (Electron)
-  const isDesktop = !!(window as any).meshlink?.isDesktop;
-  const [step, setStep] = useState<Step>(isDesktop ? "login" : "welcome");
+  // Skip welcome/platform screens on installed apps (Electron, PWA, Android WebView)
+  const isInstalledApp = !!(window as any).meshlink?.isDesktop
+    || window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || (window.navigator as any).standalone === true
+    || /MeshlinkAndroid/i.test(navigator.userAgent);
+  const [step, setStep] = useState<Step>(isInstalledApp ? "login" : "welcome");
   const [lang, setLang] = useState("en");
   const [langSearch, setLangSearch] = useState("");
   const [platform, setPlatform] = useState<PlatformId | null>(null);
@@ -410,7 +414,7 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
               ))}
             </div>
 
-            <button onClick={() => setStep("platform")} className="mt-4 w-full rounded-2xl py-3 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all">
+            <button onClick={() => setStep(isInstalledApp ? "profile" : "platform")} className="mt-4 w-full rounded-2xl py-3 text-sm font-semibold gradient-primary text-primary-foreground shadow-glow hover:scale-[1.02] transition-all">
               Continue <ChevronRight className="h-4 w-4 inline ml-1" />
             </button>
           </div>
