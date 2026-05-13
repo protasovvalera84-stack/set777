@@ -378,6 +378,55 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
       findings.push({ id: "err-none", severity: "ok", category: "Error Log", title: "No errors collected", description: "No JavaScript, promise, or network errors detected during this session.", solution: "" });
     }
 
+    // === SCAN 10: UI/Layout checks ===
+    // Check viewport size
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const isMobile = vw < 768;
+    findings.push({ id: "ui-1", severity: "ok", category: "UI", title: `Viewport: ${vw}x${vh} (${isMobile ? "mobile" : "desktop"})`, description: `Device pixel ratio: ${window.devicePixelRatio}`, solution: "" });
+
+    // Check for overlapping elements (z-index conflicts)
+    const fixedElements = document.querySelectorAll("[class*='fixed']");
+    const visibleFixed = [...fixedElements].filter((el) => {
+      const style = window.getComputedStyle(el);
+      return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+    });
+    if (visibleFixed.length > 3) {
+      findings.push({ id: "ui-2", severity: "warning", category: "UI", title: `${visibleFixed.length} fixed/overlay elements visible`, description: "Multiple overlapping layers may cause UI conflicts.", solution: "Close unused dialogs before opening new ones." });
+    } else {
+      findings.push({ id: "ui-2", severity: "ok", category: "UI", title: `${visibleFixed.length} overlay elements (normal)`, description: "No excessive overlapping detected.", solution: "" });
+    }
+
+    // Check for broken images
+    const images = document.querySelectorAll("img");
+    let brokenImages = 0;
+    images.forEach((img) => { if (img.naturalWidth === 0 && img.src && !img.src.startsWith("data:")) brokenImages++; });
+    findings.push({ id: "ui-3", severity: brokenImages > 0 ? "warning" : "ok", category: "UI", title: `Images: ${images.length} total, ${brokenImages} broken`, description: brokenImages > 0 ? "Some images failed to load." : "All images loaded correctly.", solution: brokenImages > 0 ? "Check media URLs and server connectivity." : "" });
+
+    // Check for scrollable overflow issues
+    const body = document.body;
+    const hasHorizontalScroll = body.scrollWidth > body.clientWidth;
+    if (hasHorizontalScroll) {
+      findings.push({ id: "ui-4", severity: "warning", category: "UI", title: "Horizontal scroll detected", description: "Page has horizontal overflow — elements may be wider than viewport.", solution: "Check for elements with fixed width or overflow." });
+    }
+
+    // Check touch target sizes (mobile)
+    if (isMobile) {
+      const buttons = document.querySelectorAll("button");
+      let smallButtons = 0;
+      buttons.forEach((btn) => {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && (rect.width < 32 || rect.height < 32)) smallButtons++;
+      });
+      if (smallButtons > 10) {
+        findings.push({ id: "ui-5", severity: "info", category: "UI", title: `${smallButtons} small touch targets (<32px)`, description: "Some buttons may be hard to tap on mobile.", solution: "Increase button padding for mobile devices." });
+      }
+    }
+
+    // Performance: check DOM size
+    const domSize = document.querySelectorAll("*").length;
+    findings.push({ id: "ui-6", severity: domSize > 3000 ? "warning" : "ok", category: "UI", title: `DOM size: ${domSize} elements`, description: domSize > 3000 ? "Large DOM may cause slow rendering." : "DOM size is normal.", solution: domSize > 3000 ? "Consider virtualizing long lists." : "" });
+
     findings.push({ id: "func-11", severity: "info", category: "Browser", title: `JS bundle: index-${document.querySelector('script[src*="index-"]')?.getAttribute("src")?.match(/index-([^.]+)/)?.[1] || "?"}`, description: `User agent: ${navigator.userAgent.slice(0, 60)}...`, solution: "" });
 
     setProgress(100);
