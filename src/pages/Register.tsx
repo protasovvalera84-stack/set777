@@ -199,8 +199,16 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
 
     setDownloading(true);
     if (platform === "android") {
-      // Android: download APK directly
-      forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
+      // Try APK first, fallback to PWA install page
+      fetch("/installers/Meshlink.apk", { method: "HEAD" }).then((r) => {
+        if (r.ok) {
+          forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
+        } else {
+          window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+        }
+      }).catch(() => {
+        window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+      });
     } else if (platform === "linux") {
       forceDownload("/installers/desktop/Meshlink-1.0.0.AppImage", "Meshlink.AppImage");
     } else {

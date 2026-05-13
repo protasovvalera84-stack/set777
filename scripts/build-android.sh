@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 SERVER_URL="${1:?Usage: $0 <server_url>}"
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/opt/android-sdk}"
-OUTPUT_DIR="$REPO_DIR/server/nginx/www/meshlink/installers"
+OUTPUT_DIR="$REPO_DIR/server/nginx/www/installers"
 ANDROID_DIR="$REPO_DIR/android-build"
 
 log() { echo "[ANDROID] $1"; }
