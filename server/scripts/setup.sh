@@ -338,8 +338,26 @@ server {
             application/vnd.android.package-archive apk;
             text/html html;
         }
+        default_type application/octet-stream;
 
         # Efficient file serving for high concurrency
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+    }
+    location /installers/desktop/ {
+        alias /usr/share/nginx/www/meshlink/installers/desktop/;
+        autoindex off;
+        default_type application/octet-stream;
+        types {
+            application/x-msdownload exe;
+            application/x-executable AppImage;
+            application/x-debian-package deb;
+            application/octet-stream blockmap;
+        }
+        add_header Content-Disposition 'attachment' always;
+        add_header Cache-Control 'public, max-age=3600' always;
+        add_header X-Content-Type-Options 'nosniff' always;
         sendfile on;
         tcp_nopush on;
         tcp_nodelay on;
