@@ -678,6 +678,17 @@ else
     warn "build-installers.sh not found, skipping desktop builds"
 fi
 
+# Step 8c: Build Android APK
+log "Building Android APK..."
+if [ -f "$REPO_DIR/scripts/build-android.sh" ]; then
+    chmod +x "$REPO_DIR/scripts/build-android.sh"
+    bash "$REPO_DIR/scripts/build-android.sh" "$BASE_URL" 2>&1 || {
+        warn "Android APK build failed (non-critical). You can build later with:"
+        warn "  sudo bash $REPO_DIR/scripts/build-android.sh $BASE_URL"
+    }
+else
+    warn "build-android.sh not found, skipping Android build"
+fi
 # =============================================================================
 # Step 9: Start the stack
 # =============================================================================

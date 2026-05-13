@@ -199,8 +199,8 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
 
     setDownloading(true);
     if (platform === "android") {
-      // Android: PWA install
-      window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+      // Android: download APK directly
+      forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
     } else if (platform === "linux") {
       forceDownload("/installers/desktop/Meshlink-1.0.0.AppImage", "Meshlink.AppImage");
     } else {
