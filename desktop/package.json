@@ -1,0 +1,59 @@
+{
+  "name": "meshlink",
+  "version": "1.0.0",
+  "description": "Meshlink — Encrypted Messenger & Social Network",
+  "main": "main.js",
+  "author": "Meshlink",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:all": "electron-builder --win --linux --x64"
+  },
+  "build": {
+    "appId": "io.meshlink.app",
+    "productName": "Meshlink",
+    "directories": {
+      "output": "../server/nginx/www/meshlink/installers/desktop"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icon.png",
+      "artifactName": "Meshlink-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Meshlink"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icon.png",
+      "category": "Network",
+      "artifactName": "Meshlink-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

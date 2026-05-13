@@ -626,7 +626,20 @@ cp -r "$REPO_DIR/dist/"* "$SERVER_DIR/nginx/www/meshlink/"
 log "Meshlink UI built and deployed."
 
 # Write meshlink.conf for desktop app (contains server URL)
+mkdir -p "$SERVER_DIR/nginx/www/meshlink/installers/desktop"
 echo "$BASE_URL" > "$SERVER_DIR/nginx/www/installers/meshlink.conf"
+
+# Step 8b: Build desktop installers (Windows EXE + Linux AppImage)
+log "Building desktop installers..."
+if [ -f "$REPO_DIR/scripts/build-installers.sh" ]; then
+    chmod +x "$REPO_DIR/scripts/build-installers.sh"
+    bash "$REPO_DIR/scripts/build-installers.sh" "$BASE_URL" 2>&1 || {
+        warn "Desktop installer build failed (non-critical). You can build later with:"
+        warn "  bash $REPO_DIR/scripts/build-installers.sh $BASE_URL"
+    }
+else
+    warn "build-installers.sh not found, skipping desktop builds"
+fi
 
 # =============================================================================
 # Step 9: Start the stack
