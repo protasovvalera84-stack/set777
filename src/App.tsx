@@ -160,7 +160,7 @@ const App = () => {
             deviceBlocked ? (
               <DeviceVerification session={session} onVerified={() => setDeviceBlocked(false)} onLogout={handleLogout} />
             ) : showRecoverySetup && recoveryWords ? (
-              <RecoveryWordsSetup words={recoveryWords} onDone={() => { setShowRecoverySetup(false); setRecoveryWords(null); }} />
+              <RecoveryWordsSetup words={recoveryWords} onDone={() => { localStorage.setItem("meshlink-recovery-words", JSON.stringify(recoveryWords)); setShowRecoverySetup(false); setRecoveryWords(null); }} />
             ) : (
               <MeshProvider session={session}>
                 <BrowserRouter>

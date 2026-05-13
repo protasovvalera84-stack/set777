@@ -3,7 +3,7 @@ import {
   X, Camera, ArrowLeft, User, AtSign, FileText, Shield,
   Eye, EyeOff, Phone, Users, MessageSquare, CheckCheck,
   Wifi, ChevronRight, Trash2, LogOut, Lock, Palette, Moon, Sun, Check,
-  Smartphone, Download,
+  Smartphone, Download, FolderOpen, Key, Video, Music, File, Image,
 } from "lucide-react";
 import { UserProfile } from "@/data/mockData";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -20,7 +20,7 @@ interface AccountSettingsProps {
   onLogout: () => void;
 }
 
-type Page = "main" | "editProfile" | "privacy";
+type Page = "main" | "editProfile" | "privacy" | "myMedia" | "recoveryWords";
 type PrivacyOption = "everyone" | "contacts" | "nobody";
 
 const privacyLabels: Record<PrivacyOption, string> = {
@@ -153,7 +153,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
             {page === "main" ? <X className="h-4 w-4 text-muted-foreground" /> : <ArrowLeft className="h-4 w-4 text-muted-foreground" />}
           </button>
           <h2 className="text-lg font-serif italic gradient-text flex-1">
-            {page === "main" ? "Settings" : page === "editProfile" ? "Edit Profile" : "Privacy & Security"}
+            {page === "main" ? "Settings" : page === "editProfile" ? "Edit Profile" : page === "privacy" ? "Privacy & Security" : page === "myMedia" ? "My Files" : "Recovery Words"}
           </h2>
           {page !== "main" && (
             <button
@@ -178,6 +178,8 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
             />
           )}
           {page === "privacy" && <PrivacyPage draft={draft} updatePrivacy={updatePrivacy} />}
+          {page === "myMedia" && <MyMediaPage />}
+          {page === "recoveryWords" && <RecoveryWordsPage />}
         </div>
       </div>
       {/* Connected dialog components */}
@@ -244,6 +246,8 @@ function MainPage({
         <MenuItem icon={<Shield className="h-4 w-4" />} label="Security Audit" sub="Check your security score" onClick={() => setSecurityOpen(true)} />
         <MenuItem icon={<Smartphone className="h-4 w-4" />} label="Active Sessions" sub="Manage devices" onClick={() => setSessionsOpen(true)} />
         <MenuItem icon={<Download className="h-4 w-4" />} label="Export / Import" sub="Backup your settings" onClick={() => setExportOpen(true)} />
+        <MenuItem icon={<FolderOpen className="h-4 w-4 text-blue-400" />} label="My Files" sub="Videos, music, photos, documents" onClick={() => setPage("myMedia")} />
+        <MenuItem icon={<Key className="h-4 w-4 text-amber-400" />} label="Recovery Words" sub="View your 20 secret words" onClick={() => setPage("recoveryWords")} />
         <MenuItem icon={<Shield className="h-4 w-4 text-primary" />} label="Admin Panel" sub="System scanner & diagnostics" onClick={() => setAdminOpen(true)} />
         <MenuItem icon={<Lock className="h-4 w-4" />} label="Encryption" sub="Matrix E2EE active" />
         <MenuItem icon={<Wifi className="h-4 w-4" />} label="Network" sub="Connected to server" />
@@ -621,4 +625,182 @@ function StatusSelector() {
       )}
     </div>
   );
+}
+
+/* ===== My Media Page — Videos, Music, Photos, Files ===== */
+function MyMediaPage() {
+  const [tab, setTab] = useState<"video" | "music" | "photos" | "files">("video");
+  const [items, setItems] = useState<{ id: string; name: string; size: string; date: string; url?: string }[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Load from IndexedDB cache
+  useEffect(() => {
+    loadCachedMedia(tab).then(setItems);
+  }, [tab]);
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelected = () => {
+    if (!confirm(`Delete ${selected.size} item(s)?`)) return;
+    const remaining = items.filter((i) => !selected.has(i.id));
+    setItems(remaining);
+    saveCachedMedia(tab, remaining);
+    setSelected(new Set());
+  };
+
+  const deleteAll = () => {
+    if (!confirm(`Delete ALL ${tab}? This cannot be undone.`)) return;
+    setItems([]);
+    saveCachedMedia(tab, []);
+    setSelected(new Set());
+  };
+
+  const tabs = [
+    { id: "video" as const, icon: <Video className="h-4 w-4" />, label: "Videos" },
+    { id: "music" as const, icon: <Music className="h-4 w-4" />, label: "Music" },
+    { id: "photos" as const, icon: <Image className="h-4 w-4" />, label: "Photos" },
+    { id: "files" as const, icon: <File className="h-4 w-4" />, label: "Files" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Tabs */}
+      <div className="flex gap-1.5">
+        {tabs.map((t) => (
+          <button key={t.id} onClick={() => { setTab(t.id); setSelected(new Set()); }}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-[11px] font-medium transition-all ${
+              tab === t.id ? "gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:bg-surface-hover"
+            }`}>
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Actions */}
+      {items.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">{items.length} items{selected.size > 0 ? `, ${selected.size} selected` : ""}</span>
+          <div className="flex gap-2">
+            {selected.size > 0 && (
+              <button onClick={deleteSelected} className="text-[11px] text-destructive hover:underline flex items-center gap-1">
+                <Trash2 className="h-3 w-3" /> Delete selected
+              </button>
+            )}
+            <button onClick={deleteAll} className="text-[11px] text-destructive/60 hover:text-destructive hover:underline flex items-center gap-1">
+              <Trash2 className="h-3 w-3" /> Delete all
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Items */}
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2">
+          <FolderOpen className="h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">No {tab} saved</p>
+          <p className="text-[10px] text-muted-foreground/60">Media you view will be cached here</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+          {items.map((item) => (
+            <div key={item.id} onClick={() => toggleSelect(item.id)}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-all ${
+                selected.has(item.id) ? "bg-primary/10 border border-primary/30" : "hover:bg-surface-hover border border-transparent"
+              }`}>
+              <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                selected.has(item.id) ? "bg-primary border-primary" : "border-border/60"
+              }`}>
+                {selected.has(item.id) && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                <p className="text-[10px] text-muted-foreground">{item.size} · {item.date}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== Recovery Words Page ===== */
+function RecoveryWordsPage() {
+  const [words, setWords] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showWords, setShowWords] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    // Try to load from localStorage backup
+    try {
+      const saved = localStorage.getItem("meshlink-recovery-words");
+      if (saved) setWords(JSON.parse(saved));
+    } catch { /* ignore */ }
+    setLoading(false);
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Key className="h-4 w-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-400">Recovery Words</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          These 20 words are your backup key. You need them to access your account from a new device.
+          Never share them with anyone.
+        </p>
+      </div>
+
+      {words ? (
+        <>
+          {showWords ? (
+            <div className="grid grid-cols-4 gap-2 p-4 rounded-2xl bg-secondary/50 border border-border/40">
+              {words.map((w, i) => (
+                <div key={i} className="text-center">
+                  <span className="text-[9px] text-muted-foreground">{i + 1}.</span>
+                  <p className="text-xs font-mono font-semibold text-foreground">{w}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <button onClick={() => setShowWords(true)}
+              className="w-full rounded-2xl py-4 border border-border/40 text-sm text-muted-foreground hover:bg-surface-hover transition-all flex items-center justify-center gap-2">
+              <Eye className="h-4 w-4" /> Tap to reveal recovery words
+            </button>
+          )}
+          <button onClick={() => { navigator.clipboard.writeText(words.map((w, i) => `${i + 1}. ${w}`).join("\n")).then(() => setCopied(true)); }}
+            className="w-full rounded-xl py-2 text-sm border border-border/50 hover:bg-surface-hover transition-all">
+            {copied ? "Copied!" : "Copy to clipboard"}
+          </button>
+        </>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-sm text-muted-foreground">Recovery words were shown during registration.</p>
+          <p className="text-[11px] text-muted-foreground/60 mt-1">If you lost them, you cannot recover your account on a new device.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== Media cache helpers ===== */
+function loadCachedMedia(type: string): Promise<{ id: string; name: string; size: string; date: string }[]> {
+  try {
+    const data = localStorage.getItem(`meshlink-media-${type}`);
+    return Promise.resolve(data ? JSON.parse(data) : []);
+  } catch { return Promise.resolve([]); }
+}
+
+function saveCachedMedia(type: string, items: { id: string; name: string; size: string; date: string }[]): void {
+  try { localStorage.setItem(`meshlink-media-${type}`, JSON.stringify(items)); } catch { /* ignore */ }
 }
