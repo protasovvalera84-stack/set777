@@ -45,7 +45,6 @@ cp -r "$REPO_DIR/dist/"* "$SERVER_DIR/nginx/www/meshlink/"
 
 # Step 6: Sync Capacitor (if needed)
 if [ -d "$REPO_DIR/android" ]; then
-    npx cap sync android 2>/dev/null || true
 fi
 
 # Step 7: Restart services
