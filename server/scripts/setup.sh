@@ -481,27 +481,46 @@ xdg-open "${BASE_URL}" 2>/dev/null || sensible-browser "${BASE_URL}" 2>/dev/null
 LINEOF
 chmod +x "$SERVER_DIR/nginx/www/installers/meshlink-install.sh"
 
-# Android installer page
+# Android installer page (PWA with auto-install prompt)
 cat > "$SERVER_DIR/nginx/www/installers/Meshlink-Android.html" <<ANDROIDEOF
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Install Meshlink - Android</title>
+<link rel="manifest" href="/manifest.json">
 <style>body{font-family:system-ui;background:#0a0a12;color:#e0e0e0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
 .card{max-width:400px;text-align:center;padding:2rem;border-radius:1.5rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
 h1{font-size:1.5rem;background:linear-gradient(135deg,#a855f7,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .step{text-align:left;margin:1rem 0;line-height:1.8;font-size:.9rem;color:#aaa}
-.btn{display:inline-block;padding:.8rem 2rem;border-radius:1rem;background:linear-gradient(135deg,#a855f7,#6366f1);color:#fff;text-decoration:none;font-weight:600;margin-top:1rem}</style>
+.btn{display:inline-block;padding:.8rem 2rem;border-radius:1rem;background:linear-gradient(135deg,#a855f7,#6366f1);color:#fff;text-decoration:none;font-weight:600;margin-top:1rem;border:none;cursor:pointer;font-size:1rem}
+.btn:active{transform:scale(.97)}
+.hidden{display:none}
+.success{color:#22c55e;font-size:1.2rem;margin:1rem 0}</style>
 </head><body><div class="card">
 <h1>Meshlink for Android</h1>
+<div id="auto-install">
+<p style="color:#aaa;margin:1rem 0">Tap the button below to install Meshlink on your device:</p>
+<button id="install-btn" class="btn" onclick="installApp()">Install Meshlink</button>
+<p id="installed-msg" class="success hidden">Meshlink installed! Check your home screen.</p>
+</div>
+<div id="manual-install" class="hidden">
 <div class="step">
 <p>1. Open <a href="${BASE_URL}" style="color:#a855f7">${BASE_URL}</a> in Chrome</p>
-<p>2. Tap menu <b>⋮</b> (top right)</p>
+<p>2. Tap menu <b>&#8942;</b> (top right)</p>
 <p>3. Tap <b>"Install app"</b> or <b>"Add to Home screen"</b></p>
 <p>4. Meshlink icon appears on your home screen</p>
 </div>
-<a href="${BASE_URL}" class="btn">Open Meshlink</a>
-</div></body></html>
+</div>
+<a href="${BASE_URL}" class="btn" style="margin-top:1.5rem">Open Meshlink</a>
+</div>
+<script>
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;document.getElementById('install-btn').classList.remove('hidden');document.getElementById('manual-install').classList.add('hidden')});
+function installApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(r){if(r.outcome==='accepted'){document.getElementById('install-btn').classList.add('hidden');document.getElementById('installed-msg').classList.remove('hidden')}deferredPrompt=null})}else{document.getElementById('auto-install').classList.add('hidden');document.getElementById('manual-install').classList.remove('hidden')}}
+window.addEventListener('appinstalled',function(){document.getElementById('install-btn').classList.add('hidden');document.getElementById('installed-msg').classList.remove('hidden')});
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}
+</script>
+</body></html>
 ANDROIDEOF
 
 # iOS installer page

@@ -48,7 +48,9 @@ function detectPlatform(): PlatformId {
 }
 
 export default function RegisterPage({ onComplete }: RegisterPageProps) {
-  const [step, setStep] = useState<Step>("welcome");
+  // Skip welcome/platform screens on desktop app (Electron)
+  const isDesktop = !!(window as any).meshlink?.isDesktop;
+  const [step, setStep] = useState<Step>(isDesktop ? "login" : "welcome");
   const [lang, setLang] = useState("en");
   const [langSearch, setLangSearch] = useState("");
   const [platform, setPlatform] = useState<PlatformId | null>(null);
