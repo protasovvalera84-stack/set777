@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { Search, Plus, Hash, Users, Pin, Sparkles, Star, FolderPlus, Folder, X, Pencil, Check, UserPlus, MessageCircle, Zap, Briefcase, CalendarDays, Wallet, Globe, Lock as LockIcon, ChevronDown, LayoutGrid, Film, ChevronRight } from "lucide-react";
 import { Chat, Story, StoryItem, UserProfile, ChatFolder } from "@/data/mockData";
 import { CreateChatDialog } from "@/components/CreateChatDialog";
@@ -78,21 +78,50 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
   });
   const [showArchived, setShowArchived] = useState(false);
   const [appsMenuOpen, setAppsMenuOpen] = useState(false);
-  const [contactsOpen, setContactsOpen] = useState(false);
-  const [schedulerOpen, setSchedulerOpen] = useState(false);
-  const [autoReplyOpen, setAutoReplyOpen] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
-  const [rssOpen, setRssOpen] = useState(false);
-  const [qrLoginOpen, setQrLoginOpen] = useState(false);
-  const [gameOpen, setGameOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(false);
-  const [botApiOpen, setBotApiOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(false);
-  const [musicOpen, setMusicOpen] = useState(false);
-  const [marketOpen, setMarketOpen] = useState(false);
-  const [shortsOpen, setShortsOpen] = useState(false);
+
+  // Hash-based page routing: survives page refresh
+  const pageFromHash = (): string => {
+    const h = window.location.hash.replace("#", "");
+    return h || "";
+  };
+  const [activePage, setActivePage] = useState<string>(pageFromHash);
+
+  const openPage = useCallback((page: string) => {
+    window.location.hash = page;
+    setActivePage(page);
+  }, []);
+
+  const closePage = useCallback(() => {
+    window.location.hash = "";
+    setActivePage("");
+  }, []);
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    const onHash = () => setActivePage(pageFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  // Legacy state aliases (for components that still use individual booleans)
+  const contactsOpen = activePage === "contacts";
+  const schedulerOpen = activePage === "scheduler";
+  const autoReplyOpen = activePage === "autoreply";
+  const walletOpen = activePage === "wallet";
+  const rssOpen = activePage === "rss";
+  const qrLoginOpen = activePage === "qrlogin";
+  const gameOpen = activePage === "games";
+  const feedOpen = activePage === "feed";
+  const botApiOpen = activePage === "botapi";
+  const helpOpen = activePage === "help";
+  const notificationsOpen = activePage === "notifications";
+  const videoOpen = activePage === "video";
+  const musicOpen = activePage === "music";
+  const marketOpen = activePage === "market";
+  const shortsOpen = activePage === "shorts";
+  const fileManagerOpen = activePage === "files";
+  const mediaGalleryOpen = activePage === "gallery";
+
   const [sortBy, setSortBy] = useState<"recent" | "unread" | "name">("recent");
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -448,15 +477,15 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
             <div className="absolute top-full left-3 right-3 mt-1 z-50 rounded-2xl glass-strong border border-border/60 shadow-elegant p-2 animate-fade-in-up">
               <LogoMenuItem icon={<Zap className="h-4 w-4 text-amber-400" />} label="Ультимейт" sub="v2.0" />
               <LogoMenuItem icon={<Briefcase className="h-4 w-4 text-blue-400" />} label="Для бизнеса" sub="v2.0" />
-              <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="" onClick={() => { setLogoMenuOpen(false); setSchedulerOpen(true); }} />
-              <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="" onClick={() => { setLogoMenuOpen(false); setWalletOpen(true); }} />
+              <LogoMenuItem icon={<CalendarDays className="h-4 w-4 text-green-400" />} label="Планировщик" sub="" onClick={() => { setLogoMenuOpen(false); openPage("scheduler"); }} />
+              <LogoMenuItem icon={<Wallet className="h-4 w-4 text-purple-400" />} label="Мой Кошелек" sub="" onClick={() => { setLogoMenuOpen(false); openPage("wallet"); }} />
               <LogoMenuItem icon={<Globe className="h-4 w-4 text-cyan-400" />} label="Экосистема Meshlink" sub="v2.0" />
             </div>
           )}
         </div>
 
         {/* Shorts — opens full TikTok-style platform */}
-        <button onClick={() => setShortsOpen(true)}
+        <button onClick={() => openPage("shorts")}
           className="flex items-center gap-3 mx-4 my-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 hover:border-primary/40 transition-all">
           <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
             <Film className="h-5 w-5 text-primary-foreground" />
@@ -752,20 +781,20 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
           <div className="fixed inset-0 z-[9999] bg-black/30" onClick={() => setAppsMenuOpen(false)}>
             <div className="absolute right-3 top-12 w-48 rounded-2xl bg-background border border-border shadow-2xl p-2 space-y-0.5" onClick={(e) => e.stopPropagation()}>
               {[
-                { icon: "👥", label: "Contacts", action: () => setContactsOpen(true) },
-                { icon: "🎬", label: "Video", action: () => setVideoOpen(true) },
-                { icon: "🎵", label: "Music", action: () => setMusicOpen(true) },
-                { icon: "📢", label: "Feed", action: () => setFeedOpen(true) },
-                { icon: "👛", label: "Wallet", action: () => setWalletOpen(true) },
-                { icon: "📅", label: "Scheduler", action: () => setSchedulerOpen(true) },
-                { icon: "💬", label: "Auto-Reply", action: () => setAutoReplyOpen(true) },
-                { icon: "🤖", label: "Bot API", action: () => setBotApiOpen(true) },
-                { icon: "📰", label: "RSS Reader", action: () => setRssOpen(true) },
-                { icon: "🎮", label: "Games", action: () => setGameOpen(true) },
-                { icon: "🛒", label: "Marketplace", action: () => setMarketOpen(true) },
-                { icon: "📱", label: "QR Login", action: () => setQrLoginOpen(true) },
-                { icon: "❓", label: "Help Center", action: () => setHelpOpen(true) },
-                { icon: "🔔", label: "Notifications", action: () => setNotificationsOpen(true) },
+                { icon: "👥", label: "Contacts", action: () => openPage("contacts") },
+                { icon: "🎬", label: "Video", action: () => openPage("video") },
+                { icon: "🎵", label: "Music", action: () => openPage("music") },
+                { icon: "📢", label: "Feed", action: () => openPage("feed") },
+                { icon: "👛", label: "Wallet", action: () => openPage("wallet") },
+                { icon: "📅", label: "Scheduler", action: () => openPage("scheduler") },
+                { icon: "💬", label: "Auto-Reply", action: () => openPage("autoreply") },
+                { icon: "🤖", label: "Bot API", action: () => openPage("botapi") },
+                { icon: "📰", label: "RSS Reader", action: () => openPage("rss") },
+                { icon: "🎮", label: "Games", action: () => openPage("games") },
+                { icon: "🛒", label: "Marketplace", action: () => openPage("market") },
+                { icon: "📱", label: "QR Login", action: () => openPage("qrlogin") },
+                { icon: "❓", label: "Help Center", action: () => openPage("help") },
+                { icon: "🔔", label: "Notifications", action: () => openPage("notifications") },
               ].map((item) => (
                 <button key={item.label} onClick={() => { item.action(); setAppsMenuOpen(false); }}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors">
@@ -801,21 +830,21 @@ export function ChatSidebar({ chats, stories, profile, folders, selectedChatId, 
 
       <CreateChatDialog open={createOpen} type={createType} onClose={() => setCreateOpen(false)} onCreate={onCreateChat} />
       <Suspense fallback={null}>
-        {contactsOpen && <ContactsPage open={contactsOpen} onClose={() => setContactsOpen(false)} onStartDm={onStartDm} />}
-        {schedulerOpen && <SchedulerPage open={schedulerOpen} onClose={() => setSchedulerOpen(false)} />}
-        {autoReplyOpen && <AutoReplyPage open={autoReplyOpen} onClose={() => setAutoReplyOpen(false)} />}
-        {walletOpen && <WalletPage open={walletOpen} onClose={() => setWalletOpen(false)} />}
-        {rssOpen && <RssReader open={rssOpen} onClose={() => setRssOpen(false)} />}
-        {qrLoginOpen && <QrLoginPage open={qrLoginOpen} onClose={() => setQrLoginOpen(false)} />}
-        {gameOpen && <TicTacToe open={gameOpen} onClose={() => setGameOpen(false)} onSendResult={() => setGameOpen(false)} />}
-        {feedOpen && <FeedPage open={feedOpen} onClose={() => setFeedOpen(false)} />}
-        {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => setBotApiOpen(false)} />}
-        {helpOpen && <HelpPage open={helpOpen} onClose={() => setHelpOpen(false)} />}
-        {notificationsOpen && <NotificationsPage open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />}
-        {videoOpen && <VideoPage open={videoOpen} onClose={() => setVideoOpen(false)} />}
-        {musicOpen && <MusicPage open={musicOpen} onClose={() => setMusicOpen(false)} />}
-        {marketOpen && <MarketplacePage open={marketOpen} onClose={() => setMarketOpen(false)} onStartDm={onStartDm} />}
-        {shortsOpen && <ShortsPlatform open={shortsOpen} onClose={() => setShortsOpen(false)} />}
+        {contactsOpen && <ContactsPage open={contactsOpen} onClose={() => closePage()} onStartDm={onStartDm} />}
+        {schedulerOpen && <SchedulerPage open={schedulerOpen} onClose={() => closePage()} />}
+        {autoReplyOpen && <AutoReplyPage open={autoReplyOpen} onClose={() => closePage()} />}
+        {walletOpen && <WalletPage open={walletOpen} onClose={() => closePage()} />}
+        {rssOpen && <RssReader open={rssOpen} onClose={() => closePage()} />}
+        {qrLoginOpen && <QrLoginPage open={qrLoginOpen} onClose={() => closePage()} />}
+        {gameOpen && <TicTacToe open={gameOpen} onClose={() => closePage()} onSendResult={() => closePage()} />}
+        {feedOpen && <FeedPage open={feedOpen} onClose={() => closePage()} />}
+        {botApiOpen && <BotApiPage open={botApiOpen} onClose={() => closePage()} />}
+        {helpOpen && <HelpPage open={helpOpen} onClose={() => closePage()} />}
+        {notificationsOpen && <NotificationsPage open={notificationsOpen} onClose={() => closePage()} />}
+        {videoOpen && <VideoPage open={videoOpen} onClose={() => closePage()} />}
+        {musicOpen && <MusicPage open={musicOpen} onClose={() => closePage()} />}
+        {marketOpen && <MarketplacePage open={marketOpen} onClose={() => closePage()} onStartDm={onStartDm} />}
+        {shortsOpen && <ShortsPlatform open={shortsOpen} onClose={() => closePage()} />}
       </Suspense>
     </>
   );
