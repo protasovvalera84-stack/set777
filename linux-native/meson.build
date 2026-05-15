@@ -1,6 +1,6 @@
 project('meshlink', 'c',
   version: '1.0.0',
-  default_options: ['c_std=c17', 'warning_level=2']
+  default_options: ['c_std=c17', 'warning_level=1']
 )
 
 gtk_dep = dependency('gtk4', version: '>= 4.0')
@@ -16,6 +16,8 @@ src = files(
   'src/network/sync_service.c',
   'src/network/media_cache.c',
   'src/network/e2ee.c',
+  'src/network/offline_queue.c',
+  'src/network/room_operations.c',
   'src/data/database.c',
   'src/data/secure_storage.c',
   'src/ui/login_window.c',
@@ -26,7 +28,10 @@ src = files(
   'src/ui/contacts_window.c',
   'src/ui/create_chat_window.c',
   'src/ui/content_window.c',
+  'src/ui/group_settings_window.c',
+  'src/ui/search_window.c',
   'src/util/helpers.c',
+  'src/util/system.c',
 )
 
 executable('meshlink', src,

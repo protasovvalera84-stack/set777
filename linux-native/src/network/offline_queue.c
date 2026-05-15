@@ -21,6 +21,9 @@ typedef struct {
     char *queue_path;
 } OfflineQueue;
 
+/* Forward declaration */
+void offline_queue_save(OfflineQueue *q);
+
 OfflineQueue *offline_queue_new(void) {
     OfflineQueue *q = g_new0(OfflineQueue, 1);
     q->queue_path = g_build_filename(g_get_user_data_dir(), "meshlink", "offline_queue.json", NULL);
