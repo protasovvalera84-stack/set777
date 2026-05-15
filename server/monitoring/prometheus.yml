@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (CPU, RAM, disk, network)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Synapse metrics
+  - job_name: 'synapse'
+    metrics_path: '/_synapse/metrics'
+    static_configs:
+      - targets: ['synapse:8008']
+
+  # Nginx stub status (if enabled)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # PostgreSQL (via synapse metrics)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
