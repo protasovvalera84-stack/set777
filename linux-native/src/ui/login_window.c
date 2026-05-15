@@ -2,6 +2,7 @@
 #include <string.h>
 
 void login_window_show(GtkApplication *app, gpointer user_data) {
+    (void)user_data; /* unused */
     GtkWidget *win = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(win), "Meshlink");
     gtk_window_set_default_size(GTK_WINDOW(win), 400, 500);

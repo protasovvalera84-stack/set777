@@ -4,14 +4,15 @@
 
 #include "matrix_client.h"
 #include <libsoup/soup.h>
+#include <json-glib/json-glib.h>
 #include <string.h>
+
+/* Forward declaration — accessor for base_url */
+const char *matrix_client_get_base_url(MatrixClient *c);
 
 static char *do_room_request(MatrixClient *client, const char *method, const char *room_id,
                               const char *endpoint, const char *body, const char *token) {
-    /* Get base_url from client (simplified — in production use accessor) */
-    extern const char *matrix_client_get_base_url(MatrixClient *c);
     const char *base_url = matrix_client_get_base_url(client);
-
     char *encoded = g_uri_escape_string(room_id, NULL, TRUE);
     char *url = g_strdup_printf("%s/_matrix/client/v3/rooms/%s/%s", base_url, encoded, endpoint);
     g_free(encoded);
@@ -44,9 +45,8 @@ static char *do_room_request(MatrixClient *client, const char *method, const cha
 }
 
 void room_ops_join(MatrixClient *client, const char *room_id_or_alias, const char *token) {
-    char *encoded = g_uri_escape_string(room_id_or_alias, NULL, TRUE);
-    extern const char *matrix_client_get_base_url(MatrixClient *c);
     const char *base_url = matrix_client_get_base_url(client);
+    char *encoded = g_uri_escape_string(room_id_or_alias, NULL, TRUE);
     char *url = g_strdup_printf("%s/_matrix/client/v3/join/%s", base_url, encoded);
     g_free(encoded);
 
@@ -103,7 +103,6 @@ void room_ops_set_topic(MatrixClient *client, const char *room_id, const char *t
 }
 
 char *room_ops_create(MatrixClient *client, const char *name, const char *preset, const char *token) {
-    extern const char *matrix_client_get_base_url(MatrixClient *c);
     const char *base_url = matrix_client_get_base_url(client);
     char *url = g_strdup_printf("%s/_matrix/client/v3/createRoom", base_url);
     char *body = g_strdup_printf("{\"name\":\"%s\",\"preset\":\"%s\"}", name, preset);
@@ -121,7 +120,7 @@ char *room_ops_create(MatrixClient *client, const char *name, const char *preset
         gsize size;
         const char *data = g_bytes_get_data(resp, &size);
         JsonParser *parser = json_parser_new();
-        if (json_parser_load_from_data(parser, data, size, NULL)) {
+        if (json_parser_load_from_data(parser, data, (gssize)size, NULL)) {
             JsonObject *obj = json_node_get_object(json_parser_get_root(parser));
             if (json_object_has_member(obj, "room_id"))
                 room_id = g_strdup(json_object_get_string_member(obj, "room_id"));
@@ -135,9 +134,8 @@ char *room_ops_create(MatrixClient *client, const char *name, const char *preset
     return room_id;
 }
 
-/* Accessor for base_url */
+/* Accessor for base_url from MatrixClient struct */
 const char *matrix_client_get_base_url(MatrixClient *c) {
-    /* Access internal struct — in production use proper accessor */
     struct _MatrixClient { char *base_url; void *session; };
     return ((struct _MatrixClient *)c)->base_url;
 }

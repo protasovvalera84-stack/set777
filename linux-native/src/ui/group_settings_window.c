@@ -3,6 +3,8 @@
  */
 
 #include <gtk/gtk.h>
+#include <libsoup/soup.h>
+#include <json-glib/json-glib.h>
 #include "../network/matrix_client.h"
 #include "../data/database.h"
 #include "../data/secure_storage.h"
