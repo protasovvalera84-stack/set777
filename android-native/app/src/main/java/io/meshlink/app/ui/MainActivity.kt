@@ -60,6 +60,12 @@ class MainActivity : AppCompatActivity() {
 
         // Start background sync service
         startService(Intent(this, io.meshlink.app.network.SyncService::class.java))
+
+        // Bottom navigation
+        findViewById<View>(R.id.navShorts)?.setOnClickListener { startActivity(Intent(this, ShortsActivity::class.java)) }
+        findViewById<View>(R.id.navVideo)?.setOnClickListener { startActivity(Intent(this, VideoActivity::class.java)) }
+        findViewById<View>(R.id.navMusic)?.setOnClickListener { startActivity(Intent(this, MusicActivity::class.java)) }
+        findViewById<View>(R.id.navMarket)?.setOnClickListener { startActivity(Intent(this, MarketActivity::class.java)) }
     }
 
     private fun loadRooms() {
