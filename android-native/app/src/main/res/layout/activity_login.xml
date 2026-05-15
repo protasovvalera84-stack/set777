@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A0A12"
+    android:padding="32dp"
+    android:gravity="center">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Meshlink"
+        android:textSize="28sp"
+        android:textColor="#A855F7"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Encrypted Messenger"
+        android:textSize="14sp"
+        android:textColor="#666"
+        android:layout_marginBottom="32dp" />
+
+    <EditText
+        android:id="@+id/etServer"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:hint="Server URL"
+        android:textColor="#E0E0E0"
+        android:textColorHint="#555"
+        android:background="@drawable/input_bg"
+        android:paddingHorizontal="16dp"
+        android:textSize="14sp"
+        android:inputType="textUri"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/etUsername"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:hint="Username"
+        android:textColor="#E0E0E0"
+        android:textColorHint="#555"
+        android:background="@drawable/input_bg"
+        android:paddingHorizontal="16dp"
+        android:textSize="14sp"
+        android:inputType="text"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:hint="Password"
+        android:textColor="#E0E0E0"
+        android:textColorHint="#555"
+        android:background="@drawable/input_bg"
+        android:paddingHorizontal="16dp"
+        android:textSize="14sp"
+        android:inputType="textPassword"
+        android:layout_marginBottom="20dp" />
+
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Login"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/btn_primary"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Create Account"
+        android:textColor="#A855F7"
+        android:background="@drawable/btn_secondary"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#EF4444"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/progress"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:indeterminateTint="#A855F7"
+        android:visibility="gone"
+        android:layout_marginTop="16dp" />
+</LinearLayout>

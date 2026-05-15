@@ -1,0 +1,3 @@
+-keep class io.meshlink.app.network.** { *; }
+-keep class io.meshlink.app.data.** { *; }
+-keepattributes *Annotation*
