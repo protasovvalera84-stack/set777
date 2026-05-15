@@ -150,3 +150,27 @@ caches:
 federation_rr_transactions_per_room_per_second: 50
 presence:
   enabled: true
+
+# --- Worker mode ---
+# Synapse can run multiple worker processes for better performance.
+# Each worker handles specific types of requests.
+# Workers communicate via Redis pub/sub.
+
+# Enable worker mode when running with workers
+# instance_map:
+#   main:
+#     host: synapse
+#     port: 8008
+#   sync_worker:
+#     host: synapse-sync
+#     port: 8009
+#   media_worker:
+#     host: synapse-media
+#     port: 8010
+
+# Stream writers (which worker handles which streams)
+# stream_writers:
+#   events: main
+#   typing: sync_worker
+#   receipts: sync_worker
+#   presence: sync_worker

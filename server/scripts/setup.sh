@@ -1001,6 +1001,16 @@ else
     log "Watchdog cron already installed."
 fi
 
+# Setup SSL auto-renewal cron (weekly Monday 4am)
+chmod +x "$SCRIPT_DIR/ssl-renew.sh" 2>/dev/null || true
+SSL_CRON="0 4 * * 1 $SCRIPT_DIR/ssl-renew.sh"
+if ! crontab -l 2>/dev/null | grep -q "ssl-renew.sh"; then
+    (crontab -l 2>/dev/null; echo "$SSL_CRON") | crontab -
+    log "SSL auto-renewal cron installed (weekly Monday 4am)."
+else
+    log "SSL renewal cron already installed."
+fi
+
 # Setup daily backup cron
 BACKUP_CRON="0 */6 * * * /backup.sh >> /var/log/meshlink-backup.log 2>&1
 if ! crontab -l 2>/dev/null | grep -q "backup.sh"; then
