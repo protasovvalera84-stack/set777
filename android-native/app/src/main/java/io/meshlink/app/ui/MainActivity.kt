@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.navShorts)?.setOnClickListener { startActivity(Intent(this, ShortsFullActivity::class.java)) }
         findViewById<View>(R.id.navVideo)?.setOnClickListener { startActivity(Intent(this, VideoActivity::class.java)) }
         findViewById<View>(R.id.navMusic)?.setOnClickListener { startActivity(Intent(this, MusicPlayerActivity::class.java)) }
-        findViewById<View>(R.id.navMarket)?.setOnClickListener { startActivity(Intent(this, MarketActivity::class.java)) }
+        findViewById<View>(R.id.navMarket)?.setOnClickListener { startActivity(Intent(this, MarketFullActivity::class.java)) }
     }
 
     private fun loadRooms() {
