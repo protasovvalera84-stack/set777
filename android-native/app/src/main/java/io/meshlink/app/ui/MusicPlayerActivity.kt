@@ -103,24 +103,23 @@ class MusicPlayerActivity : AppCompatActivity() {
         playerBar.visibility = View.VISIBLE
 
         try {
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(track.url)
-                prepareAsync()
-                setOnPreparedListener { mp ->
-                    mp.start()
-                    isPlaying = true
-                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
-                    seekBar.max = mp.duration
-                    updateSeekBar()
-                }
-                setOnCompletionListener {
-                    isPlaying = false
-                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
-                    // Auto-play next
-                    val idx = tracks.indexOf(track)
-                    if (idx >= 0 && idx < tracks.size - 1) playTrack(tracks[idx + 1])
-                }
+            val mp = MediaPlayer()
+            mp.setDataSource(track.url)
+            mp.prepareAsync()
+            mp.setOnPreparedListener {
+                it.start()
+                isPlaying = true
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
+                seekBar.max = it.duration
+                updateSeekBar()
             }
+            mp.setOnCompletionListener {
+                isPlaying = false
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
+                val idx = tracks.indexOf(track)
+                if (idx >= 0 && idx < tracks.size - 1) playTrack(tracks[idx + 1])
+            }
+            mediaPlayer = mp
         } catch (e: Exception) {
             Toast.makeText(this, "Playback error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
