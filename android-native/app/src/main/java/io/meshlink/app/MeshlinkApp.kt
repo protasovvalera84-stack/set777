@@ -17,20 +17,22 @@ class MeshlinkApp : Application() {
         private set
     lateinit var securePrefs: SecurePrefs
         private set
+    lateinit var e2ee: io.meshlink.app.network.E2EEncryption
+        private set
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
-        // Initialize encrypted preferences (stores tokens securely)
         securePrefs = SecurePrefs(this)
-
-        // Initialize local database (SQLite in app's private dir)
         database = MeshlinkDatabase.create(this)
 
-        // Initialize Matrix API client
         val serverUrl = securePrefs.serverUrl ?: BuildConfig.SERVER_URL
         matrixApi = MatrixApi(serverUrl)
+
+        // Initialize E2E encryption
+        e2ee = io.meshlink.app.network.E2EEncryption(securePrefs)
+        e2ee.init()
     }
 
     companion object {
