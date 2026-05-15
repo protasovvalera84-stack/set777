@@ -71,6 +71,7 @@
         <activity android:name=".ui.GroupSettingsActivity" android:screenOrientation="unspecified" />
         <activity android:name=".ui.MarketFullActivity" android:screenOrientation="unspecified" />
         <activity android:name=".ui.SearchActivity" android:screenOrientation="unspecified" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.ImageViewerActivity" android:screenOrientation="unspecified" android:theme="@style/Theme.Meshlink" />
         <activity android:name=".ui.FileShareActivity" android:screenOrientation="unspecified">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
