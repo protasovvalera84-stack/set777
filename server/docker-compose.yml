@@ -48,6 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
     volumes:
@@ -61,6 +63,20 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    networks:
+      - meshlink
+
+  # --- Redis (caching + pub/sub for workers) ---
+  redis:
+    image: redis:7-alpine
+    restart: always
+    logging: *default-logging
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - meshlink
 

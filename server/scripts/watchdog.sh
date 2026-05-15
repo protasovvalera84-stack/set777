@@ -125,3 +125,14 @@ if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE")" -gt 10485760 ]; then
     mv "$LOG_FILE" "$LOG_FILE.old"
     log "Log rotated"
 fi
+
+# ===== 8. Check Redis =====
+if docker compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; then
+    log "Redis: OK"
+else
+    alert "Redis is DOWN — restarting"
+    docker compose restart redis 2>/dev/null
+    sleep 5
+    # Restart Synapse too (needs Redis)
+    docker compose restart synapse 2>/dev/null
+fi
