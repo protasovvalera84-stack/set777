@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#0A0A12">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingHorizontal="12dp" android:background="#111118">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Back" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Marketplace" android:textSize="18sp" android:textColor="#A855F7"
+            android:textStyle="bold" android:paddingStart="8dp" />
+        <ImageButton android:id="@+id/btnCreate" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_add" android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#A855F7" android:contentDescription="Create" />
+    </LinearLayout>
+    <Spinner android:id="@+id/spinnerCategory" android:layout_width="match_parent" android:layout_height="40dp"
+        android:layout_margin="8dp" android:background="@drawable/input_bg" android:paddingHorizontal="12dp" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvListings"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:clipToPadding="false" android:padding="4dp" />
+        <TextView android:id="@+id/tvEmpty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:textColor="#555" android:textSize="14sp"
+            android:gravity="center" android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

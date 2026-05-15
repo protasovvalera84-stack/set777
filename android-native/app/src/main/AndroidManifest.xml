@@ -69,6 +69,7 @@
         <activity android:name=".ui.ShortsFullActivity" android:screenOrientation="portrait" android:theme="@style/Theme.Meshlink" />
         <activity android:name=".ui.MusicPlayerActivity" android:screenOrientation="unspecified" />
         <activity android:name=".ui.GroupSettingsActivity" android:screenOrientation="unspecified" />
+        <activity android:name=".ui.MarketFullActivity" android:screenOrientation="unspecified" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
