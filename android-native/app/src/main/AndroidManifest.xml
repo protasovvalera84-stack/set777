@@ -58,6 +58,10 @@
             android:name=".ui.ProfileActivity"
             android:screenOrientation="unspecified" />
 
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:screenOrientation="unspecified" />
+
         <service
             android:name=".network.SyncService"
             android:exported="false" />
