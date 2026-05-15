@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+    <ImageView android:id="@+id/imageView" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitCenter" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp"
+        android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="8dp"
+        android:background="#88000000">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="@android:color/transparent"
+            android:tint="#FFF" android:contentDescription="Back" />
+        <TextView android:id="@+id/tvTitle" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textColor="#FFF" android:textSize="16sp" android:paddingStart="8dp" />
+        <ImageButton android:id="@+id/btnSave" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_save" android:background="@android:color/transparent"
+            android:tint="#FFF" android:contentDescription="Save" />
+    </LinearLayout>
+</FrameLayout>
