@@ -83,15 +83,15 @@ class VoiceRecorder(private val context: android.content.Context) {
     fun play(file: File, onComplete: () -> Unit = {}) {
         stop()
         try {
-            player = MediaPlayer().apply {
-                setDataSource(file.absolutePath)
-                prepare()
-                start()
-                setOnCompletionListener {
-                    isPlaying = false
-                    onComplete()
-                }
+            val mp = MediaPlayer()
+            mp.setDataSource(file.absolutePath)
+            mp.prepare()
+            mp.start()
+            mp.setOnCompletionListener {
+                isPlaying = false
+                onComplete()
             }
+            player = mp
             isPlaying = true
         } catch (_: Exception) {}
     }
