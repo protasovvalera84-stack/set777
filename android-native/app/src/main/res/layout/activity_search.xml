@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#0A0A12">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingHorizontal="12dp" android:background="#111118">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Back" />
+        <EditText android:id="@+id/etSearch" android:layout_width="0dp" android:layout_height="40dp"
+            android:layout_weight="1" android:hint="Search..." android:textColor="#E0E0E0"
+            android:textColorHint="#555" android:background="@drawable/input_bg"
+            android:paddingHorizontal="16dp" android:textSize="14sp" android:inputType="text"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="40dp"
+        android:orientation="horizontal" android:gravity="center" android:paddingHorizontal="12dp">
+        <TextView android:id="@+id/chipAll" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="All" android:textColor="#FFF" android:textSize="12sp" android:gravity="center"
+            android:paddingHorizontal="16dp" android:background="#A855F7" android:layout_marginEnd="8dp" />
+        <TextView android:id="@+id/chipRooms" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="Rooms" android:textColor="#888" android:textSize="12sp" android:gravity="center"
+            android:paddingHorizontal="16dp" android:layout_marginEnd="8dp" />
+        <TextView android:id="@+id/chipMessages" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="Messages" android:textColor="#888" android:textSize="12sp" android:gravity="center"
+            android:paddingHorizontal="16dp" android:layout_marginEnd="8dp" />
+        <TextView android:id="@+id/chipUsers" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="Users" android:textColor="#888" android:textSize="12sp" android:gravity="center"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvResults"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:clipToPadding="false" android:padding="8dp" />
+        <TextView android:id="@+id/tvEmpty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:text="Type to search..." android:textColor="#555" android:textSize="14sp" />
+    </FrameLayout>
+</LinearLayout>
