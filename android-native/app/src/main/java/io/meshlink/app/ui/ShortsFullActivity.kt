@@ -149,7 +149,7 @@ class ShortsFullActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/${java.net.URLEncoder.encode(roomId!!, "UTF-8")}/send/org.meshlink.short_post/$txn")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .put(body)).build()).execute(.toRequestBody("application/json".toMediaType())
+                        .put(body.toRequestBody("application/json".toMediaType())).build()).execute()
                 }
                 tempFile.delete()
                 Toast.makeText(this@ShortsFullActivity, "Posted!", Toast.LENGTH_SHORT).show()
