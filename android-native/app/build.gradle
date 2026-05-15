@@ -79,4 +79,7 @@ dependencies {
 
     // Biometric auth
     implementation 'androidx.biometric:biometric:1.1.0'
+
+    // WebRTC for voice/video calls
+    implementation 'io.getstream:stream-webrtc-android:1.1.1'
 }

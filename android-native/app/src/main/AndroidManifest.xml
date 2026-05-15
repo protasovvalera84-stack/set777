@@ -44,6 +44,11 @@
             android:name=".ui.ShortsActivity"
             android:screenOrientation="unspecified" />
 
+        <activity
+            android:name=".ui.CallActivity"
+            android:screenOrientation="unspecified"
+            android:configChanges="orientation|screenSize" />
+
         <service
             android:name=".network.SyncService"
             android:exported="false" />
