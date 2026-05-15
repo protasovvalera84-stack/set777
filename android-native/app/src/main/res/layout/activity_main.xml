@@ -27,10 +27,19 @@
             android:id="@+id/btnLogout"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@android:drawable/ic_menu_myplaces"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Logout"
-            android:tint="#666" />
+            android:contentDescription="Profile"
+            android:tint="#888" />
+
+        <ImageButton
+            android:id="@+id/btnNewChat"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_edit"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="New Chat"
+            android:tint="#A855F7" />
     </LinearLayout>
 
     <!-- Room list -->
