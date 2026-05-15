@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+    <!-- Top bar -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp"
+        android:orientation="horizontal" android:gravity="center" android:paddingHorizontal="12dp">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="@android:color/transparent"
+            android:tint="#FFF" android:contentDescription="Back" />
+        <TextView android:id="@+id/tabForYou" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="For You" android:textSize="16sp" android:textColor="#FFF" android:textStyle="bold"
+            android:paddingHorizontal="16dp" />
+        <TextView android:id="@+id/tabFriends" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Friends" android:textSize="16sp" android:textColor="#88FFFFFF"
+            android:paddingHorizontal="16dp" />
+        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
+        <ImageButton android:id="@+id/btnUpload" android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_add" android:background="@android:color/transparent"
+            android:tint="#FFF" android:contentDescription="Upload" />
+    </LinearLayout>
+    <!-- Feed -->
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvFeed"
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:layout_marginTop="48dp" />
+    <TextView android:id="@+id/tvEmpty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center" android:textColor="#555" android:textSize="14sp"
+        android:gravity="center" android:visibility="gone" />
+</FrameLayout>
