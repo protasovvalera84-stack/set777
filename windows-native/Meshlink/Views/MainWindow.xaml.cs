@@ -151,10 +151,24 @@ namespace Meshlink.Views
 
         private void TbSearch_TextChanged(object sender, TextChangedEventArgs e) => FilterAndShowRooms();
         private void BtnSearch_Click(object sender, RoutedEventArgs e) => tbSearch.Focus();
-        private void BtnNewChat_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Create chat — coming soon");
-        private void BtnProfile_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Profile — coming soon");
-        private void BtnShorts_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Shorts — coming soon");
-        private void BtnMusic_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Music — coming soon");
-        private void BtnMarket_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Marketplace — coming soon");
+        private void BtnNewChat_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new CreateChatWindow { Owner = this };
+            if (win.ShowDialog() == true && win.CreatedRoomId != null)
+            {
+                _selectedRoomId = win.CreatedRoomId;
+                _selectedRoomName = win.CreatedRoomName;
+                tbChatTitle.Text = win.CreatedRoomName ?? "Chat";
+                _ = LoadMessages(win.CreatedRoomId);
+                _ = LoadRooms();
+            }
+        }
+        private void BtnProfile_Click(object sender, RoutedEventArgs e)
+        {
+            new ProfileWindow { Owner = this }.ShowDialog();
+        }
+        private void BtnShorts_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Shorts — coming in next update");
+        private void BtnMusic_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Music — coming in next update");
+        private void BtnMarket_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Marketplace — coming in next update");
     }
 }
