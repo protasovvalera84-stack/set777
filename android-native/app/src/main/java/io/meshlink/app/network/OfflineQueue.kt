@@ -1,10 +1,14 @@
 package io.meshlink.app.network
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.content.Context
 import com.google.gson.Gson
 import io.meshlink.app.data.MessageEntity
 import io.meshlink.app.data.MeshlinkDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -76,7 +80,7 @@ class OfflineQueue(
                         .url("${io.meshlink.app.MeshlinkApp.instance.securePrefs.serverUrl}/_matrix/client/v3/rooms/$encoded/send/m.room.message/$txn")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                        .put(body.toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(request).execute()
                 }

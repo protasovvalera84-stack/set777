@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -136,7 +138,7 @@ class ShortsFullActivity : AppCompatActivity() {
                     val resp = okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/directory/room/${java.net.URLEncoder.encode(alias, "UTF-8")}")
                         .addHeader("Authorization", "Bearer $token").build()).execute()
-                    if (resp.isSuccessful) roomId = JsonParser.parseString(resp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString
+                    if (resp.isSuccessful) roomId = JsonParser.parseString(resp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString
                 }
                 if (roomId == null) return@launch
 
@@ -147,7 +149,7 @@ class ShortsFullActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/${java.net.URLEncoder.encode(roomId!!, "UTF-8")}/send/org.meshlink.short_post/$txn")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body)).build()).execute()
+                        .put(body)).build()).execute(.toRequestBody("application/json".toMediaType())
                 }
                 tempFile.delete()
                 Toast.makeText(this@ShortsFullActivity, "Posted!", Toast.LENGTH_SHORT).show()
@@ -171,7 +173,7 @@ class ShortsFullActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()).execute()
                 }
                 if (!aliasResp.isSuccessful) { tvEmpty.visibility = View.VISIBLE; tvEmpty.text = "No shorts yet"; return@launch }
-                val roomId = JsonParser.parseString(aliasResp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
+                val roomId = JsonParser.parseString(aliasResp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
 
                 val msgResp = withContext(Dispatchers.IO) {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
@@ -179,7 +181,7 @@ class ShortsFullActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()).execute()
                 }
                 shorts.clear()
-                val json = JsonParser.parseString(msgResp.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(msgResp.body?.string() ?: "{}").asJsonObject
                 json.getAsJsonArray("chunk")?.forEach { evt ->
                     val obj = evt.asJsonObject
                     if (obj.get("type")?.asString == "org.meshlink.short_post") {

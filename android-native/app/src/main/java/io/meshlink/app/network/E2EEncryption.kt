@@ -1,4 +1,6 @@
 package io.meshlink.app.network
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.util.Base64
 import java.security.KeyPairGenerator
@@ -153,7 +155,7 @@ class E2EEncryption(private val securePrefs: io.meshlink.app.util.SecurePrefs) {
                     .url("$baseUrl/_matrix/client/v3/keys/upload")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                    .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
                 okhttp3.OkHttpClient().newCall(request).execute()
             } catch (_: Exception) {}
@@ -173,10 +175,10 @@ class E2EEncryption(private val securePrefs: io.meshlink.app.util.SecurePrefs) {
                     .url("$baseUrl/_matrix/client/v3/keys/query")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                    .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
                 val response = okhttp3.OkHttpClient().newCall(request).execute()
-                val json = com.google.gson.JsonParser.parseString(response.body()?.string() ?: "{}").asJsonObject
+                val json = com.google.gson.JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
                 val deviceKeys = json.getAsJsonObject("device_keys")
                     ?.getAsJsonObject(userId) ?: return@withContext emptyMap()
 

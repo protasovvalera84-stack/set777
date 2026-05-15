@@ -53,7 +53,7 @@ class VideoActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
                 if (!aliasResp.isSuccessful) { tvEmpty.visibility = View.VISIBLE; tvEmpty.text = "No videos yet"; return@launch }
-                val roomId = JsonParser.parseString(aliasResp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
+                val roomId = JsonParser.parseString(aliasResp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
 
                 val msgResp = withContext(Dispatchers.IO) {
                     val req = okhttp3.Request.Builder()
@@ -61,7 +61,7 @@ class VideoActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
-                val json = JsonParser.parseString(msgResp.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(msgResp.body?.string() ?: "{}").asJsonObject
                 videos.clear()
                 json.getAsJsonArray("chunk")?.forEach { evt ->
                     val obj = evt.asJsonObject
@@ -117,7 +117,7 @@ class MusicActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
                 if (!aliasResp.isSuccessful) { tvEmpty.visibility = View.VISIBLE; tvEmpty.text = "No music yet"; return@launch }
-                val roomId = JsonParser.parseString(aliasResp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
+                val roomId = JsonParser.parseString(aliasResp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
 
                 val items = mutableListOf<MediaListAdapter.Item>()
                 val msgResp = withContext(Dispatchers.IO) {
@@ -126,7 +126,7 @@ class MusicActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
-                val json = JsonParser.parseString(msgResp.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(msgResp.body?.string() ?: "{}").asJsonObject
                 json.getAsJsonArray("chunk")?.forEach { evt ->
                     val obj = evt.asJsonObject
                     val c = obj.getAsJsonObject("content") ?: return@forEach
@@ -177,7 +177,7 @@ class MarketActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
                 if (!aliasResp.isSuccessful) { tvEmpty.visibility = View.VISIBLE; tvEmpty.text = "No listings yet"; return@launch }
-                val roomId = JsonParser.parseString(aliasResp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
+                val roomId = JsonParser.parseString(aliasResp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
 
                 val items = mutableListOf<MediaListAdapter.Item>()
                 val msgResp = withContext(Dispatchers.IO) {
@@ -186,7 +186,7 @@ class MarketActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()
                     okhttp3.OkHttpClient().newCall(req).execute()
                 }
-                val json = JsonParser.parseString(msgResp.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(msgResp.body?.string() ?: "{}").asJsonObject
                 json.getAsJsonArray("chunk")?.forEach { evt ->
                     val obj = evt.asJsonObject
                     if (obj.get("type")?.asString == "org.meshlink.listing") {

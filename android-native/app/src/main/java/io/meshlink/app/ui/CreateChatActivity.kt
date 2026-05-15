@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -94,11 +96,11 @@ class CreateChatActivity : AppCompatActivity() {
                 .url("$baseUrl/_matrix/client/v3/user_directory/search")
                 .addHeader("Authorization", "Bearer $token")
                 .addHeader("Content-Type", "application/json")
-                .post(okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("application/json"), body))
+                .post(
+                    "application/json".toMediaType(), body))
                 .build()
             val response = okhttp3.OkHttpClient().newCall(request).execute()
-            val json = JsonParser.parseString(response.body()?.string() ?: "{}").asJsonObject
+            val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
             val results = json.getAsJsonArray("results") ?: return
 
             searchResults.clear()
@@ -134,11 +136,11 @@ class CreateChatActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/createRoom")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(okhttp3.RequestBody.create(
-                        okhttp3.MediaType.parse("application/json"), body))
+                    .post(
+                        "application/json".toMediaType(), body))
                     .build()
                 val response = okhttp3.OkHttpClient().newCall(request).execute()
-                val json = JsonParser.parseString(response.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
                 val roomId = json.get("room_id")?.asString
 
                 if (roomId != null) {
@@ -188,11 +190,11 @@ class CreateChatActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/createRoom")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(okhttp3.RequestBody.create(
-                        okhttp3.MediaType.parse("application/json"), body))
+                    .post(
+                        "application/json".toMediaType(), body))
                     .build()
                 val response = okhttp3.OkHttpClient().newCall(request).execute()
-                val json = JsonParser.parseString(response.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
                 val roomId = json.get("room_id")?.asString
 
                 if (roomId != null) {

@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.os.Bundle
 import android.view.View
@@ -77,7 +79,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                 }
                 members.clear()
                 if (resp.isSuccessful) {
-                    val json = JsonParser.parseString(resp.body()?.string() ?: "{}").asJsonObject
+                    val json = JsonParser.parseString(resp.body?.string() ?: "{}").asJsonObject
                     json.getAsJsonObject("joined")?.entrySet()?.forEach { (userId, data) ->
                         val name = data.asJsonObject.get("display_name")?.asString
                             ?: userId.split(":")[0].removePrefix("@")
@@ -117,7 +119,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/kick")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body)).build()).execute()
+                        .post(body)).build()).execute(.toRequestBody("application/json".toMediaType())
                 } catch (_: Exception) {}
             }
             loadGroupInfo()
@@ -149,7 +151,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/invite")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body)).build()).execute()
+                        .post(body)).build()).execute(.toRequestBody("application/json".toMediaType())
                 } catch (_: Exception) {}
             }
             Toast.makeText(this@GroupSettingsActivity, "Invited $userId", Toast.LENGTH_SHORT).show()
@@ -172,7 +174,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/state/m.room.name/")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body)).build()).execute()
+                        .put(body)).build()).execute(.toRequestBody("application/json".toMediaType())
                 } catch (_: Exception) {}
             }
             tvGroupName.text = newName
@@ -194,7 +196,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                             okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                                 .url("${app.securePrefs.serverUrl}/_matrix/client/v3/rooms/$encoded/leave")
                                 .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                                .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), "{}")).build()).execute()
+                                .post("{}")).build()).execute(.toRequestBody("application/json".toMediaType())
                             app.database.roomDao().delete(roomId)
                         } catch (_: Exception) {}
                     }

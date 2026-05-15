@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.os.Bundle
 import android.view.View
@@ -58,7 +60,7 @@ class ContactsActivity : AppCompatActivity() {
                 }
                 friends.clear()
                 if (resp.isSuccessful) {
-                    val json = JsonParser.parseString(resp.body()?.string() ?: "{}").asJsonObject
+                    val json = JsonParser.parseString(resp.body?.string() ?: "{}").asJsonObject
                     json.getAsJsonArray("friends")?.forEach { f ->
                         val obj = f.asJsonObject
                         friends.add(Friend(
@@ -99,7 +101,7 @@ class ContactsActivity : AppCompatActivity() {
                         .url("$baseUrl/_matrix/client/v3/user/$encoded/account_data/org.meshlink.friends")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), data))
+                        .put(data.toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(req).execute()
                 } catch (_: Exception) {}
