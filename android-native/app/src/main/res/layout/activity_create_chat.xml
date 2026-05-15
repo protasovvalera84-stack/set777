@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A0A12">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:background="#111118">
+        <ImageButton android:id="@+id/btnBack"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Back" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="New Chat"
+            android:textSize="18sp" android:textColor="#E0E0E0"
+            android:textStyle="bold" android:paddingStart="8dp" />
+    </LinearLayout>
+
+    <!-- Search -->
+    <EditText android:id="@+id/etSearch"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:hint="Search users..." android:textColor="#E0E0E0"
+        android:textColorHint="#555" android:background="@drawable/input_bg"
+        android:paddingHorizontal="16dp" android:textSize="14sp"
+        android:inputType="text" android:layout_margin="12dp" />
+
+    <!-- Create group button -->
+    <Button android:id="@+id/btnCreateGroup"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:text="Create Group" android:textColor="#A855F7"
+        android:background="@drawable/btn_secondary" android:textSize="14sp"
+        android:textAllCaps="false" android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="8dp" />
+
+    <ProgressBar android:id="@+id/progress"
+        android:layout_width="24dp" android:layout_height="24dp"
+        android:layout_gravity="center" android:indeterminateTint="#A855F7"
+        android:visibility="gone" />
+
+    <!-- Results -->
+    <FrameLayout android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvResults"
+            android:layout_width="match_parent" android:layout_height="match_parent" />
+        <TextView android:id="@+id/tvEmpty"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:text="Type to search users..."
+            android:textColor="#555" android:textSize="14sp" />
+    </FrameLayout>
+</LinearLayout>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0A0A12">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingHorizontal="12dp" android:background="#111118">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Back" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Profile" android:textSize="18sp" android:textColor="#E0E0E0"
+            android:textStyle="bold" android:paddingStart="8dp" />
+    </LinearLayout>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:gravity="center_horizontal">
+
+            <!-- Avatar -->
+            <TextView android:id="@+id/tvAvatar" android:layout_width="80dp" android:layout_height="80dp"
+                android:gravity="center" android:textSize="28sp" android:textColor="#FFFFFF"
+                android:textStyle="bold" android:background="@drawable/avatar_bg" />
+
+            <TextView android:id="@+id/tvName" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="20sp" android:textColor="#E0E0E0" android:textStyle="bold" android:layout_marginTop="12dp" />
+
+            <TextView android:id="@+id/tvUserId" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:textColor="#666" android:layout_marginTop="4dp" />
+
+            <!-- Edit name -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Display Name" android:textColor="#888" android:textSize="12sp"
+                android:layout_marginTop="32dp" android:layout_marginBottom="4dp" />
+
+            <EditText android:id="@+id/etDisplayName" android:layout_width="match_parent" android:layout_height="48dp"
+                android:textColor="#E0E0E0" android:textColorHint="#555" android:background="@drawable/input_bg"
+                android:paddingHorizontal="16dp" android:textSize="14sp" android:inputType="text" />
+
+            <Button android:id="@+id/btnSave" android:layout_width="match_parent" android:layout_height="48dp"
+                android:text="Save" android:textColor="#FFFFFF" android:background="@drawable/btn_primary"
+                android:textSize="14sp" android:textAllCaps="false" android:layout_marginTop="12dp" />
+
+            <!-- Cache -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="32dp">
+                <TextView android:id="@+id/tvCacheSize" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:text="Cache: ..." android:textColor="#888" android:textSize="13sp" />
+                <Button android:id="@+id/btnClearCache" android:layout_width="wrap_content" android:layout_height="36dp"
+                    android:text="Clear" android:textColor="#EF4444" android:background="@drawable/btn_secondary"
+                    android:textSize="12sp" android:textAllCaps="false" android:paddingHorizontal="16dp" />
+            </LinearLayout>
+
+            <!-- Logout -->
+            <Button android:id="@+id/btnLogout" android:layout_width="match_parent" android:layout_height="48dp"
+                android:text="Log Out" android:textColor="#EF4444" android:background="@drawable/btn_secondary"
+                android:textSize="14sp" android:textAllCaps="false" android:layout_marginTop="32dp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

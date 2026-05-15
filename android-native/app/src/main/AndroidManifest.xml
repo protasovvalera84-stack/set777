@@ -49,6 +49,15 @@
             android:screenOrientation="unspecified"
             android:configChanges="orientation|screenSize" />
 
+        <activity
+            android:name=".ui.CreateChatActivity"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.ProfileActivity"
+            android:screenOrientation="unspecified" />
+
         <service
             android:name=".network.SyncService"
             android:exported="false" />

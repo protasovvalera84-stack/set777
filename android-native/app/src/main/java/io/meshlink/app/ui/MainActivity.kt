@@ -48,15 +48,12 @@ class MainActivity : AppCompatActivity() {
 
         // Logout button
         findViewById<View>(R.id.btnLogout)?.setOnClickListener {
-            lifecycleScope.launch {
-                val app = MeshlinkApp.instance
-                try { app.matrixApi.logout(app.securePrefs.accessToken ?: "") } catch (_: Exception) {}
-                app.securePrefs.clear()
-                app.database.roomDao().deleteAll()
-                app.database.messageDao().deleteAll()
-                startActivity(Intent(this@MainActivity, LoginActivity::class.java))
-                finish()
-            }
+            startActivity(Intent(this, ProfileActivity::class.java))
+        }
+
+        // New chat button
+        findViewById<View>(R.id.btnNewChat)?.setOnClickListener {
+            startActivity(Intent(this, CreateChatActivity::class.java))
         }
 
         loadRooms()

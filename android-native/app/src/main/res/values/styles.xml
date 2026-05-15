@@ -8,4 +8,9 @@
         <item name="android:statusBarColor">#0A0A12</item>
         <item name="android:navigationBarColor">#0A0A12</item>
     </style>
+    <style name="DialogTheme" parent="Theme.MaterialComponents.Dialog.Alert">
+        <item name="android:background">#1A1A2E</item>
+        <item name="android:textColor">#E0E0E0</item>
+        <item name="colorAccent">#A855F7</item>
+    </style>
 </resources>
