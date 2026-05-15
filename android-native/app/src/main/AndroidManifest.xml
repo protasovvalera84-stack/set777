@@ -40,5 +40,13 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".ui.ShortsActivity"
+            android:screenOrientation="unspecified" />
+
+        <service
+            android:name=".network.SyncService"
+            android:exported="false" />
+
     </application>
 </manifest>
