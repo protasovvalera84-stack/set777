@@ -119,10 +119,57 @@ services:
     networks:
       - meshlink
 
+  # --- Monitoring: Prometheus ---
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    logging: *default-logging
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - meshlink
+
+  # --- Monitoring: Grafana ---
+  grafana:
+    image: grafana/grafana:latest
+    restart: always
+    logging: *default-logging
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-meshlink123}
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    networks:
+      - meshlink
+
+  # --- Monitoring: Node Exporter (system metrics) ---
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: always
+    logging: *default-logging
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    networks:
+      - meshlink
+
 volumes:
   postgres_data:
   synapse_data:
   certbot_certs:
+  prometheus_data:
+  grafana_data:
 
 networks:
   meshlink:

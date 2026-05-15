@@ -1,0 +1,79 @@
+groups:
+  - name: meshlink_alerts
+    rules:
+      # Server down
+      - alert: SynapseDown
+        expr: up{job="synapse"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Synapse is DOWN"
+          description: "Matrix server not responding for 1 minute"
+
+      # High CPU
+      - alert: HighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage above 80%"
+          description: "CPU at {{ $value }}% for 5 minutes"
+
+      # High Memory
+      - alert: HighMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage above 85%"
+          description: "Memory at {{ $value }}%"
+
+      # Critical Memory
+      - alert: CriticalMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Memory CRITICAL above 95%"
+
+      # Disk Space
+      - alert: DiskSpaceLow
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk usage above 85%"
+          description: "Disk at {{ $value }}%"
+
+      # Disk Critical
+      - alert: DiskSpaceCritical
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk CRITICAL above 95%"
+
+      # High Load
+      - alert: HighLoad
+        expr: node_load1 > 4
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "System load above 4"
+          description: "Load average: {{ $value }}"
+
+      # Container Restart
+      - alert: ContainerRestarting
+        expr: increase(container_restart_count[5m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container restarting frequently"

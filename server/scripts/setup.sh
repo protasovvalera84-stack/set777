@@ -303,6 +303,19 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
     }
 
+    location /grafana/ {
+        proxy_pass http://grafana:3000/grafana/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /prometheus/ {
+        proxy_pass http://prometheus:9090/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+
     location /_matrix/client/v3/login {
         limit_req zone=synapse_login burst=10 nodelay;
         set \$up_synapse synapse:8008;
@@ -1142,6 +1155,8 @@ echo -e "  Web client:    ${CYAN}${BASE_URL}${NC}"
 echo -e "  Also via IP:   ${CYAN}https://${SERVER_HOST}${NC}"
 echo -e "  Admin panel:   ${CYAN}${BASE_URL}/admin${NC}"
 echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
+echo -e "  Grafana:       ${CYAN}${BASE_URL}/grafana/${NC} (admin / meshlink123)"
+echo -e "  Prometheus:    ${CYAN}${BASE_URL}/prometheus/${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
 echo ""
 echo -e "  Installers:"
