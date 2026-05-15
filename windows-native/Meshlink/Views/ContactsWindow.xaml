@@ -1,0 +1,45 @@
+<Window x:Class="Meshlink.Views.ContactsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Friends" Width="420" Height="550"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource BgBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56"/>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <Button Content="← Back" Background="Transparent" Foreground="{StaticResource MutedBrush}"
+                    BorderThickness="0" FontSize="14" Cursor="Hand" Click="BtnBack_Click"/>
+            <TextBlock Text="Friends" FontSize="18" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"
+                       VerticalAlignment="Center" Margin="12,0"/>
+        </StackPanel>
+        <TextBox x:Name="tbSearch" Grid.Row="1" Style="{StaticResource DarkTextBox}" Tag="Search friends..."/>
+        <ListBox x:Name="lbFriends" Grid.Row="2" Style="{StaticResource DarkListBox}" Margin="0,8,0,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="4,6" Cursor="Hand">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36" Height="36" CornerRadius="18" Background="#2D1B69">
+                            <TextBlock Text="{Binding Initials}" Foreground="White" FontWeight="Bold"
+                                       FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextBrush}" FontSize="14"/>
+                            <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding StatusEmoji}" FontSize="16" VerticalAlignment="Center"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock x:Name="tbEmpty" Text="No friends yet" Foreground="{StaticResource MutedBrush}"
+                   FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Grid.Row="2" Visibility="Collapsed"/>
+    </Grid>
+</Window>
