@@ -132,3 +132,21 @@ suppress_key_server_warning: true
 # --- Metrics (Prometheus) ---
 enable_metrics: true
 
+# --- Redis (caching + worker communication) ---
+redis:
+  enabled: true
+  host: redis
+  port: 6379
+
+# --- Caching ---
+caches:
+  global_factor: 1.0
+  per_cache_factors:
+    get_users_in_room: 2.0
+    get_room_summary: 2.0
+    _get_state_group_for_event: 2.0
+
+# --- Performance ---
+federation_rr_transactions_per_room_per_second: 50
+presence:
+  enabled: true

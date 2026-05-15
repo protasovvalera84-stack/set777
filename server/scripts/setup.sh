@@ -794,7 +794,7 @@ fi
 
 # Now start everything EXCEPT Synapse first
 log "Starting infrastructure services..."
-docker compose up -d postgres nginx element coturn synapse-admin admin-api
+docker compose up -d postgres redis nginx element coturn synapse-admin admin-api prometheus grafana node-exporter
 
 # Wait for postgres
 sleep 5
