@@ -11,28 +11,34 @@
         android:layout_height="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="12dp"
+        android:paddingHorizontal="8dp"
         android:background="#111118">
 
-        <ImageButton
-            android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+        <ImageButton android:id="@+id/btnBack"
+            android:layout_width="40dp" android:layout_height="40dp"
             android:src="@android:drawable/ic_menu_revert"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:tint="#888" />
+            android:tint="#888" android:contentDescription="Back" />
 
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Chat"
-            android:textSize="18sp"
-            android:textColor="#E0E0E0"
-            android:textStyle="bold"
-            android:paddingStart="8dp" />
+        <TextView android:id="@+id/tvTitle"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="Chat"
+            android:textSize="17sp" android:textColor="#E0E0E0"
+            android:textStyle="bold" android:paddingStart="8dp"
+            android:maxLines="1" android:ellipsize="end" />
+
+        <ImageButton android:id="@+id/btnVoiceCall"
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_call"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Voice call" />
+
+        <ImageButton android:id="@+id/btnVideoCall"
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_camera"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Video call"
+            android:layout_marginStart="4dp" />
     </LinearLayout>
 
     <!-- Messages -->
@@ -44,7 +50,30 @@
         android:clipToPadding="false"
         android:padding="8dp" />
 
-    <!-- Input -->
+    <!-- Reply preview bar -->
+    <LinearLayout android:id="@+id/replyBar"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:background="#1A1A2E"
+        android:visibility="gone">
+        <View android:layout_width="3dp" android:layout_height="match_parent"
+            android:layout_marginVertical="6dp" android:background="#A855F7" />
+        <TextView android:id="@+id/tvReplyPreview"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12sp"
+            android:textColor="#888" android:maxLines="1"
+            android:ellipsize="end" android:paddingStart="8dp" />
+        <ImageButton android:id="@+id/btnCancelReply"
+            android:layout_width="28dp" android:layout_height="28dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#666" android:contentDescription="Cancel reply" />
+    </LinearLayout>
+
+    <!-- Input bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -53,29 +82,32 @@
         android:paddingHorizontal="8dp"
         android:background="#111118">
 
-        <EditText
-            android:id="@+id/etMessage"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:hint="Message..."
-            android:textColor="#E0E0E0"
-            android:textColorHint="#555"
-            android:background="@drawable/input_bg"
-            android:paddingHorizontal="16dp"
-            android:textSize="14sp"
-            android:inputType="text"
-            android:imeOptions="actionSend"
-            android:maxLines="1" />
+        <ImageButton android:id="@+id/btnAttach"
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_add"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Attach" />
 
-        <ImageButton
-            android:id="@+id/btnSend"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+        <EditText android:id="@+id/etMessage"
+            android:layout_width="0dp" android:layout_height="40dp"
+            android:layout_weight="1" android:hint="Message..."
+            android:textColor="#E0E0E0" android:textColorHint="#555"
+            android:background="@drawable/input_bg"
+            android:paddingHorizontal="14dp" android:textSize="14sp"
+            android:inputType="text" android:maxLines="1"
+            android:layout_marginHorizontal="6dp" />
+
+        <ImageButton android:id="@+id/btnVoice"
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Voice" />
+
+        <ImageButton android:id="@+id/btnSend"
+            android:layout_width="40dp" android:layout_height="40dp"
             android:src="@android:drawable/ic_menu_send"
             android:background="@drawable/btn_primary"
-            android:contentDescription="Send"
-            android:tint="#FFFFFF"
-            android:layout_marginStart="8dp" />
+            android:tint="#FFFFFF" android:contentDescription="Send"
+            android:layout_marginStart="4dp" />
     </LinearLayout>
 </LinearLayout>
