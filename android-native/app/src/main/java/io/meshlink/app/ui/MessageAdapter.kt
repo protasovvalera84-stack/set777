@@ -14,6 +14,8 @@ class MessageAdapter(
     private val myUserId: String
 ) : ListAdapter<MessageEntity, MessageAdapter.ViewHolder>(DIFF) {
 
+    var onLongClick: ((MessageEntity) -> Unit)? = null
+
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvSender: TextView = view.findViewById(R.id.tvSender)
         val tvBody: TextView = view.findViewById(R.id.tvBody)
@@ -29,10 +31,26 @@ class MessageAdapter(
         val msg = getItem(position)
         val isMe = msg.sender == myUserId
         holder.tvSender.text = if (isMe) "You" else msg.sender.split(":")[0].removePrefix("@")
-        holder.tvBody.text = msg.body
+        holder.tvSender.setTextColor(if (isMe) 0xFF22C55E.toInt() else 0xFFA855F7.toInt())
+
+        // Format body based on type
+        holder.tvBody.text = when (msg.msgtype) {
+            "m.audio" -> "🎤 Voice message"
+            "m.image" -> "📷 Photo"
+            "m.video" -> "🎬 Video"
+            "m.file" -> "📎 File"
+            else -> msg.body
+        }
+
         val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(msg.timestamp))
         holder.tvTime.text = time
+
+        // Long press for actions
+        holder.itemView.setOnLongClickListener {
+            onLongClick?.invoke(msg)
+            true
+        }
     }
 
     companion object {
