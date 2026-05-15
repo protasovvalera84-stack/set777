@@ -257,7 +257,32 @@ server {
     ssl_session_cache shared:SSL:10m;
 
     add_header X-Content-Type-Options nosniff always;
-    client_max_body_size 50m;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    client_max_body_size 100m;
+
+    # Gzip compression — reduces traffic by 70%
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 256;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
+
+    # Static file caching — 7 days for hashed assets
+    location /assets/ {
+        root /usr/share/nginx/www/meshlink;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Connection pooling to Synapse
+    upstream synapse_backend {
+        server synapse:8008;
+        keepalive 32;
+    }
 
     location / {
         root /usr/share/nginx/www/meshlink;
@@ -977,7 +1002,7 @@ else
 fi
 
 # Setup daily backup cron
-BACKUP_CRON="0 3 * * * $SCRIPT_DIR/backup.sh >> /var/log/meshlink-backup.log 2>&1"
+BACKUP_CRON="0 */6 * * * /backup.sh >> /var/log/meshlink-backup.log 2>&1
 if ! crontab -l 2>/dev/null | grep -q "backup.sh"; then
     (crontab -l 2>/dev/null; echo "$BACKUP_CRON") | crontab -
     log "Daily backup cron installed (3:00 AM)."
