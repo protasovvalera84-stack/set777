@@ -113,13 +113,53 @@ else
     err "linux-native/ not found"
 fi
 
-# ===== 3. Windows EXE (Electron — already built by build-installers.sh) =====
-log "=== Checking Windows EXE ==="
-if [ -f "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" ]; then
-    cp "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" "$OUTPUT_DIR/native/Meshlink-Windows.exe"
-    log "Windows EXE: $(du -h "$OUTPUT_DIR/native/Meshlink-Windows.exe" | cut -f1)"
+# ===== 3. Windows Native (C#/WPF via .NET SDK) =====
+log "=== Building Windows Native EXE ==="
+WINDOWS_DIR="$REPO_DIR/windows-native/Meshlink"
+if [ -d "$WINDOWS_DIR" ]; then
+    # Install .NET SDK if not present
+    if ! command -v dotnet &>/dev/null; then
+        log "Installing .NET 8 SDK..."
+        wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
+        chmod +x /tmp/dotnet-install.sh
+        /tmp/dotnet-install.sh --channel 8.0 --install-dir /opt/dotnet 2>/dev/null
+        export DOTNET_ROOT=/opt/dotnet
+        export PATH="$DOTNET_ROOT:$PATH"
+    fi
+
+    if command -v dotnet &>/dev/null; then
+        cd "$WINDOWS_DIR"
+        log "Building Windows EXE with .NET..."
+        # Publish as self-contained for Windows x64
+        dotnet publish -c Release -r win-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o "$OUTPUT_DIR/native/win-build" 2>&1 | tail -5
+
+        # Find the EXE
+        WIN_EXE=$(find "$OUTPUT_DIR/native/win-build" -name "Meshlink.exe" | head -1)
+        if [ -n "$WIN_EXE" ] && [ -f "$WIN_EXE" ]; then
+            cp "$WIN_EXE" "$OUTPUT_DIR/native/Meshlink-Windows.exe"
+            rm -rf "$OUTPUT_DIR/native/win-build"
+            log "Windows EXE (C#): $(du -h "$OUTPUT_DIR/native/Meshlink-Windows.exe" | cut -f1)"
+        else
+            err "Windows C# build failed — falling back to Electron EXE"
+            if [ -f "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" ]; then
+                cp "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" "$OUTPUT_DIR/native/Meshlink-Windows.exe"
+                log "Windows EXE (Electron fallback): $(du -h "$OUTPUT_DIR/native/Meshlink-Windows.exe" | cut -f1)"
+            fi
+            rm -rf "$OUTPUT_DIR/native/win-build"
+        fi
+    else
+        err ".NET SDK install failed — using Electron EXE"
+        if [ -f "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" ]; then
+            cp "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" "$OUTPUT_DIR/native/Meshlink-Windows.exe"
+        fi
+    fi
 else
-    log "Windows EXE not found — run build-installers.sh first"
+    err "windows-native/ not found — using Electron EXE"
+    if [ -f "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" ]; then
+        cp "$OUTPUT_DIR/desktop/Meshlink-Setup-1.0.0.exe" "$OUTPUT_DIR/native/Meshlink-Windows.exe"
+    fi
 fi
 
 # ===== 4. WebView APK (already built by build-android.sh) =====
