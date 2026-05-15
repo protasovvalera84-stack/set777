@@ -150,7 +150,7 @@ namespace Meshlink.Views
         }
 
         private void TbSearch_TextChanged(object sender, TextChangedEventArgs e) => FilterAndShowRooms();
-        private void BtnSearch_Click(object sender, RoutedEventArgs e) => tbSearch.Focus();
+        private void BtnSearch_Click(object sender, RoutedEventArgs e) { new SearchWindow { Owner = this }.ShowDialog(); }
         private void BtnNewChat_Click(object sender, RoutedEventArgs e)
         {
             var win = new CreateChatWindow { Owner = this };
@@ -167,8 +167,8 @@ namespace Meshlink.Views
         {
             new ProfileWindow { Owner = this }.ShowDialog();
         }
-        private void BtnShorts_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Shorts — coming in next update");
-        private void BtnMusic_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Music — coming in next update");
-        private void BtnMarket_Click(object sender, RoutedEventArgs e) => MessageBox.Show("Marketplace — coming in next update");
+        private void BtnShorts_Click(object sender, RoutedEventArgs e) { new ContentWindow(ContentWindow.ContentType.Shorts) { Owner = this }.ShowDialog(); }
+        private void BtnMusic_Click(object sender, RoutedEventArgs e) { new ContentWindow(ContentWindow.ContentType.Music) { Owner = this }.ShowDialog(); }
+        private void BtnMarket_Click(object sender, RoutedEventArgs e) { new ContentWindow(ContentWindow.ContentType.Marketplace) { Owner = this }.ShowDialog(); }
     }
 }
