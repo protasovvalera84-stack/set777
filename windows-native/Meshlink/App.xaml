@@ -1,0 +1,61 @@
+<Application x:Class="Meshlink.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="">
+    <Application.Resources>
+        <!-- Meshlink Dark Theme -->
+        <Color x:Key="BgColor">#0A0A12</Color>
+        <Color x:Key="SurfaceColor">#111118</Color>
+        <Color x:Key="PrimaryColor">#A855F7</Color>
+        <Color x:Key="AccentColor">#6366F1</Color>
+        <Color x:Key="TextColor">#E0E0E0</Color>
+        <Color x:Key="MutedColor">#666666</Color>
+        <Color x:Key="ErrorColor">#EF4444</Color>
+        <Color x:Key="SuccessColor">#22C55E</Color>
+
+        <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+        <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+        <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
+        <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+
+        <!-- Button Style -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TextBox Style -->
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#1A1A2E" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="#333333" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+
+        <!-- ListBox Style -->
+        <Style x:Key="DarkListBox" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+    </Application.Resources>
+</Application>
