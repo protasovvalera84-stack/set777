@@ -11,7 +11,7 @@ services:
   # --- PostgreSQL database ---
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-synapse}
@@ -31,7 +31,7 @@ services:
   # --- Meshlink core server ---
   synapse:
     image: matrixdotorg/synapse:latest
-    restart: unless-stopped
+    restart: always
     user: "991:991"
     logging: *default-logging
     depends_on:
@@ -56,7 +56,7 @@ services:
   # --- Meshlink web client (fallback) ---
   element:
     image: vectorim/element-web:latest
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     volumes:
       - ./element/config.json:/app/config.json:ro
@@ -66,7 +66,7 @@ services:
   # --- Coturn (TURN/STUN server for voice/video) ---
   coturn:
     image: coturn/coturn:latest
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     ports:
       - "${TURN_PORT:-3478}:3478/tcp"
@@ -82,7 +82,7 @@ services:
   # --- Nginx (reverse proxy) ---
   nginx:
     image: nginx:alpine
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     depends_on:
       synapse:
@@ -102,7 +102,7 @@ services:
   # --- Admin panel (user/room management) ---
   synapse-admin:
     image: ghcr.io/etkecc/synapse-admin:latest
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - meshlink
@@ -110,7 +110,7 @@ services:
   # --- Meshlink Admin API (server configuration panel) ---
   admin-api:
     build: ./admin-api
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     volumes:
       - ./.env:/app/.env:rw

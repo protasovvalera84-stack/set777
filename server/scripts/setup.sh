@@ -754,17 +754,37 @@ if [ "$PG_HEALTHY" = "false" ]; then
     docker compose logs postgres --tail 10
 fi
 
+# Now start everything EXCEPT Synapse first
+log "Starting infrastructure services..."
+docker compose up -d postgres nginx element coturn synapse-admin admin-api
+
+# Wait for postgres
+sleep 5
+PG_HEALTHY=false
+for i in $(seq 1 30); do
+    if docker compose exec -T postgres pg_isready -U synapse 2>/dev/null; then
+        PG_HEALTHY=true
+        break
+    fi
+    sleep 2
+done
+if [ "$PG_HEALTHY" = "false" ]; then
+    warn "PostgreSQL slow to start — waiting more..."
+    sleep 10
+fi
+
 # CRITICAL: Fix synapse_data volume permissions BEFORE starting Synapse
-# Synapse runs as UID 991 inside container — volume must be owned by 991
-log "Fixing Synapse data permissions..."
-docker run --rm -v server_synapse_data:/data alpine sh -c "mkdir -p /data/media_store /data/uploads && chown -R 991:991 /data" 2>/dev/null || true
+# This MUST happen after docker compose creates the volume but BEFORE Synapse runs
+log "Fixing Synapse data permissions (CRITICAL)..."
+docker volume create server_synapse_data 2>/dev/null || true
+docker run --rm -v server_synapse_data:/data alpine sh -c "\
+    mkdir -p /data/media_store /data/uploads /data/log && \
+    chown -R 991:991 /data && \
+    chmod -R 755 /data" 2>/dev/null || true
 
-# Now start everything else
-log "Starting all services..."
-docker compose up -d
-
-# Restart Synapse after permission fix
-docker compose restart synapse 2>/dev/null || true
+# NOW start Synapse with correct permissions
+log "Starting Synapse..."
+docker compose up -d synapse
 sleep 5
 
 log "Waiting for server to become healthy (this may take up to 4 minutes on first install)..."
@@ -931,6 +951,16 @@ fi
 if [ -f "$SERVER_DIR/logrotate/meshlink" ]; then
     cp "$SERVER_DIR/logrotate/meshlink" /etc/logrotate.d/meshlink 2>/dev/null || true
     log "Log rotation configured."
+fi
+
+# Setup watchdog cron (every minute)
+chmod +x "$SCRIPT_DIR/watchdog.sh" 2>/dev/null || true
+WATCHDOG_CRON="* * * * * $SCRIPT_DIR/watchdog.sh"
+if ! crontab -l 2>/dev/null | grep -q "watchdog.sh"; then
+    (crontab -l 2>/dev/null; echo "$WATCHDOG_CRON") | crontab -
+    log "Watchdog cron installed (every minute)."
+else
+    log "Watchdog cron already installed."
 fi
 
 # Setup daily backup cron
