@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -147,7 +149,7 @@ class ChatActivity : AppCompatActivity() {
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/send/m.reaction/$txn")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                        .put(body.toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(request).execute()
                 } catch (_: Exception) {}
@@ -207,7 +209,7 @@ class ChatActivity : AppCompatActivity() {
                         .url("$baseUrl/_matrix/client/v3/rooms/$encodedRoom/redact/$encodedEvent/$txn")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), """{"reason":"deleted"}"""))
+                        .put("""{"reason":"deleted"}""".toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(request).execute()
                     app.database.messageDao().upsert(message.copy(body = "[deleted]"))
@@ -254,7 +256,7 @@ class ChatActivity : AppCompatActivity() {
                         .url("${app.securePrefs.serverUrl}/_matrix/client/v3/rooms/$encoded/send/m.room.message/$txn")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                        .put(body.toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(request).execute()
                 }
@@ -324,7 +326,7 @@ class ChatActivity : AppCompatActivity() {
                             .url("${app.securePrefs.serverUrl}/_matrix/client/v3/rooms/$encoded/send/m.room.message/$txn")
                             .addHeader("Authorization", "Bearer $token")
                             .addHeader("Content-Type", "application/json")
-                            .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                            .put(body.toRequestBody("application/json".toMediaType()))
                             .build()
                         okhttp3.OkHttpClient().newCall(request).execute()
                     }

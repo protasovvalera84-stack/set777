@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.content.Intent
 import android.os.Bundle
@@ -76,7 +78,7 @@ class ProfileActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(request).execute()
                 }
                 if (response.isSuccessful) {
-                    val json = JsonParser.parseString(response.body()?.string() ?: "{}").asJsonObject
+                    val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
                     val displayName = json.get("displayname")?.asString
                     if (displayName != null) {
                         tvName.text = displayName
@@ -104,8 +106,8 @@ class ProfileActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/profile/$encoded/displayname")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .put(okhttp3.RequestBody.create(
-                        okhttp3.MediaType.parse("application/json"), body))
+                    .put(
+                        "application/json".toMediaType(), body))
                     .build()
                 withContext(Dispatchers.IO) {
                     okhttp3.OkHttpClient().newCall(request).execute()

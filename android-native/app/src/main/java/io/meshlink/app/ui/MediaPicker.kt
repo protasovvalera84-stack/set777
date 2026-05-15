@@ -1,4 +1,6 @@
 package io.meshlink.app.ui
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 import android.Manifest
 import android.app.Activity
@@ -162,7 +164,7 @@ class MediaPicker(private val activity: AppCompatActivity) {
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/send/m.room.message/$txn")
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("Content-Type", "application/json")
-                        .put(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), body))
+                        .put(body.toRequestBody("application/json".toMediaType()))
                         .build()
                     okhttp3.OkHttpClient().newCall(request).execute()
                 }

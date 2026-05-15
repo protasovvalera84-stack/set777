@@ -69,7 +69,7 @@ class MusicPlayerActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()).execute()
                 }
                 if (!aliasResp.isSuccessful) { tvEmpty.visibility = View.VISIBLE; tvEmpty.text = "No music yet"; return@launch }
-                val roomId = JsonParser.parseString(aliasResp.body()?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
+                val roomId = JsonParser.parseString(aliasResp.body?.string() ?: "{}").asJsonObject.get("room_id")?.asString ?: return@launch
 
                 val msgResp = withContext(Dispatchers.IO) {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
@@ -77,7 +77,7 @@ class MusicPlayerActivity : AppCompatActivity() {
                         .addHeader("Authorization", "Bearer $token").build()).execute()
                 }
                 tracks.clear()
-                val json = JsonParser.parseString(msgResp.body()?.string() ?: "{}").asJsonObject
+                val json = JsonParser.parseString(msgResp.body?.string() ?: "{}").asJsonObject
                 json.getAsJsonArray("chunk")?.forEach { evt ->
                     val obj = evt.asJsonObject
                     val c = obj.getAsJsonObject("content") ?: return@forEach
