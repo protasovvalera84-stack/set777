@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="camera" path=".meshlink_camera/" />
+    <files-path name="media" path=".meshlink_media/" />
+    <files-path name="voice" path=".meshlink_voice/" />
+    <cache-path name="cache" path="." />
+</paths>
