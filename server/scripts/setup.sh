@@ -278,12 +278,6 @@ server {
         access_log off;
     }
 
-    # Connection pooling to Synapse
-    upstream synapse_backend {
-        server synapse:8008;
-        keepalive 32;
-    }
-
     location / {
         root /usr/share/nginx/www/meshlink;
         index index.html;
