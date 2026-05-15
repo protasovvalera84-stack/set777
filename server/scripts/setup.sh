@@ -1012,7 +1012,7 @@ else
 fi
 
 # Setup daily backup cron
-BACKUP_CRON="0 */6 * * * /backup.sh >> /var/log/meshlink-backup.log 2>&1
+BACKUP_CRON="0 */6 * * * $SCRIPT_DIR/backup.sh >> /var/log/meshlink-backup.log 2>&1"
 if ! crontab -l 2>/dev/null | grep -q "backup.sh"; then
     (crontab -l 2>/dev/null; echo "$BACKUP_CRON") | crontab -
     log "Daily backup cron installed (3:00 AM)."
