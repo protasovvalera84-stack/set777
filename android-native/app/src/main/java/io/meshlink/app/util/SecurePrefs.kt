@@ -46,4 +46,7 @@ class SecurePrefs(context: Context) {
     fun clear() {
         prefs.edit().clear().apply()
     }
+
+    fun getExtra(key: String): String? = prefs.getString(key, null)
+    fun setExtra(key: String, value: String) = prefs.edit().putString(key, value).apply()
 }
