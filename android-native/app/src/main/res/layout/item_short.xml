@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="#111">
+    <!-- Right side actions -->
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom" android:orientation="vertical"
+        android:padding="16dp" android:layout_marginBottom="80dp">
+        <ImageButton android:id="@+id/btnShortLike" android:layout_width="48dp" android:layout_height="48dp"
+            android:src="@android:drawable/btn_star_big_on" android:background="@android:color/transparent"
+            android:tint="#FFF" android:alpha="0.5" android:contentDescription="Like" />
+        <TextView android:id="@+id/tvShortLikes" android:layout_width="48dp" android:layout_height="wrap_content"
+            android:text="0" android:textColor="#FFF" android:textSize="12sp" android:gravity="center" />
+    </LinearLayout>
+    <!-- Bottom info -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="bottom" android:orientation="vertical" android:padding="16dp">
+        <TextView android:id="@+id/tvShortAuthor" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@user" android:textColor="#FFF" android:textSize="15sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tvShortCaption" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#DDD" android:textSize="13sp" android:layout_marginTop="4dp" android:maxLines="2" />
+    </LinearLayout>
+</FrameLayout>
