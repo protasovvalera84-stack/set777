@@ -362,6 +362,14 @@ server {
         tcp_nopush on;
         tcp_nodelay on;
     }
+    location /installers/native/ {
+        alias /usr/share/nginx/www/installers/native/;
+        autoindex off;
+        default_type application/octet-stream;
+        add_header Content-Disposition 'attachment' always;
+        add_header Cache-Control 'public, max-age=3600' always;
+        sendfile on;
+    }
     location /health { access_log off; return 200 "OK\n"; add_header Content-Type text/plain; }
 }
 NGINXCONF
@@ -689,6 +697,19 @@ if [ -f "$REPO_DIR/scripts/build-android.sh" ]; then
 else
     warn "build-android.sh not found, skipping Android build"
 fi
+
+# Step 8d: Build ALL native installers (Android Kotlin + Linux GTK4 + Windows)
+log "Building native installers..."
+if [ -f "$REPO_DIR/scripts/build-all-native.sh" ]; then
+    chmod +x "$REPO_DIR/scripts/build-all-native.sh"
+    bash "$REPO_DIR/scripts/build-all-native.sh" "$BASE_URL" 2>&1 || {
+        warn "Native installer build failed (non-critical). Build later with:"
+        warn "  sudo bash $REPO_DIR/scripts/build-all-native.sh $BASE_URL"
+    }
+else
+    warn "build-all-native.sh not found"
+fi
+
 # =============================================================================
 # Step 9: Start the stack
 # =============================================================================
@@ -1094,9 +1115,10 @@ echo -e "  Config panel:  ${CYAN}${BASE_URL}/config${NC}"
 echo -e "  Admin user:    ${CYAN}@${ADMIN_USER}:${SERVER_HOST}${NC}"
 echo ""
 echo -e "  Installers:"
-echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/desktop/Meshlink-Setup-1.0.0.exe${NC}"
-echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/desktop/Meshlink-1.0.0.AppImage${NC}"
-echo -e "    Android:     ${CYAN}${BASE_URL}/installers/Meshlink.apk${NC}"
+echo -e "    Android:     ${CYAN}${BASE_URL}/installers/native/Meshlink-Android.apk${NC} (Native Kotlin)"
+echo -e "    Windows:     ${CYAN}${BASE_URL}/installers/native/Meshlink-Windows.exe${NC} (Desktop)"
+echo -e "    Linux:       ${CYAN}${BASE_URL}/installers/native/Meshlink-Linux${NC} (GTK4)"
+echo -e "    Android Web: ${CYAN}${BASE_URL}/installers/Meshlink.apk${NC} (WebView)"
 echo -e "    iOS:         ${CYAN}${BASE_URL}/installers/Meshlink-iOS.html${NC} (PWA)"
 echo ""
 echo -e "  Config file:   ${CYAN}${SERVER_DIR}/.env${NC}"
