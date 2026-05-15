@@ -119,7 +119,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/kick")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .post(body)).build()).execute(.toRequestBody("application/json".toMediaType())
+                        .post(body.toRequestBody("application/json".toMediaType())).build()).execute()
                 } catch (_: Exception) {}
             }
             loadGroupInfo()
@@ -151,7 +151,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/invite")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .post(body)).build()).execute(.toRequestBody("application/json".toMediaType())
+                        .post(body.toRequestBody("application/json".toMediaType())).build()).execute()
                 } catch (_: Exception) {}
             }
             Toast.makeText(this@GroupSettingsActivity, "Invited $userId", Toast.LENGTH_SHORT).show()
@@ -174,7 +174,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                     okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                         .url("$baseUrl/_matrix/client/v3/rooms/$encoded/state/m.room.name/")
                         .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                        .put(body)).build()).execute(.toRequestBody("application/json".toMediaType())
+                        .put(body.toRequestBody("application/json".toMediaType())).build()).execute()
                 } catch (_: Exception) {}
             }
             tvGroupName.text = newName
@@ -196,7 +196,7 @@ class GroupSettingsActivity : AppCompatActivity() {
                             okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder()
                                 .url("${app.securePrefs.serverUrl}/_matrix/client/v3/rooms/$encoded/leave")
                                 .addHeader("Authorization", "Bearer $token").addHeader("Content-Type", "application/json")
-                                .post("{}")).build()).execute(.toRequestBody("application/json".toMediaType())
+                                .post("{}".toRequestBody("application/json".toMediaType())).build()).execute()
                             app.database.roomDao().delete(roomId)
                         } catch (_: Exception) {}
                     }
