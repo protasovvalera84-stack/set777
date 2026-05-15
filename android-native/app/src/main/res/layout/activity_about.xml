@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="#0A0A12">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingHorizontal="12dp" android:background="#111118">
+        <ImageButton android:id="@+id/btnBack" android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888" android:contentDescription="Back" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="About" android:textSize="18sp" android:textColor="#E0E0E0"
+            android:textStyle="bold" android:paddingStart="8dp" />
+    </LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Meshlink" android:textSize="24sp" android:textColor="#A855F7"
+                android:textStyle="bold" android:gravity="center" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvAppVersion" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="14sp" android:textColor="#888" android:gravity="center" android:layout_marginBottom="24dp" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Account" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvUserId" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#E0E0E0" android:textSize="13sp" android:padding="8dp" android:background="@drawable/input_bg" />
+            <TextView android:id="@+id/tvDeviceId" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#888" android:textSize="11sp" android:paddingHorizontal="8dp" android:layout_marginTop="4dp" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Server" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvServer" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#E0E0E0" android:textSize="13sp" android:padding="8dp" android:background="@drawable/input_bg" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Devices" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvDevices" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#E0E0E0" android:textSize="12sp" android:padding="8dp" android:background="@drawable/input_bg" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Storage" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvStorage" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#E0E0E0" android:textSize="12sp" android:padding="8dp" android:background="@drawable/input_bg" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Device" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvDeviceInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#E0E0E0" android:textSize="12sp" android:padding="8dp" android:background="@drawable/input_bg" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Performance" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvPerformance" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#888" android:textSize="11sp" android:padding="8dp" android:background="@drawable/input_bg" />
+            <TextView android:id="@+id/tvMemory" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#888" android:textSize="11sp" android:paddingHorizontal="8dp" android:layout_marginTop="4dp" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Crash Logs" android:textColor="#A855F7" android:textSize="13sp" android:textStyle="bold"
+                android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
+            <TextView android:id="@+id/tvCrashLog" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#888" android:textSize="10sp" android:padding="8dp" android:background="@drawable/input_bg"
+                android:maxLines="10" />
+            <Button android:id="@+id/btnClearCrashLogs" android:layout_width="match_parent" android:layout_height="36dp"
+                android:text="Clear Crash Logs" android:textColor="#EF4444" android:background="@drawable/btn_secondary"
+                android:textSize="12sp" android:textAllCaps="false" android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
