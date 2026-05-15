@@ -57,6 +57,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         loadRooms()
+
+        // Start background sync service
+        startService(Intent(this, io.meshlink.app.network.SyncService::class.java))
     }
 
     private fun loadRooms() {

@@ -18,11 +18,14 @@ class SyncService : Service() {
 
     private var syncJob: Job? = null
     private var nextBatch: String? = null
+    private lateinit var notificationHelper: NotificationHelper
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (syncJob?.isActive == true) return START_STICKY
+
+        notificationHelper = NotificationHelper(this)
 
         syncJob = CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             val app = MeshlinkApp.instance
@@ -76,6 +79,16 @@ class SyncService : Service() {
                     mediaUrl = content.get("url")?.asString
                 )
                 app.database.messageDao().upsert(msg)
+
+                // Show notification for messages from others
+                if (msg.sender != app.securePrefs.userId) {
+                    val senderName = msg.sender.split(":")[0].removePrefix("@")
+                    val roomName = app.database.roomDao().getAll()
+                        .find { it.roomId == roomId }?.name ?: roomId.take(15)
+                    notificationHelper.showMessageNotification(
+                        senderName, msg.body, roomId, roomName
+                    )
+                }
 
                 // Update room's last message
                 app.database.roomDao().upsert(
