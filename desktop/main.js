@@ -27,7 +27,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: true,
+      webSecurity: false, // Allow cross-origin requests for Matrix media
+      allowRunningInsecureContent: false,
     },
     autoHideMenuBar: true,
     show: false,
