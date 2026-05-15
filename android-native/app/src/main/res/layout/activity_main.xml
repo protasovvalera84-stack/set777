@@ -71,4 +71,39 @@
                 android:visibility="gone" />
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Bottom navigation -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="#111118"
+        android:paddingHorizontal="8dp">
+
+        <ImageButton android:id="@+id/navChats"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:src="@android:drawable/ic_dialog_email" android:background="?attr/selectableItemBackground"
+            android:tint="#A855F7" android:contentDescription="Chats" />
+
+        <ImageButton android:id="@+id/navShorts"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:src="@android:drawable/ic_menu_slideshow" android:background="?attr/selectableItemBackground"
+            android:tint="#666" android:contentDescription="Shorts" />
+
+        <ImageButton android:id="@+id/navVideo"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:src="@android:drawable/ic_menu_gallery" android:background="?attr/selectableItemBackground"
+            android:tint="#666" android:contentDescription="Video" />
+
+        <ImageButton android:id="@+id/navMusic"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:src="@android:drawable/ic_media_play" android:background="?attr/selectableItemBackground"
+            android:tint="#666" android:contentDescription="Music" />
+
+        <ImageButton android:id="@+id/navMarket"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:src="@android:drawable/ic_menu_agenda" android:background="?attr/selectableItemBackground"
+            android:tint="#666" android:contentDescription="Market" />
+    </LinearLayout>
 </LinearLayout>

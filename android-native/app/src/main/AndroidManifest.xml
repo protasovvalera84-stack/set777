@@ -62,6 +62,10 @@
             android:name=".ui.SettingsActivity"
             android:screenOrientation="unspecified" />
 
+        <activity android:name=".ui.VideoActivity" android:screenOrientation="unspecified" />
+        <activity android:name=".ui.MusicActivity" android:screenOrientation="unspecified" />
+        <activity android:name=".ui.MarketActivity" android:screenOrientation="unspecified" />
+
         <service
             android:name=".network.SyncService"
             android:exported="false" />
