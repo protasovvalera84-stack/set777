@@ -70,6 +70,14 @@
         <activity android:name=".ui.MusicPlayerActivity" android:screenOrientation="unspecified" />
         <activity android:name=".ui.GroupSettingsActivity" android:screenOrientation="unspecified" />
         <activity android:name=".ui.MarketFullActivity" android:screenOrientation="unspecified" />
+        <activity android:name=".ui.SearchActivity" android:screenOrientation="unspecified" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.FileShareActivity" android:screenOrientation="unspecified">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"
