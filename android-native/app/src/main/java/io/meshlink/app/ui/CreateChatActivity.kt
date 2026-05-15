@@ -96,8 +96,7 @@ class CreateChatActivity : AppCompatActivity() {
                 .url("$baseUrl/_matrix/client/v3/user_directory/search")
                 .addHeader("Authorization", "Bearer $token")
                 .addHeader("Content-Type", "application/json")
-                .post(
-                    "application/json".toMediaType(), body))
+                .post(body.toRequestBody("application/json".toMediaType()))
                 .build()
             val response = okhttp3.OkHttpClient().newCall(request).execute()
             val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
@@ -136,8 +135,7 @@ class CreateChatActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/createRoom")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(
-                        "application/json".toMediaType(), body))
+                    .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
                 val response = okhttp3.OkHttpClient().newCall(request).execute()
                 val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject
@@ -190,8 +188,7 @@ class CreateChatActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/createRoom")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .post(
-                        "application/json".toMediaType(), body))
+                    .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
                 val response = okhttp3.OkHttpClient().newCall(request).execute()
                 val json = JsonParser.parseString(response.body?.string() ?: "{}").asJsonObject

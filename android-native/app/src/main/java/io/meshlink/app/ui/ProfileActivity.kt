@@ -106,8 +106,7 @@ class ProfileActivity : AppCompatActivity() {
                     .url("$baseUrl/_matrix/client/v3/profile/$encoded/displayname")
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
-                    .put(
-                        "application/json".toMediaType(), body))
+                    .put(body.toRequestBody("application/json".toMediaType()))
                     .build()
                 withContext(Dispatchers.IO) {
                     okhttp3.OkHttpClient().newCall(request).execute()
