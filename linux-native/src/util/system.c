@@ -4,7 +4,9 @@
  */
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <sys/stat.h>
 
 typedef struct {
     GApplication *app;
@@ -83,7 +85,7 @@ gint64 app_data_get_size(void) {
         const char *name;
         while ((name = g_dir_read_name(d))) {
             char *path = g_build_filename(dir, name, NULL);
-            GStatBuf st;
+            struct stat st;
             if (g_stat(path, &st) == 0) total += st.st_size;
             g_free(path);
         }

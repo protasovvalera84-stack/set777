@@ -1,3 +1,5 @@
+using System;
+
 namespace Meshlink.Models
 {
     /// <summary>Room model — cached in local SQLite.</summary>

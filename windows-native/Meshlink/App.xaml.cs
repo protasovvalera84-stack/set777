@@ -8,12 +8,12 @@ namespace Meshlink
     /// </summary>
     public partial class App : Application
     {
-        public static Services.MatrixClient MatrixClient { get; private set; } = null!;
-        public static Services.LocalDatabase Database { get; private set; } = null!;
-        public static Services.SecureStorage SecureStorage { get; private set; } = null!;
-        public static Services.MediaCache MediaCache { get; private set; } = null!;
-        public static Services.SyncService SyncService { get; private set; } = null!;
-        public static Services.NotificationService NotificationService { get; private set; } = null!;
+        public static Services.MatrixClient MatrixClient { get; set; } = null!;
+        public static Services.LocalDatabase Database { get; set; } = null!;
+        public static Services.SecureStorage SecureStorage { get; set; } = null!;
+        public static Services.MediaCache MediaCache { get; set; } = null!;
+        public static Services.SyncService SyncService { get; set; } = null!;
+        public static Services.NotificationService NotificationService { get; set; } = null!;
 
         protected override void OnStartup(StartupEventArgs e)
         {
