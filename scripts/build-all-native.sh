@@ -61,7 +61,7 @@ with open('app/src/main/res/$d/ic_launcher.png','wb') as f: f.write(png(s,s,168,
 
     if [ -f "gradlew" ]; then
         chmod +x gradlew
-        ./gradlew assembleDebug 2>&1 | tail -5
+        ./gradlew assembleDebug 2>&1 | tail -20
         APK=$(find . -name "*.apk" -path "*/debug/*" | head -1)
         if [ -n "$APK" ] && [ -f "$APK" ]; then
             cp "$APK" "$OUTPUT_DIR/native/Meshlink-Android.apk"
@@ -99,7 +99,7 @@ if [ -d "$LINUX_DIR" ]; then
         meson setup build 2>&1 | tail -3 || { err "Meson setup failed"; LINUX_DIR=""; }
 
         if [ -n "$LINUX_DIR" ]; then
-            ninja -C build 2>&1 | tail -5
+            ninja -C build 2>&1 | tail -20
             if [ -f "build/meshlink" ]; then
                 cp build/meshlink "$OUTPUT_DIR/native/Meshlink-Linux"
                 chmod +x "$OUTPUT_DIR/native/Meshlink-Linux"
