@@ -203,20 +203,47 @@ export default function RegisterPage({ onComplete }: RegisterPageProps) {
 
     setDownloading(true);
     if (platform === "android") {
-      // Try APK first, fallback to PWA install page
-      fetch("/installers/Meshlink.apk", { method: "HEAD" }).then((r) => {
+      // Native Kotlin APK first, fallback to WebView APK, then PWA
+      fetch("/installers/native/Meshlink-Android.apk", { method: "HEAD" }).then((r) => {
         if (r.ok) {
-          forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
+          forceDownload("/installers/native/Meshlink-Android.apk", "Meshlink-Android.apk");
         } else {
-          window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+          // Fallback to WebView APK
+          fetch("/installers/Meshlink.apk", { method: "HEAD" }).then((r2) => {
+            if (r2.ok) {
+              forceDownload("/installers/Meshlink.apk", "Meshlink.apk");
+            } else {
+              window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+            }
+          }).catch(() => {
+            window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
+          });
         }
       }).catch(() => {
         window.open(`${window.location.origin}/installers/Meshlink-Android.html`, "_blank");
       });
     } else if (platform === "linux") {
-      forceDownload("/installers/desktop/Meshlink-1.0.0.AppImage", "Meshlink.AppImage");
+      // Native GTK4 binary first, fallback to Electron AppImage
+      fetch("/installers/native/Meshlink-Linux", { method: "HEAD" }).then((r) => {
+        if (r.ok) {
+          forceDownload("/installers/native/Meshlink-Linux", "Meshlink-Linux");
+        } else {
+          forceDownload("/installers/desktop/Meshlink-1.0.0.AppImage", "Meshlink.AppImage");
+        }
+      }).catch(() => {
+        forceDownload("/installers/desktop/Meshlink-1.0.0.AppImage", "Meshlink.AppImage");
+      });
     } else {
-      forceDownload("/installers/desktop/Meshlink-Setup-1.0.0.exe", "Meshlink-Setup.exe");
+      // Native C# EXE first, fallback to Electron EXE
+      fetch("/installers/native/Meshlink-Windows.exe", { method: "HEAD" }).then((r) => {
+        if (r.ok) {
+          forceDownload("/installers/native/Meshlink-Windows.exe", "Meshlink-Windows.exe");
+        } else {
+          forceDownload("/installers/desktop/Meshlink-Setup-1.0.0.exe", "Meshlink-Setup.exe");
+        }
+      }).catch(() => {
+        forceDownload("/installers/desktop/Meshlink-Setup-1.0.0.exe", "Meshlink-Setup.exe");
+      });
     }
     setTimeout(() => {
       setDownloading(false);
