@@ -4,7 +4,6 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <AssemblyName>Meshlink</AssemblyName>
     <RootNamespace>Meshlink</RootNamespace>
     <Version>1.0.0</Version>

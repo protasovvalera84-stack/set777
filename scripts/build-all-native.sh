@@ -61,7 +61,7 @@ with open('app/src/main/res/$d/ic_launcher.png','wb') as f: f.write(png(s,s,168,
 
     if [ -f "gradlew" ]; then
         chmod +x gradlew
-        ./gradlew assembleDebug 2>&1 | tail -20
+        ./gradlew assembleDebug --stacktrace 2>&1 | grep -E "error:|Error:|FAILED|BUILD|e: file" | tail -20
         APK=$(find . -name "*.apk" -path "*/debug/*" | head -1)
         if [ -n "$APK" ] && [ -f "$APK" ]; then
             cp "$APK" "$OUTPUT_DIR/native/Meshlink-Android.apk"
