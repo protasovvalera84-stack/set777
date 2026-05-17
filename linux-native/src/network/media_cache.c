@@ -4,10 +4,13 @@
  */
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <libsoup/soup.h>
+#include <json-glib/json-glib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 typedef struct {
     char *cache_dir;
@@ -134,7 +137,7 @@ gint64 media_cache_get_size(MediaCache *mc) {
     const char *name;
     while ((name = g_dir_read_name(dir))) {
         char *path = g_build_filename(mc->cache_dir, name, NULL);
-        GStatBuf st;
+        struct stat st;
         if (g_stat(path, &st) == 0) total += st.st_size;
         g_free(path);
     }
