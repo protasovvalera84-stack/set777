@@ -117,7 +117,7 @@ class WebViewActivity : AppCompatActivity() {
             fileUploadCallback?.onReceiveValue(null)
             fileUploadCallback = callback
             try {
-                val intent = params?.createIntent()
+                val intent = params?.createIntent() ?: return false
                 startActivityForResult(intent, FILE_CHOOSER_REQUEST)
             } catch (e: Exception) {
                 fileUploadCallback = null
