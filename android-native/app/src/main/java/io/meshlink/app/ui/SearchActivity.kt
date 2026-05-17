@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView
 import io.meshlink.app.MeshlinkApp
 import io.meshlink.app.R
 import io.meshlink.app.data.RoomEntity
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import io.meshlink.app.network.RoomManager
 import kotlinx.coroutines.launch
 
