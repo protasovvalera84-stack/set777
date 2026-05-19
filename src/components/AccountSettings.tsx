@@ -8,6 +8,8 @@ import {
 import { UserProfile } from "@/data/mockData";
 import { useTheme } from "@/theme/ThemeProvider";
 import { PinSetup, SessionsPage } from "@/components/SecurityFeatures";
+import { useMesh } from "@/lib/MeshProvider";
+import { uploadMedia, mxcToUrl } from "@/lib/meshClient";
 import { SecurityAuditPage } from "@/components/AdvancedFeatures";
 import { SettingsExport } from "@/components/SettingsTools";
 import { AdminPanel } from "@/components/AdminPanel";
@@ -71,6 +73,7 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
   const [exportOpen, setExportOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mesh = useMesh();
 
   // Re-sync draft from profile every time dialog opens
   useEffect(() => {
@@ -92,17 +95,54 @@ export function AccountSettings({ open, profile, onClose, onUpdate, onLogout }: 
       const dataUrl = await resizeImageToDataUrl(file, 256);
       setAvatarPreview(dataUrl);
       setDraft((d) => ({ ...d, avatarUrl: dataUrl }));
-    } catch {
-      // Fallback: use raw blob URL
+
+      // Upload to Matrix server and set as profile avatar
+      if (mesh.client) {
+        const token = mesh.client.getAccessToken() || "";
+        const mxcUri = await uploadMedia(token, file);
+        const userId = mesh.client.getUserId() || "";
+        const homeserver = mesh.client.getHomeserverUrl();
+
+        // Set avatar_url on Matrix profile
+        await fetch(`${homeserver}/_matrix/client/v3/profile/${encodeURIComponent(userId)}/avatar_url`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ avatar_url: mxcUri }),
+        });
+
+        // Update preview with server URL
+        const httpUrl = mxcToUrl(mxcUri);
+        setAvatarPreview(httpUrl);
+        setDraft((d) => ({ ...d, avatarUrl: httpUrl }));
+      }
+    } catch (err) {
+      console.error("Failed to set avatar:", err);
+      // Fallback: use raw blob URL (local only)
       const url = URL.createObjectURL(file);
       setAvatarPreview(url);
       setDraft((d) => ({ ...d, avatarUrl: url }));
     }
   };
 
-  const handleRemoveAvatar = () => {
+  const handleRemoveAvatar = async () => {
     setAvatarPreview(null);
     setDraft((d) => ({ ...d, avatarUrl: null }));
+
+    // Remove avatar from Matrix server
+    if (mesh.client) {
+      try {
+        const token = mesh.client.getAccessToken() || "";
+        const userId = mesh.client.getUserId() || "";
+        const homeserver = mesh.client.getHomeserverUrl();
+        await fetch(`${homeserver}/_matrix/client/v3/profile/${encodeURIComponent(userId)}/avatar_url`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ avatar_url: "" }),
+        });
+      } catch (err) {
+        console.error("Failed to remove avatar:", err);
+      }
+    }
   };
 
   const handleSaveProfile = () => {
