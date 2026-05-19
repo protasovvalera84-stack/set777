@@ -107,6 +107,18 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
     }
   };
 
+  const handleRemoveGroupAvatar = async () => {
+    setDraft((d) => ({ ...d, avatarUrl: undefined }));
+    // Remove avatar from Matrix room
+    if (mesh.client) {
+      try {
+        await mesh.client.sendStateEvent(chat.id, "m.room.avatar", { url: "" }, "");
+      } catch (err) {
+        console.error("Failed to remove group avatar:", err);
+      }
+    }
+  };
+
   const handleSave = () => {
     const initials = draft.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "??";
     onUpdateChat({ ...draft, avatar: initials, members: (draft.memberIds || []).length });
@@ -164,7 +176,7 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in-up" onClick={onClose}>
       <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
       <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md rounded-3xl glass-strong border border-border/60 shadow-elegant max-h-[90vh] flex flex-col overflow-hidden">
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAvatarPick} />
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarPick} />
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40">
@@ -209,6 +221,9 @@ export function GroupSettingsDialog({ open, chat, contacts, folders, onClose, on
                   </div>
                 </div>
                 <button onClick={() => fileRef.current?.click()} className="text-xs font-medium text-primary hover:underline px-3 py-1 rounded-lg hover:bg-primary/10">📷 Change Photo</button>
+                {draft.avatarUrl && (
+                  <button onClick={handleRemoveGroupAvatar} className="text-xs font-medium text-destructive hover:underline px-3 py-1 rounded-lg hover:bg-destructive/10">🗑️ Remove Photo</button>
+                )}
               </div>
 
               {/* Name */}
